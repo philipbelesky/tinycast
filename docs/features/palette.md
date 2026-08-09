@@ -140,6 +140,7 @@ naming them could never be harness-compiled.
 | `s` | Snippets | `.snippet` | yes |
 | `c` | Commands | `.command` + `.customCommand` | yes |
 | `w` | Window Management | `.windowCommand` + `.systemAction` | yes |
+| `h` | herdr | `.herdrTarget` | yes |
 | `g` `d` `b` `k` | Google / DuckDuckGo / Bing / Kagi | [web search](web-search.md) | yes |
 | `e` | Emoji & Symbols | `PaletteMode.emoji` | no |
 | `v` | Clipboard | `PaletteMode.clipboard` | no |

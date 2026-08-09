@@ -22,6 +22,7 @@ covers where the fork **departs** from those.
 | 2 | [Forced light appearance](#2--forced-light-appearance) | **High** — contradicts upstream decision 4 | No — it inverts a stated invariant |
 | 3 | [`Theme.scale`](#3--themescale-and-derived-typography) | **High** — rewrites `Theme.swift` wholesale | Plausibly yes |
 | 4 | [Scope keywords + web search](#4--scope-keywords-and-web-search) | Medium — hooks into `AppIndex`, `RootPaletteView`, `AppEntry.Kind` | Yes, as a feature |
+| 5 | [herdr opener](#5--herdr-opener) | Medium — the same `AppEntry.Kind` surface as 4 | Unlikely — niche third-party tool |
 
 Keep each divergence as **its own commit**, never squashed together. Rebasing `philip` onto a new
 `origin/main` then replays them one at a time, and a divergence that upstream has since made redundant
@@ -168,6 +169,31 @@ in `LauncherList`'s kind order, a `SettingsTab` case **and** a place in `Setting
 and let the compiler find the rest; every one of those sites is an exhaustive switch except the two
 list orderings and the sidebar group.
 
+---
+
+## 5 — herdr opener
+
+**Touches:** a new `Features/Herdr/` (two pure models with a harness, a client, a store, a coordinator,
+a settings pane), a new `Platform/ProcessTable.swift`, plus the same hook set as divergence 4 —
+`AppEntry.Kind.herdrTarget`, an `AppIndex` slice, a `LauncherCoordinator` branch, `ScopeCatalog`'s `h`,
+`PaletteCoordinator.onShow`, `AppCore` wiring, `SettingsTab` and the settings/backup registries.
+
+`h payments` lists the running [herdr](docs/features/herdr.md) session's workspaces and tabs; ↵ focuses
+one and raises the terminal hosting it. Upstream has no notion of a third-party tool's live state in the
+launcher, and this is the fork's least upstreamable feature: it is useful to exactly the people who run
+herdr. **It is also the cleanest thing here to delete** — the whole feature is one folder plus a handful
+of enum arms the compiler will point at.
+
+Two things not to lose in a merge. `PaletteCoordinator.onShow` is a fork-local hook on an upstream type,
+and dropping it doesn't break the build — it just leaves the launcher listing a stale session forever.
+And **`ProcessTable` uses `sysctl(KERN_PROC_ALL)` deliberately**: `libproc` looks tidier and returns
+EPERM for processes the caller doesn't own, which silently breaks host detection at root-owned `login`,
+two hops short of the terminal app. That failure is invisible — focus still moves, the window just never
+comes forward.
+
+**On merge:** the same rule as divergence 4 — re-apply the `Kind` case and follow the compiler. If
+upstream ever grows its own "live external source" slice, this should be rebuilt on it rather than kept.
+
 ## Merging upstream
 
 ```sh
@@ -176,17 +202,18 @@ git checkout main && git merge --ff-only origin/main   # keep the mirror clean
 git checkout philip && git rebase origin/main           # replay the divergences
 ```
 
-Rebase rather than merge, so the fork stays a readable stack of the three commits above rather than a
+Rebase rather than merge, so the fork stays a readable stack of the five commits above rather than a
 braid. Then, before calling it done — the standard gate from
-[testing.md](docs/testing.md#definition-of-done) plus the two fork-specific checks:
+[testing.md](docs/testing.md#definition-of-done) plus the fork-specific checks:
 
-- [ ] `./Scripts/run-tests.sh` passes (21 harnesses; `scope-test` and `websearch-test` are fork-local).
+- [ ] `./Scripts/run-tests.sh` passes (22 harnesses; `scope-test`, `websearch-test` and `herdr-test` are fork-local).
 - [ ] Debug build compiles with no new warnings.
 - [ ] `./Scripts/lint.sh` is clean.
 - [ ] `grep -rln 'import AppKit\|import SwiftUI\|import Cocoa' Tinycast/Features/*/Model/` returns nothing.
 - [ ] **The white-alpha grep above returns only lifting colors** (divergence 2).
 - [ ] **New or merged views carry no magic numbers** — every length and font size comes from `Theme` (divergence 3).
 - [ ] **Signing survived** — if `xcodegen` ran, re-apply divergence 1.
+- [ ] **`PaletteCoordinator.onShow` still fires** — otherwise herdr lists a stale session (divergence 5).
 - [ ] The palette, a dialog and both HUDs were opened and *looked at*. No agent here can do this.
 
 ## Adding a divergence

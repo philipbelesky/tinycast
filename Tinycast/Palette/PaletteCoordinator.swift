@@ -7,6 +7,8 @@ final class PaletteCoordinator {
     private let settings: AppSettings
     private let appIndex: AppIndex
     private let windowController: PaletteWindowController
+    /// Set by `AppCore`, so the coordinator stays ignorant of which feature wants the notice.
+    var onShow: (@MainActor () async -> Void)?
 
     init(
         palette: PaletteState,
@@ -62,7 +64,11 @@ final class PaletteCoordinator {
         }
         windowController.show()
         // Re-scan on open so an app uninstalled since the last scan drops out of the launcher.
-        if palette.mode == .launcher { Task { await appIndex.refresh() } }
+        // herdr's session moves far faster than the app list, so it re-reads on the same trigger.
+        if palette.mode == .launcher {
+            Task { await appIndex.refresh() }
+            Task { await onShow?() }
+        }
     }
 
     func hidePalette(restoreFocus: Bool = true) {

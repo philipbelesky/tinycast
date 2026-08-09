@@ -128,9 +128,9 @@ permission-aware failures. With the palette closed it targets the frontmost app,
 Quit All act on the same window a palette launch would have.
 
 System actions occupy their own launcher section and their own Settings pane. The empty-query publication
-order is applications, System Settings, quicklinks, snippets, system actions, window commands, custom
-commands, then built-in commands; the sectioned view filters in that same order so the visible rows remain
-identical to the flat selection index.
+order is applications, System Settings, quicklinks, herdr, web search, snippets, system actions, window
+commands, custom commands, then built-in commands; the sectioned view filters in that same order so the
+visible rows remain identical to the flat selection index.
 Search, favorites, visibility and learned ranking work through the normal `AppEntry` path, and every
 action is bindable to a global shortcut from Settings › System Actions
 (see [hotkeys.md](hotkeys.md)).
@@ -193,9 +193,17 @@ four Quicklinks commands are dropped from the built-in slice in the same publish
 off, so a toggle can't leave the section and its commands out of step. See
 [quicklinks.md](quicklinks.md).
 
+## herdr
+
+`AppEntry.Kind.herdrTarget` publishes the running herdr session's workspaces and tabs, re-read each
+time the palette opens rather than on a timer. The slice is empty whenever herdr isn't installed or
+isn't running, which is the same shape as the feature being switched off — no row and no report.
+Activation is the one launcher path that also raises a *different* app afterwards. See
+[herdr.md](herdr.md).
+
 ## Web search
 
-`AppEntry.Kind.webSearch` publishes one entry per engine, between the quicklink and snippet slices.
+`AppEntry.Kind.webSearch` publishes one entry per engine, between the herdr and snippet slices.
 An entry carries no query, so activating one arms its scope instead of opening anything, and its
 `hotKeyAction` is nil — a bare chord has no way to supply search text. See
 [web-search.md](web-search.md), and [palette.md](palette.md#scope-keywords) for the keywords that

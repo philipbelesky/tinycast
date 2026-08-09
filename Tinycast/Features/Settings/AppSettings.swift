@@ -141,6 +141,22 @@ final class AppSettings {
         didSet { defaults.set(windowCycleOnRepeat, forKey: Key.windowCycleOnRepeat.rawValue) }
     }
 
+    /// Reads the running herdr session over its local socket; nothing leaves the machine.
+    var herdrEnabled: Bool {
+        didSet { defaults.set(herdrEnabled, forKey: Key.herdrEnabled.rawValue) }
+    }
+
+    var herdrShowInLauncher: Bool {
+        didSet { defaults.set(herdrShowInLauncher, forKey: Key.herdrShowInLauncher.rawValue) }
+    }
+
+    /// Overrides the detected host app; nil means "whatever the process tree says".
+    var herdrTerminalBundleID: String? {
+        didSet {
+            defaults.set(herdrTerminalBundleID, forKey: Key.herdrTerminalBundleID.rawValue)
+        }
+    }
+
     /// Opening a link grants no permission class, so this ships on rather than behind a dialog.
     var webSearchEnabled: Bool {
         didSet { defaults.set(webSearchEnabled, forKey: Key.webSearchEnabled.rawValue) }
@@ -265,5 +281,12 @@ final class AppSettings {
         webSearchEngine =
             defaults.string(forKey: Key.webSearchEngine.rawValue)
             .flatMap(WebSearchEngine.engine(id:)) ?? .default
+        herdrEnabled =
+            defaults.object(forKey: Key.herdrEnabled.rawValue) == nil
+            || defaults.bool(forKey: Key.herdrEnabled.rawValue)
+        herdrShowInLauncher =
+            defaults.object(forKey: Key.herdrShowInLauncher.rawValue) == nil
+            || defaults.bool(forKey: Key.herdrShowInLauncher.rawValue)
+        herdrTerminalBundleID = defaults.string(forKey: Key.herdrTerminalBundleID.rawValue)
     }
 }

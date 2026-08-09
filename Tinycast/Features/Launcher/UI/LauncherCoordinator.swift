@@ -65,6 +65,12 @@ final class LauncherCoordinator {
             windowCommandCoordinator.runWindowCommand(id: command.id)
             return
         }
+        // The coordinator hides the palette itself, after herdr's focus call has been sent.
+        if app.kind == .herdrTarget {
+            guard let id = HerdrTarget.id(fromEntryID: app.id) else { return }
+            core.herdrCoordinator.focus(targetID: id)
+            return
+        }
         // Before the palette hides: a named engine has no query yet, so it arms its own scope
         // and waits for one — the same state typing its keyword would have reached.
         if app.kind == .webSearch {
@@ -93,7 +99,8 @@ final class LauncherCoordinator {
         case .snippet:
             let snippetID = String(app.id.dropFirst("snippet:".count))
             snippetExpansion.expandSnippet(id: snippetID, targetApp: previous)
-        case .command, .customCommand, .systemAction, .windowCommand, .quicklink, .webSearch:
+        case .command, .customCommand, .systemAction, .windowCommand, .quicklink,
+            .webSearch, .herdrTarget:
             break  // handled above
         }
     }

@@ -47,6 +47,11 @@ final class AppCore {
         clipboardHistory: { [unowned self] in self.snippetExpansion.clipboardHistoryForExpansion() },
         core: self)
 
+    @ObservationIgnored private(set) lazy var herdr = HerdrStore()
+    @ObservationIgnored private(set) lazy var herdrCoordinator = HerdrCoordinator(
+        store: herdr, settings: settings, appIndex: appIndex,
+        paletteCoordinator: paletteCoordinator)
+
     @ObservationIgnored private(set) lazy var webSearchCoordinator = WebSearchCoordinator(
         paletteCoordinator: paletteCoordinator,
         clipboardHistory: { [unowned self] in self.snippetExpansion.clipboardHistoryForExpansion() })
@@ -130,6 +135,8 @@ final class AppCore {
             customCommandCoordinator.applyCustomCommandsPresence()
             applyWindowCommandsPresence()
             applyWebSearchPresence()
+            herdr.onChange = { [weak self] _ in self?.herdrCoordinator.applyHerdrPresence() }
+            paletteCoordinator.onShow = { [weak self] in await self?.herdrCoordinator.refresh() }
             quicklinks.onChange = { [weak self] _ in
                 self?.quicklinkCoordinator.applyQuicklinksPresence()
             }
@@ -244,6 +251,11 @@ final class AppCore {
                 _ = $0.webSearchEnabled
                 _ = $0.webSearchShowInLauncher
             }, reproject: { $0.applyWebSearchPresence() })
+        track(
+            {
+                _ = $0.herdrEnabled
+                _ = $0.herdrShowInLauncher
+            }, reproject: { $0.herdrCoordinator.applyHerdrPresence() })
         track(
             {
                 _ = $0.quicklinksEnabled

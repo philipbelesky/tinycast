@@ -100,6 +100,8 @@ run snippets-test          Tinycast/Platform/NotificationToken.swift \
                            Tinycast/Platform/HealthTicker.swift \
                            Tinycast/Features/Snippets/Model/*.swift \
                            Tinycast/Features/Snippets/Service/*.swift
+run herdr-test             Tinycast/Features/Herdr/Model/HerdrTarget.swift \
+                           Tinycast/Features/Herdr/Model/HerdrHost.swift
 run websearch-test         Tinycast/Features/WebSearch/Model/WebSearchEngine.swift \
                            Tinycast/Features/Snippets/Model/SnippetTemplateEngine.swift \
                            Tinycast/Features/Snippets/Model/Snippet.swift

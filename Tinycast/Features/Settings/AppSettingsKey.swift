@@ -30,4 +30,7 @@ enum AppSettingsKey: String, CaseIterable {
     case webSearchEnabled = "webSearchEnabled"
     case webSearchShowInLauncher = "webSearchShowInLauncher"
     case webSearchEngine = "webSearchEngine"
+    case herdrEnabled = "herdrEnabled"
+    case herdrShowInLauncher = "herdrShowInLauncher"
+    case herdrTerminalBundleID = "herdrTerminalBundleID"
 }

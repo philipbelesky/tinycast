@@ -46,6 +46,10 @@ struct SettingsBackup: Codable {
         var webSearchEnabled: Bool?
         var webSearchShowInLauncher: Bool?
         var webSearchEngine: String?
+        // Carried too: a bundle id names an app to raise, which grants no permission class.
+        var herdrEnabled: Bool?
+        var herdrShowInLauncher: Bool?
+        var herdrTerminalBundleID: String?
     }
 
     /// Combos keep the legacy shape, so older files import. docs/features/hotkeys.md#persistence
@@ -108,7 +112,10 @@ extension SettingsBackup {
             quicklinkConfirmsBeforeDelete: s.quicklinkConfirmsBeforeDelete,
             webSearchEnabled: s.webSearchEnabled,
             webSearchShowInLauncher: s.webSearchShowInLauncher,
-            webSearchEngine: s.webSearchEngine.id)
+            webSearchEngine: s.webSearchEngine.id,
+            herdrEnabled: s.herdrEnabled,
+            herdrShowInLauncher: s.herdrShowInLauncher,
+            herdrTerminalBundleID: s.herdrTerminalBundleID)
 
         let hk = core.hotKeys
         var hotkeys = HotkeyBackup()
@@ -275,6 +282,18 @@ extension SettingsBackup {
             let fallback = QuicklinkSelectionFallback(rawValue: raw)
         {
             settings.quicklinkSelectionFallback = fallback
+            count += 1
+        }
+        if let flag = s.herdrEnabled {
+            settings.herdrEnabled = flag
+            count += 1
+        }
+        if let flag = s.herdrShowInLauncher {
+            settings.herdrShowInLauncher = flag
+            count += 1
+        }
+        if let bundleID = s.herdrTerminalBundleID {
+            settings.herdrTerminalBundleID = bundleID
             count += 1
         }
         if let flag = s.webSearchEnabled {

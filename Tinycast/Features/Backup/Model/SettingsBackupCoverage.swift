@@ -29,7 +29,10 @@ enum SettingsBackupCoverage {
         "quicklinkConfirmsBeforeDelete": .quicklinkConfirmsBeforeDelete,
         "webSearchEnabled": .webSearchEnabled,
         "webSearchShowInLauncher": .webSearchShowInLauncher,
-        "webSearchEngine": .webSearchEngine
+        "webSearchEngine": .webSearchEngine,
+        "herdrEnabled": .herdrEnabled,
+        "herdrShowInLauncher": .herdrShowInLauncher,
+        "herdrTerminalBundleID": .herdrTerminalBundleID
     ]
 
     /// The `SettingsData` fields no `AppSettings` key stands behind, and what they read instead.

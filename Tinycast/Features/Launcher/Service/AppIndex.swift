@@ -11,6 +11,7 @@ struct AppEntry: Identifiable, Hashable, Sendable {
         case windowCommand
         case quicklink
         case webSearch
+        case herdrTarget
 
         var descriptor: KindDescriptor {
             switch self {
@@ -50,6 +51,10 @@ struct AppEntry: Identifiable, Hashable, Sendable {
                 return KindDescriptor(
                     label: "Web Search", sectionTitle: "Web Search",
                     openVerb: "Search the Web", canRevealInFinder: false, isSymbolIcon: true)
+            case .herdrTarget:
+                return KindDescriptor(
+                    label: "herdr", sectionTitle: "herdr",
+                    openVerb: "Focus in herdr", canRevealInFinder: false, isSymbolIcon: true)
             }
         }
     }
@@ -103,8 +108,8 @@ struct AppEntry: Identifiable, Hashable, Sendable {
             return WindowCommandCatalog.command(forEntryID: id).map { .windowCommand(id: $0.id) }
         case .quicklink:
             return Quicklink.id(fromEntryID: id).map { .quicklink(id: $0) }
-        // A web search needs a query, which a bare chord has no way to supply.
-        case .command, .snippet, .webSearch:
+        // A web search needs a query, and a herdr id can vanish between launches.
+        case .command, .snippet, .webSearch, .herdrTarget:
             return nil
         }
     }
@@ -128,6 +133,7 @@ struct AppEntry: Identifiable, Hashable, Sendable {
         case .webSearch:
             return WebSearchEngine.engine(id: WebSearchEngine.id(fromEntryID: id) ?? "")?.symbol
                 ?? WebSearchEngine.default.symbol
+        case .herdrTarget: return "macwindow"
         case .application, .systemSettings: return "questionmark"
         }
     }
@@ -190,6 +196,7 @@ final class AppIndex {
     private var windowCommandEntries: [AppEntry] = []
     private var quicklinkEntries: [AppEntry] = []
     private var webSearchEntries: [AppEntry] = []
+    private var herdrEntries: [AppEntry] = []
     /// Built-in commands minus the quicklink ones while the feature is off.
     private var commandEntries: [AppEntry] = CommandCatalog.all
     private var alternateNameCache = SpotlightNames.Cache()
@@ -241,6 +248,27 @@ final class AppIndex {
         guard entries != quicklinkEntries || commands != commandEntries else { return }
         quicklinkEntries = entries
         commandEntries = commands
+        publishEntries()
+    }
+
+    /// Replaces the herdr slice. Unlike the others this changes between palette opens, because the
+    /// session it mirrors does; an empty array is how "herdr isn't running" arrives.
+    func setHerdrTargets(_ targets: [HerdrTarget]) {
+        let entries = targets.map { target in
+            AppEntry(
+                id: target.entryID, name: target.displayName,
+                url: URL(string: "tinycast://herdr/" + target.kind.rawValue)!,
+                bundleID: nil, kind: .herdrTarget,
+                // So "working" or "focused" finds the row that is, without touching the name.
+                matchAliases: [
+                    target.status.isNoteworthy ? target.status.rawValue : nil,
+                    target.focused ? "focused" : nil,
+                    target.workspaceLabel
+                ].compactMap { $0 },
+                symbolName: target.kind == .workspace ? "square.grid.2x2" : "macwindow")
+        }
+        guard entries != herdrEntries else { return }
+        herdrEntries = entries
         publishEntries()
     }
 
@@ -374,9 +402,9 @@ final class AppIndex {
     private func publishEntries() {
         // Each slice arrives in its own display order; the slice order is the section order.
         let updated =
-            discoveredEntries + quicklinkEntries + webSearchEntries + snippetEntries
-            + Self.systemActionEntries + windowCommandEntries + customCommandEntries
-            + commandEntries
+            discoveredEntries + quicklinkEntries + herdrEntries + webSearchEntries
+            + snippetEntries + Self.systemActionEntries + windowCommandEntries
+            + customCommandEntries + commandEntries
         guard updated != apps else { return }
         apps = updated
         entriesRevision &+= 1

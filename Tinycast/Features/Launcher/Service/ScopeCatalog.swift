@@ -23,6 +23,7 @@ enum ScopeCatalog {
     static let snippets = "scope:snippets"
     static let commands = "scope:commands"
     static let windowManagement = "scope:window-management"
+    static let herdr = "scope:herdr"
     static let emoji = "scope:emoji"
     static let clipboard = "scope:clipboard"
 
@@ -48,7 +49,11 @@ enum ScopeCatalog {
             definition: ScopeDefinition(
                 keyword: "w", id: windowManagement, title: "Window Management",
                 symbol: "macwindow.on.rectangle"),
-            target: .kinds([.windowCommand, .systemAction]))
+            target: .kinds([.windowCommand, .systemAction])),
+        Entry(
+            definition: ScopeDefinition(
+                keyword: "h", id: herdr, title: "herdr", symbol: "macwindow"),
+            target: .kinds([.herdrTarget]))
     ]
 
     private static let modes: [Entry] = [
@@ -91,6 +96,7 @@ enum ScopeCatalog {
             case snippets: return settings.snippetsShowInLauncher
             case commands: return settings.customCommandsEnabled
             case windowManagement: return settings.windowManagementEnabled
+            case herdr: return settings.herdrEnabled
             default: return true
             }
         }
