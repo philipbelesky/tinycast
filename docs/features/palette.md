@@ -113,6 +113,51 @@ explicit `accessibilityLabel` because the prompt used to supply it.
 
 This is the same class of bug as the freeze below — both come from the cell/field-editor swap.
 
+## Scope keywords
+
+A keyword typed at the start of the root search narrows what the query may match. `q github` searches
+quicklinks only; `g swift actors` searches the web. (Not to be confused with launcher.md's **search
+scopes**, which are the indexed *directories*.)
+
+The whole design is one transition rule, in `Launcher/Model/QueryScope.swift` — Foundation-only, so
+`scope-test` compiles the shipped grammar:
+
+- **Adopt.** While no scope is committed, the moment the query *becomes* `<keyword><space>`, the token
+  is consumed: the scope goes on `PaletteState.scope` and the field clears. Anything after the space
+  (a paste) survives as the query.
+- **Pop.** A bare backspace on an empty query clears the scope and puts the keyword back **without**
+  its trailing space. That asymmetry is load-bearing: adoption watches for the transition *into*
+  `keyword + " "`, so restoring `"q"` cannot immediately re-adopt itself. The chip's × does the same.
+
+`ScopeCatalog` (`Launcher/Service/`) holds the registry and maps an id to a `ScopeTarget`. The grammar
+stays id-only because `AppEntry.Kind` and `PaletteMode` live in AppKit-importing files, and a grammar
+naming them could never be harness-compiled.
+
+| Keyword | Scope | Target | Chip |
+| --- | --- | --- | --- |
+| `a` | Applications | `.application` + `.systemSettings` | yes |
+| `q` | Quicklinks | `.quicklink` | yes |
+| `s` | Snippets | `.snippet` | yes |
+| `c` | Commands | `.command` + `.customCommand` | yes |
+| `w` | Window Management | `.windowCommand` + `.systemAction` | yes |
+| `g` `d` `b` `k` | Google / DuckDuckGo / Bing / Kagi | [web search](web-search.md) | yes |
+| `e` | Emoji & Symbols | `PaletteMode.emoji` | no |
+| `v` | Clipboard | `PaletteMode.clipboard` | no |
+
+Three behaviours, one grammar. A **filter** scope narrows the launcher's own list, so `q ` with no
+text lists every quicklink and favorites stop being pinned — the scope is the intent. A **mode** scope
+switches screen instead, and deliberately shows **no chip**: that screen already carries its own header
+icon and back chevron, and a second affordance for the same state would be a lie. A **web** scope owns
+the whole query and replaces the list with a single search row, so a bare number under `g` is a search
+rather than a sum.
+
+A scope is not a mode. `PaletteState.scope` sits beside `query` on the same screen with the same
+selection model, and `prepare(mode:)` clears it like every other field. Only the root search adopts
+one: a sub-screen is already scoped by its mode, and the argument form's field is not a search field.
+
+A disabled feature contributes no keyword, so `q` does nothing while Quicklinks is off rather than
+committing to an empty list.
+
 ## Menu-open input freeze
 
 While a footer popover menu (⌘K Actions / app menu) is open the search field reads as inert but

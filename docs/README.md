@@ -30,6 +30,7 @@ open with an `## Invariants` section; read it before changing anything in that a
 [emoji](features/emoji.md) ·
 [snippets](features/snippets.md) ·
 [quicklinks](features/quicklinks.md) ·
+[web search](features/web-search.md) ·
 [hotkeys](features/hotkeys.md) ·
 [window management](features/window-management.md) ·
 [custom commands](features/custom-commands.md) ·

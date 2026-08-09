@@ -27,4 +27,7 @@ enum AppSettingsKey: String, CaseIterable {
     case quicklinkOpensNewWindow = "quicklinkOpensNewWindow"
     case quicklinkSelectionFallback = "quicklinkSelectionFallback"
     case quicklinkConfirmsBeforeDelete = "quicklinkConfirmsBeforeDelete"
+    case webSearchEnabled = "webSearchEnabled"
+    case webSearchShowInLauncher = "webSearchShowInLauncher"
+    case webSearchEngine = "webSearchEngine"
 }

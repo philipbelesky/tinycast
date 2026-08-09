@@ -66,6 +66,7 @@ L=Tinycast/Features/Launcher/Model
 run fuzz-test              $L/SearchRelevance.swift
 run ranking-test           $L/SearchRelevance.swift $L/LauncherRankingStore.swift
 run scopes-test            $L/SearchScopes.swift
+run scope-test             $L/QueryScope.swift
 run calc-test              Tinycast/Features/Calculator/Model/*.swift
 run clipboard-test         Tinycast/Features/Clipboard/Model/ClipboardStore.swift
 run emoji-test             Tinycast/Features/Emoji/Model/EmojiCatalog.swift \
@@ -99,6 +100,9 @@ run snippets-test          Tinycast/Platform/NotificationToken.swift \
                            Tinycast/Platform/HealthTicker.swift \
                            Tinycast/Features/Snippets/Model/*.swift \
                            Tinycast/Features/Snippets/Service/*.swift
+run websearch-test         Tinycast/Features/WebSearch/Model/WebSearchEngine.swift \
+                           Tinycast/Features/Snippets/Model/SnippetTemplateEngine.swift \
+                           Tinycast/Features/Snippets/Model/Snippet.swift
 run raycast-test           Tinycast/Features/Backup/Model/RaycastFormat.swift \
                            Tinycast/Features/Backup/Model/RaycastV1Decoder.swift \
                            Tinycast/Features/Backup/Service/Gunzip.swift \

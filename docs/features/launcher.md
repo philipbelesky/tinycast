@@ -193,6 +193,14 @@ four Quicklinks commands are dropped from the built-in slice in the same publish
 off, so a toggle can't leave the section and its commands out of step. See
 [quicklinks.md](quicklinks.md).
 
+## Web search
+
+`AppEntry.Kind.webSearch` publishes one entry per engine, between the quicklink and snippet slices.
+An entry carries no query, so activating one arms its scope instead of opening anything, and its
+`hotKeyAction` is nil — a bare chord has no way to supply search text. See
+[web-search.md](web-search.md), and [palette.md](palette.md#scope-keywords) for the keywords that
+route a query to one.
+
 ## Custom commands
 
 `CustomCommandStore` supplies user-authored entries to `AppIndex` without joining the off-main

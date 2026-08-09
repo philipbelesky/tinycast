@@ -26,7 +26,10 @@ enum SettingsBackupCoverage {
         "quicklinksShowInLauncher": .quicklinksShowInLauncher,
         "quicklinkOpensNewWindow": .quicklinkOpensNewWindow,
         "quicklinkSelectionFallback": .quicklinkSelectionFallback,
-        "quicklinkConfirmsBeforeDelete": .quicklinkConfirmsBeforeDelete
+        "quicklinkConfirmsBeforeDelete": .quicklinkConfirmsBeforeDelete,
+        "webSearchEnabled": .webSearchEnabled,
+        "webSearchShowInLauncher": .webSearchShowInLauncher,
+        "webSearchEngine": .webSearchEngine
     ]
 
     /// The `SettingsData` fields no `AppSettings` key stands behind, and what they read instead.

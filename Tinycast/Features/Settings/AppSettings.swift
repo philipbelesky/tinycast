@@ -141,6 +141,22 @@ final class AppSettings {
         didSet { defaults.set(windowCycleOnRepeat, forKey: Key.windowCycleOnRepeat.rawValue) }
     }
 
+    /// Opening a link grants no permission class, so this ships on rather than behind a dialog.
+    var webSearchEnabled: Bool {
+        didSet { defaults.set(webSearchEnabled, forKey: Key.webSearchEnabled.rawValue) }
+    }
+
+    var webSearchShowInLauncher: Bool {
+        didSet {
+            defaults.set(webSearchShowInLauncher, forKey: Key.webSearchShowInLauncher.rawValue)
+        }
+    }
+
+    /// The engine a `g`-scoped query and the "Search the Web" entry resolve to.
+    var webSearchEngine: WebSearchEngine {
+        didSet { defaults.set(webSearchEngine.id, forKey: Key.webSearchEngine.rawValue) }
+    }
+
     /// Off means fully off, down to a still-registered shortcut opening nothing.
     var quicklinksEnabled: Bool {
         didSet { defaults.set(quicklinksEnabled, forKey: Key.quicklinksEnabled.rawValue) }
@@ -239,5 +255,15 @@ final class AppSettings {
         quicklinkConfirmsBeforeDelete =
             defaults.object(forKey: Key.quicklinkConfirmsBeforeDelete.rawValue) == nil
             || defaults.bool(forKey: Key.quicklinkConfirmsBeforeDelete.rawValue)
+        webSearchEnabled =
+            defaults.object(forKey: Key.webSearchEnabled.rawValue) == nil
+            || defaults.bool(forKey: Key.webSearchEnabled.rawValue)
+        webSearchShowInLauncher =
+            defaults.object(forKey: Key.webSearchShowInLauncher.rawValue) == nil
+            || defaults.bool(forKey: Key.webSearchShowInLauncher.rawValue)
+        // An engine dropped from the catalog falls back rather than leaving the scope dead.
+        webSearchEngine =
+            defaults.string(forKey: Key.webSearchEngine.rawValue)
+            .flatMap(WebSearchEngine.engine(id:)) ?? .default
     }
 }

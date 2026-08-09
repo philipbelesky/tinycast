@@ -12,20 +12,33 @@ struct LauncherList: View {
     var calcSelected = false
     var onActivateCalc: () -> Void = {}
     var onCalcActions: () -> Void = {}
+    /// The one row a web scope shows; it replaces the list rather than joining it.
+    var webSearch: WebSearchPrompt?
+    var onActivateWebSearch: () -> Void = {}
     let onActivate: (AppEntry) -> Void
     let onActions: (AppEntry) -> Void
     @Environment(RunningAppsMonitor.self) private var runningApps
 
     private nonisolated static let calcRowID = "calc-card"
+    private nonisolated static let webSearchRowID = "web-search-row"
+
+    /// What the scoped search row draws: already-composed text, so the list stays presentational.
+    struct WebSearchPrompt: Equatable {
+        let title: String
+        let symbol: String
+        let sectionTitle: String
+    }
 
     private enum Row: Identifiable {
         case header(String)
         case calc(CalcResult)
+        case webSearch(WebSearchPrompt)
         case app(AppEntry)
         var id: String {
             switch self {
             case .header(let title): return "header-" + title
             case .calc: return LauncherList.calcRowID
+            case .webSearch: return LauncherList.webSearchRowID
             case .app(let app): return app.id
             }
         }
@@ -40,6 +53,10 @@ struct LauncherList: View {
     }
 
     private var rows: [Row] {
+        // A web scope owns the query outright, so nothing else can be on screen to index into.
+        if let webSearch {
+            return [.header(webSearch.sectionTitle), .webSearch(webSearch)]
+        }
         var calcRows: [Row] = []
         if let calc { calcRows = [.header("Calculator"), .calc(calc)] }
         guard showSections else {
@@ -57,7 +74,7 @@ struct LauncherList: View {
         }
         // Publication order, so rows match the flat index.
         let kinds: [AppEntry.Kind] = [
-            .application, .systemSettings, .quicklink, .snippet,
+            .application, .systemSettings, .quicklink, .webSearch, .snippet,
             .systemAction, .windowCommand, .customCommand, .command
         ]
         for kind in kinds {
@@ -71,7 +88,7 @@ struct LauncherList: View {
     var body: some View {
         let rows = rows
         return Group {
-            if results.isEmpty && calc == nil {
+            if results.isEmpty && calc == nil && webSearch == nil {
                 EmptyResults(text: "No apps found")
             } else {
                 ScrollViewReader { proxy in
@@ -87,6 +104,10 @@ struct LauncherList: View {
                                         .onTapGesture(perform: onActivateCalc)
                                         .onRightClick(perform: onCalcActions)
                                         .padding(.bottom, Theme.Spacing.xs)
+                                case .webSearch(let prompt):
+                                    WebSearchRow(prompt: prompt, selected: true)
+                                        .contentShape(Rectangle())
+                                        .onTapGesture(perform: onActivateWebSearch)
                                 case .app(let app):
                                     AppRow(
                                         app: app,
@@ -123,6 +144,37 @@ struct LauncherList: View {
                 }
             }
         }
+    }
+}
+
+/// The scoped search row. Always selected: it is the only row a web scope puts on screen.
+private struct WebSearchRow: View {
+    let prompt: LauncherList.WebSearchPrompt
+    let selected: Bool
+    @State private var hovered = false
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.lg) {
+            Image(systemName: prompt.symbol)
+                .font(Theme.Typography.rowTitle)
+                .symbolRenderingMode(.hierarchical)
+                .frame(width: Theme.Size.rowIcon, height: Theme.Size.rowIcon)
+            Text(prompt.title)
+                .font(Theme.Typography.rowTitle)
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Spacer()
+            Text(AppEntry.Kind.webSearch.descriptor.label)
+                .font(Theme.Typography.rowTrailing)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, Theme.Spacing.md)
+        .padding(.vertical, Theme.Spacing.sm)
+        .background(
+            RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
+                .fill(selected ? Theme.Colors.selection : (hovered ? Theme.Colors.rowHover : .clear))
+        )
+        .armedHover($hovered)
     }
 }
 

@@ -21,6 +21,7 @@ covers where the fork **departs** from those.
 | 1 | [Apple Development signing](#1--apple-development-signing) | Low, but silently reverted by `xcodegen` | No — machine-specific |
 | 2 | [Forced light appearance](#2--forced-light-appearance) | **High** — contradicts upstream decision 4 | No — it inverts a stated invariant |
 | 3 | [`Theme.scale`](#3--themescale-and-derived-typography) | **High** — rewrites `Theme.swift` wholesale | Plausibly yes |
+| 4 | [Scope keywords + web search](#4--scope-keywords-and-web-search) | Medium — hooks into `AppIndex`, `RootPaletteView`, `AppEntry.Kind` | Yes, as a feature |
 
 Keep each divergence as **its own commit**, never squashed together. Rebasing `philip` onto a new
 `origin/main` then replays them one at a time, and a divergence that upstream has since made redundant
@@ -30,7 +31,8 @@ can be dropped whole rather than untangled.
 
 ## 1 — Apple Development signing
 
-**Commit:** `3ca4321 Signing fix/setup`. **Touches:** `Tinycast.xcodeproj/project.pbxproj` only.
+**Touches:** `project.yml` (three lines) and the `project.pbxproj` regenerated from it. Originally
+commit `3ca4321 Signing fix/setup`, which patched the generated file directly.
 
 Upstream signs with a stable **self-signed** identity, `Tinycast Self-Signed`, created by hand per
 [docs/signing.md](docs/signing.md) — `CODE_SIGN_STYLE: Manual`, an empty `DEVELOPMENT_TEAM`, no Apple
@@ -39,27 +41,25 @@ account assumed. This fork signs with **automatic** signing against team `CNPCA4
 without the one-time openssl ritual. Upstream's reason for the self-signed identity — a *stable* identity
 across rebuilds, so macOS keeps the Accessibility grant — is satisfied either way.
 
-> [!WARNING]
-> **`xcodegen generate` silently reverts this.** `project.pbxproj` is generated from
-> [`project.yml`](project.yml), which still carries upstream's manual/self-signed settings, and AGENTS.md
-> tells every contributor to regenerate after touching project settings. The patch survives today only
-> because `xcodegen` isn't installed on this machine. After any regeneration, re-apply with
-> `git checkout 3ca4321 -- Tinycast.xcodeproj/project.pbxproj`, or re-set signing in Xcode's Signing &
-> Capabilities tab.
+The original patch lived in the *generated* `project.pbxproj`, which `xcodegen generate` silently
+reverted — and since `Tinycast Self-Signed` was never created in this keychain, a regenerated project
+could not sign at all. **The settings now live in `project.yml`**, so regeneration carries them:
 
-The durable fix is to stop patching a generated file: set `CODE_SIGN_STYLE`, `DEVELOPMENT_TEAM` and
-`CODE_SIGN_IDENTITY` in `project.yml` instead, and accept that `project.yml` then conflicts with upstream
-on those three lines — a three-line conflict in a file that rarely changes beats an invisible revert.
-An `.xcconfig` included from `project.yml` and git-ignored would avoid even that, at the cost of a file
-upstream doesn't know about.
+```yaml
+settings.base:
+  DEVELOPMENT_TEAM: CNPCA4RAWZ
+  CODE_SIGN_STYLE: Automatic
+  CODE_SIGN_IDENTITY: "Apple Development"
+```
 
-The same commit also renames the product reference from `Tinycast.app` to `Tinycast Dev.app`. That is a
-**regeneration artifact, not a decision** — `project.yml` already sets `PRODUCT_NAME: Tinycast Dev` for
-Debug. If a merge conflicts there, take either side; the built product is named by the config, not by
-that reference.
+That is the durable fix, at the price of a permanent three-line conflict with upstream in a file that
+rarely changes. A git-ignored `.xcconfig` included from `project.yml` would avoid even that, at the cost
+of a file upstream doesn't know about.
 
-**On merge:** conflicts in `project.pbxproj` are not worth resolving by hand. Take upstream's file whole,
-then re-apply signing.
+**On merge:** take upstream's `project.pbxproj` whole — hand-resolving it is never worth it — keep the
+fork's three lines in `project.yml`, then run `xcodegen generate` and commit the result. If you ever
+want upstream's self-signed identity back, create it first ([docs/signing.md](docs/signing.md)); the
+build fails outright when `CODE_SIGN_IDENTITY` names an identity the keychain doesn't hold.
 
 ---
 
@@ -142,6 +142,32 @@ Converting them to tokens is part of finishing the merge, not a follow-up.
 
 ---
 
+## 4 — Scope keywords and web search
+
+**Touches:** two new pure models (`Launcher/Model/QueryScope.swift`, `WebSearch/Model/WebSearchEngine.swift`)
+with a harness each, `Launcher/Service/ScopeCatalog.swift`, `WebSearch/Service/`, `WebSearch/Settings/`,
+`Palette/ScopeChip.swift` — plus hooks in `AppIndex`, `LauncherScreen`, `LauncherList`,
+`LauncherCoordinator`, `RootPaletteView`, `PaletteWindowController`, `PaletteState`, `AppCore`,
+`SettingsTab`, and the settings/backup registries.
+
+A keyword plus a space narrows the root search (`q github`) or routes the rest of the query to a search
+engine (`g swift actors`). Upstream has neither; both are documented as if they were native, in
+[palette.md](docs/features/palette.md#scope-keywords) and [web-search.md](docs/features/web-search.md),
+with [decisions.md](docs/decisions.md) entry 34 for the adopt-on-transition rule.
+
+This is the divergence most worth offering upstream — it is additive, it invents no new architecture,
+and the grammar is pure and tested. Until then, the conflict surface is what it touches: `AppIndex`
+gained a `scope:`/`kinds:` parameter on `orderedResults` **and a `scopeID` in `ResultsKey`** (drop that
+and a scoped query silently serves the previous unscoped results); `LauncherScreen.Row` and
+`LauncherList.Row` each gained a `webSearch` case; and `AppEntry.Kind` gained `.webSearch`, which forces
+a `KindDescriptor`, a `symbolIconName` arm, a `hotKeyAction` arm, a slice in `publishEntries()`, an entry
+in `LauncherList`'s kind order, a `SettingsTab` case **and** a place in `SettingsSection.tabs` —
+`settings-history-test` fails if the last one is forgotten.
+
+**On merge:** if upstream restructures `AppEntry.Kind` or the launcher's row model, re-apply the case
+and let the compiler find the rest; every one of those sites is an exhaustive switch except the two
+list orderings and the sidebar group.
+
 ## Merging upstream
 
 ```sh
@@ -154,7 +180,7 @@ Rebase rather than merge, so the fork stays a readable stack of the three commit
 braid. Then, before calling it done — the standard gate from
 [testing.md](docs/testing.md#definition-of-done) plus the two fork-specific checks:
 
-- [ ] `./Scripts/run-tests.sh` passes.
+- [ ] `./Scripts/run-tests.sh` passes (21 harnesses; `scope-test` and `websearch-test` are fork-local).
 - [ ] Debug build compiles with no new warnings.
 - [ ] `./Scripts/lint.sh` is clean.
 - [ ] `grep -rln 'import AppKit\|import SwiftUI\|import Cocoa' Tinycast/Features/*/Model/` returns nothing.

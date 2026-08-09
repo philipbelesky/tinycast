@@ -65,6 +65,17 @@ final class LauncherCoordinator {
             windowCommandCoordinator.runWindowCommand(id: command.id)
             return
         }
+        // Before the palette hides: a named engine has no query yet, so it arms its own scope
+        // and waits for one — the same state typing its keyword would have reached.
+        if app.kind == .webSearch {
+            guard let id = WebSearchEngine.id(fromEntryID: app.id),
+                let engine = WebSearchEngine.engine(id: id)
+            else { return }
+            core.palette.scope = ScopeCatalog.scope(for: engine)
+            core.palette.query = ""
+            core.palette.selection = 0
+            return
+        }
         // Before the palette hides: an unfilled quicklink stays up to ask first.
         if app.kind == .quicklink {
             guard let id = Quicklink.id(fromEntryID: app.id) else { return }
@@ -82,7 +93,7 @@ final class LauncherCoordinator {
         case .snippet:
             let snippetID = String(app.id.dropFirst("snippet:".count))
             snippetExpansion.expandSnippet(id: snippetID, targetApp: previous)
-        case .command, .customCommand, .systemAction, .windowCommand, .quicklink:
+        case .command, .customCommand, .systemAction, .windowCommand, .quicklink, .webSearch:
             break  // handled above
         }
     }

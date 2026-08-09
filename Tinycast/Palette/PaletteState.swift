@@ -6,6 +6,8 @@ import Foundation
 final class PaletteState {
     var mode: PaletteMode = .launcher
     var query: String = ""
+    /// The committed scope keyword, if any. Not a mode: same screen, same selection model.
+    var scope: ScopeDefinition?
     var selection: Int = 0
     /// Changes every time the palette is shown so the search field can re-focus.
     var focusToken = UUID()
@@ -27,6 +29,7 @@ final class PaletteState {
     func prepare(mode: PaletteMode) {
         self.mode = mode
         query = ""
+        scope = nil
         selection = 0
         forceExpanded = false
         hoverHighlightArmed = false

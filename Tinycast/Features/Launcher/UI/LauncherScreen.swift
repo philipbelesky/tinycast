@@ -14,6 +14,8 @@ struct LauncherScreen: PaletteScreen {
     /// The one ordered result list; an empty query pins favorites above the ranked matches.
     private let results: [AppEntry]
     private let calc: CalcResult?
+    /// Set only while a web scope is committed; it owns row 0 the way the calc card does.
+    private let webSearch: WebSearchEngine?
     /// Resolved in `init`: the palette indexes this several times per event, so it can't recompute.
     let rows: [Row]
 
@@ -30,23 +32,46 @@ struct LauncherScreen: PaletteScreen {
         self.running = running
         self.openActions = openActions
 
-        let results = appIndex.orderedResults(
-            query: vm.query, visibility: visibility, favorites: favorites)
-        let calc = CalcMemo.evaluate(vm.query, currency: currencyRates.source)
+        // A scope decides what the query may match before the query is scored at all.
+        let target = vm.scope.flatMap { ScopeCatalog.target(for: $0, settings: core.settings) }
+        var kinds: Set<AppEntry.Kind>?
+        var engine: WebSearchEngine?
+        switch target {
+        case .kinds(let scoped): kinds = scoped
+        case .webSearch(let scoped): engine = scoped
+        // A mode scope never reaches here: adopting one switches screen instead of setting a scope.
+        case .mode, nil: break
+        }
+        let results =
+            engine == nil
+            ? appIndex.orderedResults(
+                query: vm.query, visibility: visibility, favorites: favorites,
+                scope: vm.scope, kinds: kinds)
+            : []
+        // A web scope owns the whole query, so a bare number in it is a search, not a sum.
+        let calc =
+            engine == nil ? CalcMemo.evaluate(vm.query, currency: currencyRates.source) : nil
         let entries = results.map(Row.entry)
         self.results = results
         self.calc = calc
-        self.rows = calc.map { [.calc($0)] + entries } ?? entries
+        self.webSearch = engine
+        if let engine {
+            self.rows = [.webSearch(engine)]
+        } else {
+            self.rows = calc.map { [.calc($0)] + entries } ?? entries
+        }
     }
 
     /// The card is a row like any other, so the flat selection indexes `rows` with no offset.
     enum Row: Equatable, Identifiable {
         case calc(CalcResult)
+        case webSearch(WebSearchEngine)
         case entry(AppEntry)
 
         var id: String {
             switch self {
             case .calc: return "calc-card"
+            case .webSearch(let engine): return engine.entryID
             case .entry(let app): return app.id
             }
         }
@@ -61,6 +86,7 @@ struct LauncherScreen: PaletteScreen {
     var primaryActionTitle: String {
         switch row(at: clampedSelection) {
         case .calc: return "Copy Answer"
+        case .webSearch(let engine): return "Search \(engine.name)"
         case .entry(let app): return app.kind.descriptor.openVerb
         case nil: return "Open Application"
         }
@@ -82,8 +108,13 @@ struct LauncherScreen: PaletteScreen {
 
     /// An error card is selectable but has no action: it must drive neither the pill nor ⌘K.
     func hasPrimaryAction(at selection: Int) -> Bool {
-        guard case .calc(let result) = row(at: selection) else { return true }
-        return result.isActionable
+        switch row(at: selection) {
+        case .calc(let result): return result.isActionable
+        // An empty scoped query has nothing to search for yet; the row still invites text.
+        case .webSearch(let engine):
+            return core.webSearchCoordinator.canSearch(engine: engine, query: vm.query)
+        case .entry, nil: return true
+        }
     }
 
     func actions(at selection: Int) -> PopoverMenuContent? {
@@ -98,7 +129,8 @@ struct LauncherScreen: PaletteScreen {
                     // Reset can move the item; keep the highlight on the item whose action ran.
                     if let index = rows.firstIndex(of: .entry(app)) { vm.selection = index }
                 })
-        case nil:
+        // A search has one action, and ↵ already is it.
+        case .webSearch, nil:
             return nil
         }
     }
@@ -107,6 +139,8 @@ struct LauncherScreen: PaletteScreen {
         switch row(at: selection) {
         // Error cards no-op — copyCalculatorResult only acts on value payloads.
         case .calc(let result): core.calculatorCoordinator.copyCalculatorResult(result)
+        case .webSearch(let engine):
+            core.webSearchCoordinator.search(engine: engine, query: vm.query)
         case .entry(let app): core.launcherCoordinator.launch(app, searchQuery: vm.query)
         case nil: break
         }
@@ -168,6 +202,13 @@ struct LauncherScreen: PaletteScreen {
                 vm.selection = 0
                 openActions()
             },
+            webSearch: webSearch.map {
+                LauncherList.WebSearchPrompt(
+                    title: core.webSearchCoordinator.rowTitle(engine: $0, query: vm.query),
+                    symbol: $0.symbol,
+                    sectionTitle: AppEntry.Kind.webSearch.descriptor.sectionTitle)
+            },
+            onActivateWebSearch: { activate(at: 0) },
             onActivate: { core.launcherCoordinator.launch($0, searchQuery: vm.query) },
             onActions: { app in
                 if let index = rows.firstIndex(of: .entry(app)) { vm.selection = index }

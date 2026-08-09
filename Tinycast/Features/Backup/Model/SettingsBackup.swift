@@ -42,6 +42,10 @@ struct SettingsBackup: Codable {
         var quicklinkOpensNewWindow: Bool?
         var quicklinkSelectionFallback: String?
         var quicklinkConfirmsBeforeDelete: Bool?
+        // Carried like the quicklink flags: opening a search grants no permission class.
+        var webSearchEnabled: Bool?
+        var webSearchShowInLauncher: Bool?
+        var webSearchEngine: String?
     }
 
     /// Combos keep the legacy shape, so older files import. docs/features/hotkeys.md#persistence
@@ -101,7 +105,10 @@ extension SettingsBackup {
             quicklinksShowInLauncher: s.quicklinksShowInLauncher,
             quicklinkOpensNewWindow: s.quicklinkOpensNewWindow,
             quicklinkSelectionFallback: s.quicklinkSelectionFallback.rawValue,
-            quicklinkConfirmsBeforeDelete: s.quicklinkConfirmsBeforeDelete)
+            quicklinkConfirmsBeforeDelete: s.quicklinkConfirmsBeforeDelete,
+            webSearchEnabled: s.webSearchEnabled,
+            webSearchShowInLauncher: s.webSearchShowInLauncher,
+            webSearchEngine: s.webSearchEngine.id)
 
         let hk = core.hotKeys
         var hotkeys = HotkeyBackup()
@@ -268,6 +275,19 @@ extension SettingsBackup {
             let fallback = QuicklinkSelectionFallback(rawValue: raw)
         {
             settings.quicklinkSelectionFallback = fallback
+            count += 1
+        }
+        if let flag = s.webSearchEnabled {
+            settings.webSearchEnabled = flag
+            count += 1
+        }
+        if let flag = s.webSearchShowInLauncher {
+            settings.webSearchShowInLauncher = flag
+            count += 1
+        }
+        // An unknown engine id is ignored rather than reset: the file may predate a rename.
+        if let raw = s.webSearchEngine, let engine = WebSearchEngine.engine(id: raw) {
+            settings.webSearchEngine = engine
             count += 1
         }
         if let flag = s.quicklinkConfirmsBeforeDelete {

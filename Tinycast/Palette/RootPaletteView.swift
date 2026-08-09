@@ -166,6 +166,7 @@ struct RootPaletteView: View {
             showAppMenu = false
         }
         .onChange(of: vm.query) {
+            adoptScopeIfTyped()
             vm.selection = 0
             scroll = ScrollIntent(kind: .top)
         }
@@ -351,6 +352,7 @@ struct RootPaletteView: View {
                     .foregroundStyle(.secondary)
                     .frame(width: Theme.Size.headerIconSlot)
             }
+            if let scope = vm.scope { ScopeChip(scope: scope, onClear: clearScope) }
             searchField
             // Compact pins favorites beside the field; expanded shows them as rows.
             if isCollapsed, settings.showFavoritesInCompactMode,
@@ -534,6 +536,32 @@ struct RootPaletteView: View {
     /// Back out to a fresh root search, the same reset `prepare` does on show.
     private func exitToLauncher() {
         vm.prepare(mode: .launcher)
+    }
+
+    /// Clicking the chip's × does what a bare backspace on an empty query does.
+    private func clearScope() {
+        guard let scope = vm.scope else { return }
+        vm.scope = nil
+        vm.query = QueryScope.popped(scope)
+        vm.selection = 0
+        searchFocused = true
+    }
+
+    /// The space after a registered keyword commits it. Only from the root search: a sub-screen's
+    /// field is already scoped by its own mode, and the argument form's field is not a search.
+    private func adoptScopeIfTyped() {
+        guard vm.mode == .launcher, vm.scope == nil,
+            let adoption = QueryScope.adopting(
+                vm.query, in: ScopeCatalog.registry(settings: settings))
+        else { return }
+        // A mode scope is a screen, not a chip: switching says everything a chip would.
+        if case .mode(let mode) = ScopeCatalog.target(for: adoption.scope, settings: settings) {
+            vm.prepare(mode: mode)
+            vm.query = adoption.remainder
+            return
+        }
+        vm.scope = adoption.scope
+        vm.query = adoption.remainder
     }
 
     private func activateSelection() {

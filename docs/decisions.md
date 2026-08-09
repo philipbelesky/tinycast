@@ -438,3 +438,16 @@ moves their padding and Tinycast's own controls while the system-drawn rows keep
 
 **What would change this:** a user-facing size preference, which would mean moving `scale` onto an
 observable and teaching `PaletteWindowController` to re-place the panel when it changes.
+
+### 34 — A scope keyword is adopted on a transition, never parsed out of the text
+
+`QueryScope.adopting` fires only when the query *becomes* `keyword + " "`. Popping a scope puts the
+keyword back **without** its trailing space.
+
+**Why:** the obvious design — reinterpret the whole string on every keystroke — cannot express "I
+popped this scope and want the letters back". Restoring `"q "` would re-adopt on the same render, and
+restoring nothing would eat text the user typed. Watching for the transition makes the committed state
+and the literal text two different things, which is what lets backspace undo exactly one step.
+
+**What would change this:** multi-token scoping (`q g foo`), which would need a real parser and a
+different undo story.

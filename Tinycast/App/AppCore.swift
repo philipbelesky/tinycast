@@ -47,6 +47,10 @@ final class AppCore {
         clipboardHistory: { [unowned self] in self.snippetExpansion.clipboardHistoryForExpansion() },
         core: self)
 
+    @ObservationIgnored private(set) lazy var webSearchCoordinator = WebSearchCoordinator(
+        paletteCoordinator: paletteCoordinator,
+        clipboardHistory: { [unowned self] in self.snippetExpansion.clipboardHistoryForExpansion() })
+
     @ObservationIgnored private(set) lazy var paletteCoordinator = PaletteCoordinator(
         palette: palette, settings: settings, appIndex: appIndex,
         windowController: windowController)
@@ -125,6 +129,7 @@ final class AppCore {
             }
             customCommandCoordinator.applyCustomCommandsPresence()
             applyWindowCommandsPresence()
+            applyWebSearchPresence()
             quicklinks.onChange = { [weak self] _ in
                 self?.quicklinkCoordinator.applyQuicklinksPresence()
             }
@@ -236,6 +241,11 @@ final class AppCore {
             }, reproject: { $0.customCommandCoordinator.applyCustomCommandsPresence() })
         track(
             {
+                _ = $0.webSearchEnabled
+                _ = $0.webSearchShowInLauncher
+            }, reproject: { $0.applyWebSearchPresence() })
+        track(
+            {
                 _ = $0.quicklinksEnabled
                 _ = $0.quicklinksShowInLauncher
             }, reproject: { $0.quicklinkCoordinator.applyQuicklinksPresence() })
@@ -272,6 +282,10 @@ final class AppCore {
     private func applyWindowCommandsPresence() {
         let visible = settings.windowManagementEnabled && settings.windowManagementShowInLauncher
         appIndex.setWindowCommandsVisible(visible)
+    }
+
+    private func applyWebSearchPresence() {
+        appIndex.setWebSearchVisible(settings.webSearchEnabled && settings.webSearchShowInLauncher)
     }
 
     // MARK: - Dialogs, routed here so `dialogs` stays the single owner
