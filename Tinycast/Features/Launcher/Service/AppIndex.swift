@@ -12,6 +12,7 @@ struct AppEntry: Identifiable, Hashable, Sendable {
         case quicklink
         case webSearch
         case herdrTarget
+        case vsCodeProject
 
         var descriptor: KindDescriptor {
             switch self {
@@ -55,6 +56,10 @@ struct AppEntry: Identifiable, Hashable, Sendable {
                 return KindDescriptor(
                     label: "herdr", sectionTitle: "herdr",
                     openVerb: "Focus in herdr", canRevealInFinder: false, isSymbolIcon: true)
+            case .vsCodeProject:
+                return KindDescriptor(
+                    label: "VS Code", sectionTitle: "VS Code Projects",
+                    openVerb: "Open in VS Code", canRevealInFinder: true, isSymbolIcon: false)
             }
         }
     }
@@ -108,8 +113,8 @@ struct AppEntry: Identifiable, Hashable, Sendable {
             return WindowCommandCatalog.command(forEntryID: id).map { .windowCommand(id: $0.id) }
         case .quicklink:
             return Quicklink.id(fromEntryID: id).map { .quicklink(id: $0) }
-        // A web search needs a query, and a herdr id can vanish between launches.
-        case .command, .snippet, .webSearch, .herdrTarget:
+        // A web search needs a query; a herdr id and a project path can vanish between launches.
+        case .command, .snippet, .webSearch, .herdrTarget, .vsCodeProject:
             return nil
         }
     }
@@ -134,7 +139,7 @@ struct AppEntry: Identifiable, Hashable, Sendable {
             return WebSearchEngine.engine(id: WebSearchEngine.id(fromEntryID: id) ?? "")?.symbol
                 ?? WebSearchEngine.default.symbol
         case .herdrTarget: return "macwindow"
-        case .application, .systemSettings: return "questionmark"
+        case .application, .systemSettings, .vsCodeProject: return "questionmark"
         }
     }
 
@@ -197,6 +202,7 @@ final class AppIndex {
     private var quicklinkEntries: [AppEntry] = []
     private var webSearchEntries: [AppEntry] = []
     private var herdrEntries: [AppEntry] = []
+    private var vsCodeEntries: [AppEntry] = []
     /// Built-in commands minus the quicklink ones while the feature is off.
     private var commandEntries: [AppEntry] = CommandCatalog.all
     private var alternateNameCache = SpotlightNames.Cache()
@@ -248,6 +254,21 @@ final class AppIndex {
         guard entries != quicklinkEntries || commands != commandEntries else { return }
         quicklinkEntries = entries
         commandEntries = commands
+        publishEntries()
+    }
+
+    /// Replaces the VS Code slice, already ordered most recently opened first — that order is the
+    /// feature, so these entries deliberately keep it rather than sorting by name.
+    func setVSCodeProjects(_ projects: [VSCodeProject]) {
+        let entries = projects.map { project in
+            AppEntry(
+                id: project.entryID, name: project.name, url: URL(filePath: project.path),
+                bundleID: nil, kind: .vsCodeProject,
+                // So a query naming the parent folder finds the project inside it.
+                matchAliases: [project.displayPath])
+        }
+        guard entries != vsCodeEntries else { return }
+        vsCodeEntries = entries
         publishEntries()
     }
 
@@ -402,7 +423,7 @@ final class AppIndex {
     private func publishEntries() {
         // Each slice arrives in its own display order; the slice order is the section order.
         let updated =
-            discoveredEntries + quicklinkEntries + herdrEntries + webSearchEntries
+            discoveredEntries + quicklinkEntries + vsCodeEntries + herdrEntries + webSearchEntries
             + snippetEntries + Self.systemActionEntries + windowCommandEntries
             + customCommandEntries + commandEntries
         guard updated != apps else { return }

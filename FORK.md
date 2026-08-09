@@ -23,6 +23,7 @@ covers where the fork **departs** from those.
 | 3 | [`Theme.scale`](#3--themescale-and-derived-typography) | **High** — rewrites `Theme.swift` wholesale | Plausibly yes |
 | 4 | [Scope keywords + web search](#4--scope-keywords-and-web-search) | Medium — hooks into `AppIndex`, `RootPaletteView`, `AppEntry.Kind` | Yes, as a feature |
 | 5 | [herdr opener](#5--herdr-opener) | Medium — the same `AppEntry.Kind` surface as 4 | Unlikely — niche third-party tool |
+| 6 | [VS Code project opener](#6--vs-code-project-opener) | Medium — the same `AppEntry.Kind` surface as 4 | Yes, as a feature |
 
 Keep each divergence as **its own commit**, never squashed together. Rebasing `philip` onto a new
 `origin/main` then replays them one at a time, and a divergence that upstream has since made redundant
@@ -194,6 +195,28 @@ comes forward.
 **On merge:** the same rule as divergence 4 — re-apply the `Kind` case and follow the compiler. If
 upstream ever grows its own "live external source" slice, this should be rebuilt on it rather than kept.
 
+---
+
+## 6 — VS Code project opener
+
+**Touches:** a new `Features/VSCode/` (one pure model with a harness, a scanner, a store, a
+coordinator, a settings pane), plus the same hook set as divergences 4 and 5 —
+`AppEntry.Kind.vsCodeProject`, an `AppIndex` slice, a `LauncherCoordinator` branch, `ScopeCatalog`'s
+`p`, `PaletteCoordinator.onShow`, `AppCore` wiring, `SettingsTab` and the settings/backup registries.
+
+`p payments` lists what [VS Code](docs/features/vscode.md) has opened, most recent first; ↵ opens one.
+Unlike divergence 5 this is broadly useful and worth offering upstream — it is additive, pure where it
+matters, and depends on nothing but a well-known path.
+
+The thing to preserve is **why it reads `workspaceStorage` rather than `state.vscdb`**: the key every
+comparable tool uses, `history.recentlyOpenedPathsList`, holds `{"entries":[]}` on a current VS Code,
+so the obvious implementation silently lists nothing. A future merge that "fixes" the source to the
+canonical one is a regression that looks like a cleanup. `vscode.md` says so at the source.
+
+**On merge:** same rule as divergences 4 and 5. Note that this kind is the first synthetic entry with
+`canRevealInFinder: true` and `isSymbolIcon: false`, so upstream code assuming "synthetic implies
+symbol icon" will be wrong.
+
 ## Merging upstream
 
 ```sh
@@ -202,18 +225,20 @@ git checkout main && git merge --ff-only origin/main   # keep the mirror clean
 git checkout philip && git rebase origin/main           # replay the divergences
 ```
 
-Rebase rather than merge, so the fork stays a readable stack of the five commits above rather than a
+Rebase rather than merge, so the fork stays a readable stack of the six commits above rather than a
 braid. Then, before calling it done — the standard gate from
 [testing.md](docs/testing.md#definition-of-done) plus the fork-specific checks:
 
-- [ ] `./Scripts/run-tests.sh` passes (22 harnesses; `scope-test`, `websearch-test` and `herdr-test` are fork-local).
+- [ ] `./Scripts/run-tests.sh` passes (23 harnesses; `scope-test`, `websearch-test`, `herdr-test` and
+      `vscode-test` are fork-local).
 - [ ] Debug build compiles with no new warnings.
 - [ ] `./Scripts/lint.sh` is clean.
 - [ ] `grep -rln 'import AppKit\|import SwiftUI\|import Cocoa' Tinycast/Features/*/Model/` returns nothing.
 - [ ] **The white-alpha grep above returns only lifting colors** (divergence 2).
 - [ ] **New or merged views carry no magic numbers** — every length and font size comes from `Theme` (divergence 3).
 - [ ] **Signing survived** — if `xcodegen` ran, re-apply divergence 1.
-- [ ] **`PaletteCoordinator.onShow` still fires** — otherwise herdr lists a stale session (divergence 5).
+- [ ] **`PaletteCoordinator.onShow` still fires** — otherwise herdr and VS Code list stale state
+      (divergences 5, 6).
 - [ ] The palette, a dialog and both HUDs were opened and *looked at*. No agent here can do this.
 
 ## Adding a divergence

@@ -50,6 +50,8 @@ struct SettingsBackup: Codable {
         var herdrEnabled: Bool?
         var herdrShowInLauncher: Bool?
         var herdrTerminalBundleID: String?
+        var vsCodeEnabled: Bool?
+        var vsCodeShowInLauncher: Bool?
     }
 
     /// Combos keep the legacy shape, so older files import. docs/features/hotkeys.md#persistence
@@ -115,7 +117,9 @@ extension SettingsBackup {
             webSearchEngine: s.webSearchEngine.id,
             herdrEnabled: s.herdrEnabled,
             herdrShowInLauncher: s.herdrShowInLauncher,
-            herdrTerminalBundleID: s.herdrTerminalBundleID)
+            herdrTerminalBundleID: s.herdrTerminalBundleID,
+            vsCodeEnabled: s.vsCodeEnabled,
+            vsCodeShowInLauncher: s.vsCodeShowInLauncher)
 
         let hk = core.hotKeys
         var hotkeys = HotkeyBackup()
@@ -294,6 +298,14 @@ extension SettingsBackup {
         }
         if let bundleID = s.herdrTerminalBundleID {
             settings.herdrTerminalBundleID = bundleID
+            count += 1
+        }
+        if let flag = s.vsCodeEnabled {
+            settings.vsCodeEnabled = flag
+            count += 1
+        }
+        if let flag = s.vsCodeShowInLauncher {
+            settings.vsCodeShowInLauncher = flag
             count += 1
         }
         if let flag = s.webSearchEnabled {

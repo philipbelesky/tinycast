@@ -24,6 +24,7 @@ enum ScopeCatalog {
     static let commands = "scope:commands"
     static let windowManagement = "scope:window-management"
     static let herdr = "scope:herdr"
+    static let vsCode = "scope:vscode"
     static let emoji = "scope:emoji"
     static let clipboard = "scope:clipboard"
 
@@ -53,7 +54,12 @@ enum ScopeCatalog {
         Entry(
             definition: ScopeDefinition(
                 keyword: "h", id: herdr, title: "herdr", symbol: "macwindow"),
-            target: .kinds([.herdrTarget]))
+            target: .kinds([.herdrTarget])),
+        Entry(
+            definition: ScopeDefinition(
+                keyword: "p", id: vsCode, title: "VS Code",
+                symbol: "chevron.left.forwardslash.chevron.right"),
+            target: .kinds([.vsCodeProject]))
     ]
 
     private static let modes: [Entry] = [
@@ -97,6 +103,7 @@ enum ScopeCatalog {
             case commands: return settings.customCommandsEnabled
             case windowManagement: return settings.windowManagementEnabled
             case herdr: return settings.herdrEnabled
+            case vsCode: return settings.vsCodeEnabled
             default: return true
             }
         }

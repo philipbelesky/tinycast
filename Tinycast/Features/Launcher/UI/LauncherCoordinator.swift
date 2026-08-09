@@ -65,6 +65,12 @@ final class LauncherCoordinator {
             windowCommandCoordinator.runWindowCommand(id: command.id)
             return
         }
+        // The coordinator hides the palette itself, so the open lands after focus has left.
+        if app.kind == .vsCodeProject {
+            guard let path = VSCodeProject.path(fromEntryID: app.id) else { return }
+            core.vsCodeCoordinator.open(path: path)
+            return
+        }
         // The coordinator hides the palette itself, after herdr's focus call has been sent.
         if app.kind == .herdrTarget {
             guard let id = HerdrTarget.id(fromEntryID: app.id) else { return }
@@ -100,7 +106,7 @@ final class LauncherCoordinator {
             let snippetID = String(app.id.dropFirst("snippet:".count))
             snippetExpansion.expandSnippet(id: snippetID, targetApp: previous)
         case .command, .customCommand, .systemAction, .windowCommand, .quicklink,
-            .webSearch, .herdrTarget:
+            .webSearch, .herdrTarget, .vsCodeProject:
             break  // handled above
         }
     }

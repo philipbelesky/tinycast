@@ -66,6 +66,7 @@ If a change touches anything in the right column, the harness on the left is man
 | `scope-test` | `Launcher/Model/QueryScope.swift` |
 | `websearch-test` | `WebSearch/Model/WebSearchEngine.swift` |
 | `herdr-test` | `Herdr/Model/HerdrTarget.swift`, `HerdrHost.swift` |
+| `vscode-test` | `VSCode/Model/VSCodeProject.swift` |
 
 A harness that passed before a change passes after it. There is no "I'll fix it next commit" and no
 commenting out a case. If a change genuinely invalidates an assertion, the assertion is rewritten in the

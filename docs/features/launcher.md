@@ -128,7 +128,7 @@ permission-aware failures. With the palette closed it targets the frontmost app,
 Quit All act on the same window a palette launch would have.
 
 System actions occupy their own launcher section and their own Settings pane. The empty-query publication
-order is applications, System Settings, quicklinks, herdr, web search, snippets, system actions, window
+order is applications, System Settings, quicklinks, VS Code, herdr, web search, snippets, system actions, window
 commands, custom commands, then built-in commands; the sectioned view filters in that same order so the
 visible rows remain identical to the flat selection index.
 Search, favorites, visibility and learned ranking work through the normal `AppEntry` path, and every
@@ -192,6 +192,13 @@ any query — and a per-item "show in root search" flag filters the slice before
 four Quicklinks commands are dropped from the built-in slice in the same publish while the feature is
 off, so a toggle can't leave the section and its commands out of step. See
 [quicklinks.md](quicklinks.md).
+
+## VS Code projects
+
+`AppEntry.Kind.vsCodeProject` publishes what VS Code has opened, re-read each time the palette opens
+and pruned of anything no longer on disk. It is the only synthetic kind that draws a **real file
+icon** rather than an SF Symbol, and so the only one that can be revealed in Finder. The slice keeps
+the store's recency order instead of being alphabetized. See [vscode.md](vscode.md).
 
 ## herdr
 

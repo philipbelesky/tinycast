@@ -157,6 +157,15 @@ final class AppSettings {
         }
     }
 
+    /// Reads VS Code's own record of what it has opened; nothing leaves the machine.
+    var vsCodeEnabled: Bool {
+        didSet { defaults.set(vsCodeEnabled, forKey: Key.vsCodeEnabled.rawValue) }
+    }
+
+    var vsCodeShowInLauncher: Bool {
+        didSet { defaults.set(vsCodeShowInLauncher, forKey: Key.vsCodeShowInLauncher.rawValue) }
+    }
+
     /// Opening a link grants no permission class, so this ships on rather than behind a dialog.
     var webSearchEnabled: Bool {
         didSet { defaults.set(webSearchEnabled, forKey: Key.webSearchEnabled.rawValue) }
@@ -288,5 +297,11 @@ final class AppSettings {
             defaults.object(forKey: Key.herdrShowInLauncher.rawValue) == nil
             || defaults.bool(forKey: Key.herdrShowInLauncher.rawValue)
         herdrTerminalBundleID = defaults.string(forKey: Key.herdrTerminalBundleID.rawValue)
+        vsCodeEnabled =
+            defaults.object(forKey: Key.vsCodeEnabled.rawValue) == nil
+            || defaults.bool(forKey: Key.vsCodeEnabled.rawValue)
+        vsCodeShowInLauncher =
+            defaults.object(forKey: Key.vsCodeShowInLauncher.rawValue) == nil
+            || defaults.bool(forKey: Key.vsCodeShowInLauncher.rawValue)
     }
 }

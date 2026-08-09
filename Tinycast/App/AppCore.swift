@@ -52,6 +52,11 @@ final class AppCore {
         store: herdr, settings: settings, appIndex: appIndex,
         paletteCoordinator: paletteCoordinator)
 
+    @ObservationIgnored private(set) lazy var vsCode = VSCodeStore()
+    @ObservationIgnored private(set) lazy var vsCodeCoordinator = VSCodeCoordinator(
+        store: vsCode, settings: settings, appIndex: appIndex,
+        paletteCoordinator: paletteCoordinator)
+
     @ObservationIgnored private(set) lazy var webSearchCoordinator = WebSearchCoordinator(
         paletteCoordinator: paletteCoordinator,
         clipboardHistory: { [unowned self] in self.snippetExpansion.clipboardHistoryForExpansion() })
@@ -136,7 +141,13 @@ final class AppCore {
             applyWindowCommandsPresence()
             applyWebSearchPresence()
             herdr.onChange = { [weak self] _ in self?.herdrCoordinator.applyHerdrPresence() }
-            paletteCoordinator.onShow = { [weak self] in await self?.herdrCoordinator.refresh() }
+            vsCode.onChange = { [weak self] _ in self?.vsCodeCoordinator.applyVSCodePresence() }
+            // Both mirror something outside the app, so both re-read on the palette's own trigger.
+            paletteCoordinator.onShow = { [weak self] in
+                guard let self else { return }
+                await herdrCoordinator.refresh()
+                await vsCodeCoordinator.refresh()
+            }
             quicklinks.onChange = { [weak self] _ in
                 self?.quicklinkCoordinator.applyQuicklinksPresence()
             }
@@ -256,6 +267,11 @@ final class AppCore {
                 _ = $0.herdrEnabled
                 _ = $0.herdrShowInLauncher
             }, reproject: { $0.herdrCoordinator.applyHerdrPresence() })
+        track(
+            {
+                _ = $0.vsCodeEnabled
+                _ = $0.vsCodeShowInLauncher
+            }, reproject: { $0.vsCodeCoordinator.applyVSCodePresence() })
         track(
             {
                 _ = $0.quicklinksEnabled

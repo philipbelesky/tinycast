@@ -16,6 +16,7 @@ struct SettingsDetailView: View {
             case .quicklinks: QuicklinksSettingsView()
             case .webSearch: WebSearchSettingsView()
             case .herdr: HerdrSettingsView()
+            case .vsCode: VSCodeSettingsView()
             case .snippets: SnippetsSettingsView()
             case .windowManagement: WindowManagementSettingsView()
             case .clipboard: ClipboardSettingsView()
