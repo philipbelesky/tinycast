@@ -24,7 +24,7 @@ struct DialogView: View {
                     .frame(width: Theme.Size.dialogIcon)
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                     Text(request.title)
-                        .font(.headline)
+                        .font(Theme.Typography.dialogTitle)
                     if let message = request.message {
                         Text(message)
                             .font(Theme.Typography.rowTrailing)
@@ -52,7 +52,7 @@ struct DialogView: View {
         }
         .padding(Theme.Spacing.xxl)
         .frame(width: Theme.Size.dialogWidth, alignment: .leading)
-        .background(Color.black.opacity(Theme.Colors.panelDimming))
+        .background(Theme.Colors.panelTint)
         .background(VisualEffectView())
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.dialog, style: .continuous))
         .panelEntrance()

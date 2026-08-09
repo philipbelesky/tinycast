@@ -5,8 +5,8 @@ enum IconCache {
     /// `NSCache` is thread-safe but not `Sendable`, so assert the guarantee once here.
     private final class Cache: NSCache<NSString, NSImage>, @unchecked Sendable {}
 
-    // Plenty for the ≤24pt draw, and a scrolled `LazyVStack` pins every row's icon.
-    private static let displayPixel: CGFloat = 48
+    // Two per point at the row-icon slot, and a scrolled `LazyVStack` pins every row's icon.
+    private static let displayPixel: CGFloat = Theme.Size.rowIcon * 2
 
     private static let cache: Cache = {
         let cache = Cache()
@@ -54,11 +54,14 @@ enum IconCache {
         let side = displayPixel
         let image = NSImage(size: NSSize(width: side, height: side), flipped: false) { _ in
             // Tile inset mirrors the margin macOS app icons carry inside their canvas.
-            let tile = NSRect(x: 0, y: 0, width: side, height: side).insetBy(dx: 4, dy: 4)
-            NSColor.white.withAlphaComponent(0.09).setFill()
-            NSBezierPath(roundedRect: tile, xRadius: 9, yRadius: 9).fill()
+            let margin = 4 * Theme.scale
+            let corner = 9 * Theme.scale
+            let tile = NSRect(x: 0, y: 0, width: side, height: side)
+                .insetBy(dx: margin, dy: margin)
+            NSColor.black.withAlphaComponent(0.08).setFill()
+            NSBezierPath(roundedRect: tile, xRadius: corner, yRadius: corner).fill()
 
-            guard let symbol = glyph(named: name, tint: .white.withAlphaComponent(0.85))
+            guard let symbol = glyph(named: name, tint: .black.withAlphaComponent(0.80))
             else { return true }
             let size = symbol.size
             symbol.draw(
@@ -74,7 +77,7 @@ enum IconCache {
 
     /// Symbols where they exist; the names SF Symbols lacks fall back to template assets.
     private static func glyph(named name: String, tint: NSColor) -> NSImage? {
-        let config = NSImage.SymbolConfiguration(pointSize: 21, weight: .medium)
+        let config = NSImage.SymbolConfiguration(pointSize: 21 * Theme.scale, weight: .medium)
             .applying(.init(paletteColors: [tint]))
         if let symbol = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
             .withSymbolConfiguration(config)
@@ -83,7 +86,7 @@ enum IconCache {
         }
         guard let asset = NSImage(named: name) else { return nil }
         // A 24pt box lands the asset's ink at the symbols' ~22pt optical height.
-        let assetSize = NSSize(width: 24, height: 24)
+        let assetSize = NSSize(width: 24 * Theme.scale, height: 24 * Theme.scale)
         return NSImage(size: assetSize, flipped: false) { rect in
             asset.draw(in: rect)
             tint.set()

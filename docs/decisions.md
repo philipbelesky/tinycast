@@ -38,17 +38,17 @@ scene will not give up.
 Every confirmation, failure report and value prompt goes through `DialogController`.
 
 **Why:** `NSAlert.runModal` spins a nested run loop, and a held Carbon hotkey fires into it — so alerts
-stack without bound. An Aqua alert also clashes visibly with the forced-dark surface. `DialogController`
+stack without bound. An Aqua alert also clashes visibly with the forced-light surface. `DialogController`
 presents `async`, so nothing blocks the main actor, and it refuses a second dialog while one is up.
 
 **What would change this:** nothing foreseeable. This one is load-bearing.
 
-### 4 — The app is locked to `.darkAqua`
+### 4 — The app is locked to `.aqua`
 
-**Why:** the Liquid Glass material and every token in `Theme.swift` are tuned by eye against a deep dark
-surface. Light mode is not a switch; it is a second design.
+**Why:** the Liquid Glass material and every token in `Theme.swift` are tuned by eye against a bright
+frosted surface. Dark mode is not a switch; it is a second design.
 
-**What would change this:** a deliberate project to design and tune a light surface.
+**What would change this:** a deliberate project to design and tune a dark surface.
 
 ### 5 — There is no XCTest target
 
@@ -404,3 +404,37 @@ the clipboard poller and the snippet listener running, or the app silently stops
 
 **What would change this:** Tinycast growing a document surface, where ⌘Q meaning Quit would matter more
 than an agent surviving a closed window.
+
+### 33 — One `Theme.scale` constant, and `Typography` derives point sizes rather than naming text styles
+
+`Theme.scale` is a compile-time `CGFloat` that multiplies every length and font size in `Theme`. There is
+no setting, no environment value and no observability: changing the UI's size means editing one line and
+rebuilding.
+
+`Theme.Typography` therefore stopped being a list of semantic text styles. A token is now
+`.system(size: NSFont.preferredFont(forTextStyle: style).pointSize * scale, weight:design:)` — the
+platform's own metric, taken through the multiplier. `Font.body` cannot be scaled; a point size can.
+
+**Why a constant rather than a setting:** the two hard parts of a live scale are invalidation and
+geometry. `Theme`'s tokens are `static let`, so a runtime change would not repaint SwiftUI, and the
+palette's `NSPanel` frame is set imperatively from `panelWidth`/`panelHeight` — it would need recreating
+on every change. A constant has neither problem and costs one line to move.
+
+**Why derived point sizes rather than `.dynamicTypeSize()`:** macOS has no system Dynamic Type control,
+and the environment value only steps through discrete sizes. It also could not touch the panel frame, the
+row icons or the bitmaps `IconCache` rasterizes, so half the UI would scale and half would not.
+
+**Why not `scaleEffect` on the hosting view:** it is a layer transform over rasterized text. It is one
+line, and it looks like one.
+
+The cost is that a text style's tracking and leading do not survive the conversion: `compactKeyCap` is
+~1pt narrower than `Font.caption2` and `emptyGlyph` has 1pt less line height than `Font.largeTitle`.
+Every other token is pixel-identical at `scale 1.0`, which was checked by measuring `NSHostingView`
+fitting sizes for old and new side by side. Note that `Font.headline` is **bold** on macOS, not semibold.
+
+Ratios, alphas and durations are exempt, as are 1pt hairlines and the custom scrollbar's widths. Settings
+scales only partly on purpose: its rows are stock `Form` controls that macOS sizes itself, so `Theme`
+moves their padding and Tinycast's own controls while the system-drawn rows keep their metrics.
+
+**What would change this:** a user-facing size preference, which would mean moving `scale` onto an
+observable and teaching `PaletteWindowController` to re-place the panel when it changes.

@@ -67,7 +67,7 @@ private struct SnippetArgumentsForm: View {
             ForEach(values.arguments, id: \.name) { argument in
                 VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                     Text(argument.name)
-                        .font(.callout.weight(.medium))
+                        .font(Theme.Typography.fieldLabel)
                     if argument.options.isEmpty {
                         TextField(argument.name, text: values.binding(for: argument.name))
                             .textFieldStyle(.roundedBorder)

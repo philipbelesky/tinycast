@@ -190,7 +190,7 @@ private struct ClipboardRow: View {
             .frame(width: Theme.Size.rowIcon, height: Theme.Size.rowIcon)
             .overlay(
                 Image(systemName: systemName)
-                    .font(.system(size: 12))
+                    .font(Theme.Typography.tileGlyph)
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(.secondary)
             )
@@ -255,7 +255,7 @@ struct ClipboardPreview: View {
         case .text:
             ScrollView {
                 Text(item.text ?? "")
-                    .font(.system(.subheadline, design: .monospaced))
+                    .font(Theme.Typography.previewBody)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
             }
@@ -272,7 +272,7 @@ struct ClipboardPreview: View {
                             .strokeBorder(Theme.Colors.cardStroke, lineWidth: 1)
                     )
             } placeholder: {
-                Image(systemName: "photo").font(.system(.largeTitle))
+                Image(systemName: "photo").font(Theme.Typography.emptyGlyph)
                     .symbolRenderingMode(.hierarchical).foregroundStyle(.tertiary)
             }
         }
@@ -324,11 +324,13 @@ private struct ClipboardInfoSection: View {
                         if let icon = row.icon {
                             Image(nsImage: icon)
                                 .resizable()
-                                .frame(width: 20, height: 20)
+                                .frame(
+                                    width: Theme.Size.previewRowIcon,
+                                    height: Theme.Size.previewRowIcon)
                         }
                         Text(row.value).lineLimit(1).truncationMode(.middle)
                     }
-                    .font(.callout)
+                    .font(Theme.Typography.previewDetail)
                     .padding(.vertical, Theme.Spacing.sm)
                 }
             }

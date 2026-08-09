@@ -156,7 +156,7 @@ struct RootPaletteView: View {
         }
         // The window's frame is the size source, so the glass and clip stay matched.
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(Color.black.opacity(Theme.Colors.panelDimming))
+        .background(Theme.Colors.panelTint)
         .background(VisualEffectView())
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous))
         // Every show bumps focusToken: refocus search and drop any menu left open.
@@ -385,7 +385,7 @@ struct RootPaletteView: View {
         return TextField("", text: $vm.query)
             .textFieldStyle(.plain)
             .font(Theme.Typography.searchField)
-            .tint(.white)
+            .tint(.primary)
             .focused($searchFocused)
             .onSubmit(activateSelection)
             .background(alignment: .leading) {
@@ -402,7 +402,7 @@ struct RootPaletteView: View {
             .accessibilityLabel(Text(searchPrompt))
     }
 
-    /// The Uninstall screen's primary action is destructive, so its pill isn't white.
+    /// The Uninstall screen's primary action is destructive, so its pill isn't the label tint.
     private var pillTint: Color {
         vm.mode == .uninstall ? Theme.Colors.destructive : .primary
     }
@@ -427,7 +427,7 @@ struct RootPaletteView: View {
 
     /// The footer control group: primary action and the Actions toggle sharing one glass capsule.
     private func actionGroup(pillLabel: String) -> some View {
-        HStack(spacing: 2) {
+        HStack(spacing: Theme.Spacing.xxs) {
             BarButton(action: activateSelection) {
                 HStack(spacing: Theme.Spacing.sm) {
                     Text(pillLabel)
@@ -475,7 +475,7 @@ struct RootPaletteView: View {
     }
 
     /// Inset from the bottom corners, so the menu's own corner isn't clipped.
-    private static let menuInset: CGFloat = 8
+    private static let menuInset: CGFloat = Theme.Spacing.md
     private static let menuAnimation: Animation = .easeOut(duration: 0.14)
 
     private static func menuTransition(_ anchor: UnitPoint) -> AnyTransition {
@@ -551,9 +551,11 @@ private struct MenuCircleButton: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 3) {
-                Capsule().frame(width: 14, height: 1.5)
-                Capsule().frame(width: 8, height: 1.5)
+            VStack(alignment: .leading, spacing: Theme.Size.menuGlyphGap) {
+                Capsule()
+                    .frame(width: Theme.Size.menuGlyphWide, height: Theme.Size.menuGlyphWeight)
+                Capsule()
+                    .frame(width: Theme.Size.menuGlyphNarrow, height: Theme.Size.menuGlyphWeight)
             }
             .foregroundStyle(Theme.Colors.textSecondary)
             .frame(width: Theme.Size.menuButton, height: Theme.Size.menuButton)
@@ -576,7 +578,7 @@ private struct BarButton<Label: View>: View {
         Button(action: action) {
             label
                 .padding(.horizontal, Theme.Spacing.md)
-                .frame(height: 28)
+                .frame(height: Theme.Size.barButtonHeight)
                 .contentShape(Capsule())
                 .background(Capsule().fill(hovered ? Theme.Colors.rowHover : Color.clear))
         }
@@ -609,8 +611,8 @@ extension View {
 struct EmptyResults: View {
     let text: String
     var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "magnifyingglass").font(.largeTitle)
+        VStack(spacing: Theme.Spacing.md) {
+            Image(systemName: "magnifyingglass").font(Theme.Typography.emptyGlyph)
                 .symbolRenderingMode(.hierarchical).foregroundStyle(.tertiary)
             Text(text).foregroundStyle(.secondary)
         }
@@ -652,13 +654,15 @@ private struct CompactFavoritesRow: View {
                 case .more:
                     CompactFavoriteButton(help: "Show all  ⌘\(index + 1)", action: onOverflow) {
                         Image(systemName: "ellipsis")
-                            .font(.system(size: 10))
+                            .font(Theme.Typography.hintGlyph)
                             .foregroundStyle(Theme.Colors.textSecondary)
                             .frame(width: Theme.Size.rowIcon, height: Theme.Size.rowIcon)
                             .background(
-                                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                    .fill(Theme.Colors.controlSurface)
-                                    .padding(Theme.Spacing.xxs)
+                                RoundedRectangle(
+                                    cornerRadius: Theme.Radius.menu, style: .continuous
+                                )
+                                .fill(Theme.Colors.controlSurface)
+                                .padding(Theme.Spacing.xxs)
                             )
                     }
                 }

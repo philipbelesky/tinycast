@@ -52,6 +52,7 @@ registers a system-wide chord. Full reasoning in [standards.md](docs/standards.m
 | add or restyle any view | [ui.md](docs/ui.md) |
 | touch one feature's internals | [features/](docs/features/) — each opens with its invariants |
 | package or ship a build | [release.md](docs/release.md) |
+| merge upstream, or wonder why this differs from mainline | [FORK.md](FORK.md) |
 
 ## Non-negotiables
 
@@ -69,8 +70,8 @@ feature-specific lives in that feature's doc, under its own `## Invariants`.
   cross-actor model types are `Sendable`, and heavy or IO-bound work goes off-main as `nonisolated`
   functions driven by `Task.detached`. Do not add a second actor.
   ([decisions.md](docs/decisions.md) entry 18)
-- **The app is locked to `.darkAqua` globally.** The Liquid Glass material is tuned for a deep dark
-  surface; light mode is not a switch, it is a second design.
+- **The app is locked to `.aqua` globally.** The Liquid Glass material is tuned for a bright frosted
+  surface; dark mode is not a switch, it is a second design.
   ([decisions.md](docs/decisions.md) entry 4)
 - **Tinycast presents its own dialogs — never `NSAlert`, `NSSlider` or a system popover.** A question
   goes through `DialogController`, a report through a HUD via `HUDPresenter`.

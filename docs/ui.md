@@ -10,13 +10,13 @@ Read this before touching any view body, `Theme` value, or the panel chrome.
 
 ## The look, in one paragraph
 
-Tinycast is a **Raycast-style dark command palette**: a borderless floating panel whose surface is
-just the OS behind-window blur under a 40% black scrim — there is no gray chrome. Everything on that
-surface is white at a fixed alpha ramp. The header and bottom bar **float over the list as fully
+Tinycast is a **Raycast-style light command palette**: a borderless floating panel whose surface is
+just the OS behind-window blur under a 55% white tint — there is no gray chrome. Everything on that
+surface is black at a fixed alpha ramp. The header and bottom bar **float over the list as fully
 transparent overlays**; there are no hard-edged bars, strips, or dividers. Rows don't clip under the
 bars, they **dissolve**: a scroll-driven gradient mask ghosts them as they pass beneath. Floating
 controls (the action pill, the menu circle, popover menus) are **Liquid Glass**. The whole app is
-locked to dark mode because the glass material is tuned for a deep dark surface.
+locked to light mode because the glass material is tuned for a bright frosted surface.
 
 Five load-bearing ideas, in priority order:
 
@@ -32,18 +32,18 @@ Five load-bearing ideas, in priority order:
 
 These are the things that quietly break the look if changed. Preserve them unless the task is explicitly to change them.
 
-- **Forced dark.** `AppCore.start()` sets `NSApp.appearance = .darkAqua`. All colors are literal white/black alphas, not adaptive `Color`s. Don't introduce semantic/adaptive colors or a light variant.
-- **No grays, no opaque fills on the surface.** Reach for `Theme.Colors.*` (white-alpha) instead of `.gray`, `NSColor.windowBackground`, etc.
+- **Forced light.** `AppCore.start()` sets `NSApp.appearance = .aqua`. All colors are literal black/white alphas, not adaptive `Color`s. Don't introduce semantic/adaptive colors or a dark variant.
+- **No grays, no opaque fills on the surface.** Reach for `Theme.Colors.*` (black-alpha) instead of `.gray`, `NSColor.windowBackground`, etc.
 - **No hard dividers between the list and the bars.** The header and bottom bar are `safeAreaInset` overlays with no background; separation comes from `edgeDissolve()`, nothing else. (One deliberate exception: the vertical hairline between the clipboard list and its preview pane.)
-- **The panel corner is clipped once, at the root.** `RootPaletteView.body` ends with `.background(black 40%) → .background(VisualEffectView()) → .clipShape(RoundedRectangle(26, .continuous))`. Keep that order; the scrim goes _over_ the vibrancy, and the clip is last.
+- **The panel corner is clipped once, at the root.** `RootPaletteView.body` ends with `.background(panelTint) → .background(VisualEffectView()) → .clipShape(RoundedRectangle(26, .continuous))`. Keep that order; the tint goes _over_ the vibrancy, and the clip is last.
 - **Don't use the native scroll edge effect.** Inside a transparent panel it renders a hard-bounded rectangle. Use `edgeDissolve()`.
-- **Test over a light desktop.** Transparency and corner masking bugs only show over bright wallpaper. Dark wallpaper hides them.
-- **No `NSAlert`, no `NSSlider`, no system popovers.** Every confirmation, failure report, value prompt and transient readout is Tinycast's own SwiftUI surface (see "Dialogs & HUD"). An Aqua alert on a white-alpha-over-vibrancy app reads as a different product, and its `runModal` run loop keeps Carbon hotkeys firing underneath.
-- **A dialog has three independent axes; never let one infer another.** The **icon** (`DialogRequest.symbol`, required) is always the *subject's* own glyph — a command being confirmed uses its `SystemAction.sfSymbol`, so the Restart dialog shows the same icon as the Restart row. Tone never picks an icon. The **tone** (`DialogTone`: `.neutral` / `.success` / `.danger`) tints only that glyph. The **button** takes its color from `DialogAction.Role` (`.standard` white / `.destructive` red / `.cancel` secondary), so a red-glyph security warning can still carry a plain white button — as "Import executable commands?" does.
+- **Test over a dark desktop.** Transparency and corner masking bugs only show where the wallpaper contrasts with the panel; bright wallpaper hides them under a light surface.
+- **No `NSAlert`, no `NSSlider`, no system popovers.** Every confirmation, failure report, value prompt and transient readout is Tinycast's own SwiftUI surface (see "Dialogs & HUD"). An Aqua alert on a black-alpha-over-vibrancy app reads as a different product, and its `runModal` run loop keeps Carbon hotkeys firing underneath.
+- **A dialog has three independent axes; never let one infer another.** The **icon** (`DialogRequest.symbol`, required) is always the *subject's* own glyph — a command being confirmed uses its `SystemAction.sfSymbol`, so the Restart dialog shows the same icon as the Restart row. Tone never picks an icon. The **tone** (`DialogTone`: `.neutral` / `.success` / `.danger`) tints only that glyph. The **button** takes its color from `DialogAction.Role` (`.standard` `.primary` / `.destructive` red / `.cancel` secondary), so a red-glyph security warning can still carry a plain primary button — as "Import executable commands?" does.
 - **Resolve every glyph through `SymbolImage`, not `Image(systemName:)`.** Some catalog symbols are bundled assets in `Assets.xcassets` (`toggleBluetooth`), and `Image(systemName:)` silently renders nothing for those.
 - **↵ runs the primary action, Escape cancels, and Cancel always renders leading** (the left button), matching macOS convention. A button never prints its key cap; hovering it shows a `Tooltip` instead, styled like the palette's own keycap chips.
 - **A transient readout is a HUD, not a dialog.** `VolumeHUDController`'s box is volume and mute only, since that one needs an actual level and number; every other success or info confirmation goes through `MessageHUDController`'s pill, whose trailing glyph *is* its `DialogTone`. A pill has no subject to name, so the icon rule above does not apply to it — and that mapping stays file-scoped so nothing can reach for it when building a `DialogRequest`. A new HUD means a new presenter, not a second shape bolted onto an existing controller.
-- **Glass is for controls; content takes the panel recipe.** `glassEffect` needs a backdrop to lens, so it only works *inside* a window that already has a `VisualEffectView` — the action capsule, the menu circle, `PopoverMenu`, a dialog's buttons. On a bare borderless panel it falls back to an opaque backing and shows as a dark edge. Both HUDs therefore use `black panelDimming` → `VisualEffectView()` → `clipShape`, exactly like a dialog.
+- **Glass is for controls; content takes the panel recipe.** `glassEffect` needs a backdrop to lens, so it only works *inside* a window that already has a `VisualEffectView` — the action capsule, the menu circle, `PopoverMenu`, a dialog's buttons. On a bare borderless panel it falls back to an opaque backing and shows as a hard edge. Both HUDs therefore use `panelTint` → `VisualEffectView()` → `clipShape`, exactly like a dialog.
 
 ---
 
@@ -53,6 +53,23 @@ Source: `Tinycast/DesignSystem/Theme.swift`.
 
 `Theme` is the single source of truth. **Never hardcode a spacing/radius/size/color that has a token.**
 Add a token rather than a magic number when introducing a new value.
+
+### Scale (`Theme.scale`)
+
+One compile-time constant multiplies **every length and font size** in `Theme`. `1.0` ships; raise it and
+the palette, its dialogs and both HUDs grow together — panel frame, row icons, keycaps, glyph point
+sizes, and the icons `IconCache` rasterizes. The numbers quoted below are all at `scale 1.0`.
+
+Three kinds of value are deliberately exempt, because scaling them would be wrong rather than merely
+unnecessary: **ratios** (`paletteTopMarginFraction`), **alphas** (all of `Theme.Colors`) and **durations**
+(all of `Theme.Duration`). Hairlines stay 1pt, and the custom scrollbar keeps its own widths — both are
+chrome rather than content.
+
+This is why a magic number in a view is a real defect and not a style nit: a literal `8` no longer tracks
+the rest of the UI. **Anything a scaled surface draws must come from a token.** Settings is the one
+partial surface — its panes are stock `Form` rows macOS sizes itself, so `Theme` moves their padding and
+custom controls while the system-drawn rows keep their own metrics. See
+[decisions.md](decisions.md) entry 33.
 
 ### Spacing (`Theme.Spacing`)
 
@@ -78,38 +95,55 @@ Always `RoundedRectangle(cornerRadius:, style: .continuous)` — continuous corn
 
 ### Size (`Theme.Size`)
 
-`panelWidth 750` · `panelHeight 475` · `headerHeight 44` · `bottomBarHeight 52` · `rowIcon 24` ·
-`keyCap 18` · `recorderKeyCap 16` · `menuButton 36` · `clipboardListWidth 290` · `menuWidth 276` · `menuIcon 16` ·
-`settingsSidebar 184` · `settingsRowIcon 20` · `dialogWidth 420` · `dialogIcon 32` · `hudWidth 200` ·
+`panelWidth 750` · `panelHeight 475` · `headerHeight 44` · `bottomBarHeight 52` · `barButtonHeight 28` ·
+`rowIcon 24` · `runningDot 3` · `keyCap 18` · `recorderKeyCap 16` · `menuButton 36` ·
+`clipboardListWidth 290` · `previewRowIcon 20` · `menuWidth 276` · `menuIcon 20` ·
+`settingsSidebar 215` · `settingsRowIcon 20` · `dialogWidth 420` · `dialogIcon 32` · `hudWidth 200` ·
 `hudHeight 100` · `volumeTrackHeight 6` · `volumeKnob 16` · `volumeReadout 38`
+
+The menu circle's two-line glyph is hand-drawn from four of its own tokens (`menuGlyphWide 14`,
+`menuGlyphNarrow 8`, `menuGlyphWeight 1.5`, `menuGlyphGap 3`) rather than stray frames, so it scales with
+the circle it sits in.
 
 `keyCap` sizes the palette's keycap chips; `recorderKeyCap` (both size and radius) is the intentionally-smaller Settings shortcut-recorder chip.
 
 ### Typography (`Theme.Typography`)
 
-System fonts only — **no fixed point sizes in views** (honors Dynamic Type). `searchField` is the one
-explicit size (20pt regular). Use `rowTitle` (`.body`), `sectionHeader` (`.subheadline.medium`),
-`rowTrailing`/`bar`/`menuRow`/`keyCap` etc. as named.
+**Every font in a scaled surface is a `Theme.Typography` token — no `.font(.body)`, no
+`.font(.system(size:))` in a view.** A token is `.system(size:weight:design:)` at
+`NSFont.preferredFont(forTextStyle:).pointSize * scale`, so the point sizes are the platform's own
+metrics and `scale` is the only departure from them. Named for role, not for size: `rowTitle`,
+`sectionHeader`, `rowTrailing`, `bar`, `menuRow`, `keyCap`, `dialogTitle`, `previewBody`, `emptyGlyph`,
+`tileGlyph` and the rest. Reach for a new token rather than an inline size.
 
-### Colors (`Theme.Colors`) — the white-alpha ramp
+Two tokens are a hair off the text style they replaced, because `.system(size:)` reproduces a style's
+point size but not its tracking or leading: `compactKeyCap` measures ~1pt narrower than `Font.caption2`
+(invisible behind the chip's `minWidth`), and `emptyGlyph` has 1pt less line height than
+`Font.largeTitle` (both call sites draw an `Image`, where it doesn't apply). Everything else is
+pixel-identical at `scale 1.0`.
+
+### Colors (`Theme.Colors`) — the black-alpha ramp
 
 | Token            | Value          | Use                                              |
 | ---------------- | -------------- | ------------------------------------------------ |
-| `panelDimming`   | black **0.40** | the panel scrim over vibrancy                    |
-| `selection`      | white 0.10     | selected row fill (keyboard/active selection)    |
-| `rowHover`       | white 0.05     | mouse-hover fill (always fainter than selection) |
-| `menuHover`      | white 0.10     | popover-menu row hover                           |
-| `separator`      | white 0.10     | the clipboard list↔preview hairline              |
-| `controlSurface` | white 0.10     | filled keycaps, glyph tiles                      |
-| `border`         | white 0.20     | outlined keycap borders                          |
-| `textSecondary`  | white 0.60     | secondary labels                                 |
-| `textTertiary`   | white 0.40     | placeholders, trailing kind labels               |
-| `cardFill`       | white 0.05     | settings/calc card fill                          |
-| `cardStroke`     | white 0.10     | settings/calc card border + inset dividers       |
-| `glassFrost`     | white 0.01     | whitish tint layered into the floating glass     |
+| `panelTint`      | white **0.55** | the panel tint over vibrancy                     |
+| `selection`      | black 0.09     | selected row fill (keyboard/active selection)    |
+| `rowHover`       | black 0.045    | mouse-hover fill (always fainter than selection) |
+| `menuHover`      | black 0.09     | popover-menu row hover                           |
+| `separator`      | black 0.10     | the clipboard list↔preview hairline              |
+| `controlSurface` | black 0.08     | filled keycaps, glyph tiles                      |
+| `border`         | black 0.16     | outlined keycap borders                          |
+| `textSecondary`  | black 0.60     | secondary labels                                 |
+| `textTertiary`   | black 0.40     | placeholders, trailing kind labels               |
+| `cardFill`       | white 0.45     | settings/calc card fill                          |
+| `cardStroke`     | black 0.10     | settings/calc card border + inset dividers       |
+| `glassFrost`     | white 0.30     | whitish tint layered into the floating glass     |
+
+`panelTint`, `cardFill` and `glassFrost` stay white: they *lift* a surface off the material rather than
+mark something on it. Everything that marks the surface is black-alpha.
 
 Beyond these, `.secondary`/`.tertiary` foreground styles are fine for SF Symbols (they resolve against
-the forced-dark environment). **Selection always beats hover** when a row is both.
+the forced-light environment). **Selection always beats hover** when a row is both.
 
 ---
 
@@ -176,7 +210,7 @@ Source: `Theme.frosted(in:)`, `DesignSystem/PopoverMenu.swift`.
 
 Glass is **only** for floating controls, never the main surface.
 
-- `View.frosted(in:)` = `glassEffect(.regular.interactive().tint(glassFrost), in:)` + `.tint(.clear)` — interactive lensing with a whitish frost tint (`glassFrost`) so the glass reads brighter than clear. Used on the action-group capsule, the menu circle, `PopoverMenu` and a dialog's buttons — always _inside_ a window that already has a `VisualEffectView` behind it. Neither HUD uses it: on a panel of its own, glass has no backdrop to lens and falls back to an opaque backing that reads as a dark edge, so both take the panel recipe instead (see "Dialogs & HUD"). Tune the frost amount via the `glassFrost` token, not per call site.
+- `View.frosted(in:)` = `glassEffect(.regular.interactive().tint(glassFrost), in:)` + `.tint(.clear)` — interactive lensing with a whitish frost tint (`glassFrost`) so the glass reads brighter than clear. Used on the action-group capsule, the menu circle, `PopoverMenu` and a dialog's buttons — always _inside_ a window that already has a `VisualEffectView` behind it. Neither HUD uses it: on a panel of its own, glass has no backdrop to lens and falls back to an opaque backing that reads as a hard edge, so both take the panel recipe instead (see "Dialogs & HUD"). Tune the frost amount via the `glassFrost` token, not per call site.
 - **Menus are in-window overlays, not system popovers.** `.contextMenu`/`NSMenu` stall clicks for seconds inside a `LazyVStack` and spill outside the panel. Use `PopoverMenu` anchored to a bottom corner via `.overlay`, inset `menuInset` (8pt) so its own corner isn't clipped by the panel's.
 - **`PopoverMenu`** uses `glassEffect(.regular, in: RoundedRectangle(menuPanel 16))` with **no hand-tuned shadow** — Tahoe glass carries its own elevation; adding a drop shadow reads heavy and non-native.
 - `PopoverMenuRow`: leading glyph, label, trailing shortcut glyph, `menuHover` fill on hover, `menuRow 10` corner. Menus animate in with `.opacity + .scale(0.96)` from the anchored corner, `easeOut 0.14`.
@@ -224,7 +258,7 @@ sole owner rule) and is the only presenter, so every confirmation in the app loo
   recipe**, and so does the **message pill**. That is the line: glass needs a backdrop to lens, so it
   only works _inside_ a window that already has a `VisualEffectView` behind it — the action capsule,
   the menu circle, `PopoverMenu`, a dialog's buttons. On a bare borderless panel of its own it falls
-  back to an opaque backing that shows as a dark edge outside the shape, which is exactly what the
+  back to an opaque backing that shows as a hard edge outside the shape, which is exactly what the
   pill did before it moved to the recipe.
 - **Layout.** Leading glyph (`dialogIcon 32`), title (`.headline`) + wrapped secondary message,
   optional volume slider, then buttons at the trailing edge with **Cancel rendered leading** among
@@ -390,7 +424,7 @@ focus moves. Don't reintroduce `prompt:` on that field. See
 
 ## Rules for agents working on the UI
 
-- **Restyle from screenshots, not extracted CSS.** Pixel-matching Raycast from its bundle led to wrong results before; compare rendered screenshots over a light desktop instead. There's no screen-recording from the shell here — verify AppKit rendering with a `swiftc` harness that prints layer state, and let the user do visual sign-off.
+- **Restyle from screenshots, not extracted CSS.** Pixel-matching Raycast from its bundle led to wrong results before; compare rendered screenshots over a dark desktop instead. There's no screen-recording from the shell here — verify AppKit rendering with a `swiftc` harness that prints layer state, and let the user do visual sign-off.
 - **Don't add behavior that wasn't requested.** A restyle changes appearance, not interaction — keep selection/scroll/dismiss/focus flows exactly as they are unless the task is about them.
 - **New tokens go in `Theme`**, referenced everywhere. No magic numbers in views.
 - **Keep the shared grammar shared.** If you change row insets, the `fill` precedence, section-header style, or keycap style, change it for _all_ lists — divergence is the bug, not the feature.

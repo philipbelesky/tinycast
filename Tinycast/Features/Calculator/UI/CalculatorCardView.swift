@@ -51,7 +51,7 @@ struct CalculatorCard: View {
                 HStack(spacing: 0) {
                     CalcColumn(text: result.expression, badge: result.sourceBadge, weight: .medium)
                     Image(systemName: "arrow.right")
-                        .font(.title3.weight(.semibold))
+                        .font(Theme.Typography.calcArrow)
                         .foregroundStyle(.tertiary)
                     CalcColumn(text: display, badge: result.targetBadge, weight: .semibold)
                 }
@@ -63,7 +63,7 @@ struct CalculatorCard: View {
                     Text(message)
                         .lineLimit(1)
                 }
-                .font(.body)
+                .font(Theme.Typography.calcMessage)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity)
             }

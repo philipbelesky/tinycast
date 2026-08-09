@@ -122,7 +122,7 @@ private struct QuicklinkRow: View {
             Spacer(minLength: Theme.Spacing.lg)
             if !quicklink.showsInRootSearch {
                 Image(systemName: "eye.slash")
-                    .font(.system(size: 10))
+                    .font(Theme.Typography.hintGlyph)
                     .foregroundStyle(Theme.Colors.textTertiary)
             }
             if let keycaps = hotKeys.binding(for: .quicklink(id: quicklink.id))?.keycaps {

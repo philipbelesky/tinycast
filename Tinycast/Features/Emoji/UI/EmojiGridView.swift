@@ -227,7 +227,7 @@ private struct EmojiCell: View {
 
     var body: some View {
         Text(glyph)
-            .font(.system(size: 30))
+            .font(Theme.Typography.emojiGlyph)
             .frame(maxWidth: .infinity)
             .frame(height: Theme.Size.emojiCell)
             .background(

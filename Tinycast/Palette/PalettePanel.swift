@@ -51,7 +51,7 @@ final class PalettePanel: NSPanel {
     /// Caret hiding on SwiftUI's own field editor. docs/features/palette.md#menu-open-input-freeze
     private func setSearchCaretHidden(_ hidden: Bool) {
         guard let editor = firstResponder as? NSTextView else { return }
-        editor.insertionPointColor = hidden ? .clear : .white
+        editor.insertionPointColor = hidden ? .clear : .labelColor
         // Force a redraw so the caret flips at once rather than waiting out the blink timer.
         editor.updateInsertionPointStateAndRestartTimer(!hidden)
     }
@@ -93,7 +93,8 @@ final class PalettePanel: NSPanel {
     }
     init<Content: View>(rootView: Content) {
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 750, height: 475),
+            contentRect: NSRect(
+                x: 0, y: 0, width: Theme.Size.panelWidth, height: Theme.Size.panelHeight),
             styleMask: [.borderless, .fullSizeContentView, .nonactivatingPanel],
             backing: .buffered,
             defer: false

@@ -31,7 +31,7 @@ struct QuicklinkArgumentsView: View {
             ForEach(Array(session.progress.enumerated()), id: \.offset) { _, argument in
                 HStack(spacing: Theme.Spacing.sm) {
                     Image(systemName: argument.value == nil ? "circle" : "checkmark.circle.fill")
-                        .font(.system(size: 11))
+                        .font(Theme.Typography.statusGlyph)
                         .foregroundStyle(
                             argument.value == nil
                                 ? Theme.Colors.textTertiary : Theme.Colors.success)

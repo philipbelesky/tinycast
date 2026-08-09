@@ -155,8 +155,8 @@ private struct AppRow: View {
                     if running {
                         Circle()
                             .fill(.secondary)
-                            .frame(width: 3, height: 3)
-                            .offset(y: 3)
+                            .frame(width: Theme.Size.runningDot, height: Theme.Size.runningDot)
+                            .offset(y: Theme.Size.runningDot)
                     }
                 }
             Text(app.name)

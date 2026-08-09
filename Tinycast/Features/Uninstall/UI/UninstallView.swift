@@ -144,7 +144,7 @@ private struct FileIconView: View {
                 Image(nsImage: image).resizable()
             } else {
                 RoundedRectangle(cornerRadius: Theme.Radius.thumbnail, style: .continuous)
-                    .fill(Color.white.opacity(0.06))
+                    .fill(Color.black.opacity(0.06))
             }
         }
         .task(id: path) {

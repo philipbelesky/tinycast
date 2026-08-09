@@ -128,7 +128,7 @@ private struct CalcHistoryRow: View {
                 .frame(width: Theme.Size.rowIcon, height: Theme.Size.rowIcon)
                 .overlay(
                     Image(systemName: "plus.forwardslash.minus")
-                        .font(.system(size: 12))
+                        .font(Theme.Typography.tileGlyph)
                         .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(.secondary)
                 )

@@ -111,8 +111,8 @@ final class AppCore {
             // Shorten AppKit's ~2–3s tooltip delay; registration domain, so a user default wins.
             UserDefaults.standard.register(defaults: ["NSInitialToolTipDelay": 250])
             NSApp.setActivationPolicy(.accessory)
-            // Force dark: the Liquid Glass material is tuned for a deep dark surface.
-            NSApp.appearance = NSAppearance(named: .darkAqua)
+            // Force light: the Liquid Glass material is tuned for a bright frosted surface.
+            NSApp.appearance = NSAppearance(named: .aqua)
 
             clipboardStore.maxAge = settings.clipboardRetention.maxAge
             // Defer the SQLite read + prune off the launch path; the palette fills in later.
