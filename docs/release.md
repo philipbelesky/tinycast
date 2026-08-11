@@ -10,13 +10,22 @@ the signing identity itself is in [signing.md](signing.md).
 ./Scripts/build-dmg.sh 0.5.7      # -> build/Tinycast-0.5.7.dmg
 ```
 
-It builds a Release `Tinycast.app` signed with `Tinycast Self-Signed` and packs it with an
-`/Applications` symlink. Official per-channel releases are built by CI, below.
+It builds a Release `Tinycast.app` and packs it with an `/Applications` symlink. Signing comes from
+`project.yml` rather than the script, so a regenerated project keeps it; the script only checks the
+identity resolves before spending a build on it. `TINYCAST_SIGN_IDENTITY` overrides which one it looks
+for. Official per-channel releases are built by CI, below.
+
+The finished DMG is then copied to `~/Library/Mobile Documents/com~apple~CloudDocs/Resources`, which is
+how it reaches the author's other Macs — iCloud sets no `com.apple.quarantine`, so the app opens there
+without the `xattr` step a browser download needs. Override the destination with `TINYCAST_DMG_DROP`; a
+destination that doesn't exist is skipped rather than failing the build, so CI and a fresh clone are
+unaffected.
 
 ## Signing & Gatekeeper
 
-Both local builds and CI releases sign with the same stable `Tinycast Self-Signed` identity, not an
-Apple Developer ID — so macOS quarantines a directly-downloaded DMG. The Homebrew cask strips that
+CI releases sign with the stable `Tinycast Self-Signed` identity and local builds with whatever
+`project.yml` names (see [FORK.md](../FORK.md) divergence 1) — neither is an Apple Developer ID, so
+macOS quarantines a directly-downloaded DMG. The Homebrew cask strips that
 automatically; direct downloaders run `xattr -dr com.apple.quarantine "…/Tinycast.app"` once. Full
 details in [signing.md](signing.md).
 
