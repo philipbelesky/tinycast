@@ -83,7 +83,7 @@ final class LauncherCoordinator {
             guard let id = WebSearchEngine.id(fromEntryID: app.id),
                 let engine = WebSearchEngine.engine(id: id)
             else { return }
-            core.palette.scope = ScopeCatalog.scope(for: engine)
+            core.palette.scope = ScopeCatalog.scope(for: engine, settings: core.settings)
             core.palette.query = ""
             core.palette.selection = 0
             return

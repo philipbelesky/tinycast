@@ -82,8 +82,10 @@ enum ScopeCatalog {
     }
 
     /// The scope a named engine arms when it is activated from a row rather than typed.
-    static func scope(for engine: WebSearchEngine) -> ScopeDefinition {
-        webEntry(engine).definition
+    static func scope(for engine: WebSearchEngine, settings: AppSettings) -> ScopeDefinition {
+        let id = "scope:" + engine.entryID
+        return allDefinitions(settings: settings).first { $0.id == id }
+            ?? webEntry(engine).definition
     }
 
     /// Only the scopes that can currently do something: a disabled feature offers no keyword.
@@ -95,20 +97,43 @@ enum ScopeCatalog {
         entries(settings: settings).first { $0.definition.id == scope.id }?.target
     }
 
+    /// Declaration order, which is also the order a keyword collision is settled in.
+    private static var allEntries: [Entry] {
+        filters + modes + WebSearchEngine.builtIn.map(webEntry)
+    }
+
+    /// Every scope, enabled or not, carrying the keyword the user actually chose. Settings edits
+    /// against this rather than `registry`: a keyword taken by a switched-off feature is still taken.
+    static func allDefinitions(settings: AppSettings) -> [ScopeDefinition] {
+        ScopeKeywords.resolve(allEntries.map(\.definition), overrides: settings.scopeKeywords)
+    }
+
+    /// What the scope ships with, so the field can drop an override that merely restores it.
+    static func defaultKeyword(id: String) -> String {
+        allEntries.first { $0.definition.id == id }?.definition.keyword ?? ""
+    }
+
+    static func title(id: String) -> String {
+        allEntries.first { $0.definition.id == id }?.definition.title ?? ""
+    }
+
     private static func entries(settings: AppSettings) -> [Entry] {
-        var live = filters.filter { entry in
-            switch entry.definition.id {
-            case quicklinks: return settings.quicklinksEnabled
-            case snippets: return settings.snippetsShowInLauncher
-            case commands: return settings.customCommandsEnabled
-            case windowManagement: return settings.windowManagementEnabled
-            case herdr: return settings.herdrEnabled
-            case vsCode: return settings.vsCodeEnabled
-            default: return true
-            }
+        zip(allEntries, allDefinitions(settings: settings)).compactMap { entry, definition in
+            guard isLive(entry.definition.id, settings: settings) else { return nil }
+            return Entry(definition: definition, target: entry.target)
         }
-        live += modes
-        if settings.webSearchEnabled { live += WebSearchEngine.builtIn.map(webEntry) }
-        return live
+    }
+
+    private static func isLive(_ id: String, settings: AppSettings) -> Bool {
+        switch id {
+        case quicklinks: return settings.quicklinksEnabled
+        case snippets: return settings.snippetsShowInLauncher
+        case commands: return settings.customCommandsEnabled
+        case windowManagement: return settings.windowManagementEnabled
+        case herdr: return settings.herdrEnabled
+        case vsCode: return settings.vsCodeEnabled
+        default: return id.hasPrefix("scope:" + WebSearchEngine.entryIDPrefix)
+            ? settings.webSearchEnabled : true
+        }
     }
 }

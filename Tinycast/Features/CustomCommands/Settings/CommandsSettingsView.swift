@@ -44,6 +44,11 @@ struct CommandsSettingsView: View {
                     .foregroundStyle(.secondary)
             }
             .settingsEnabled(settings.customCommandsEnabled)
+
+            ScopeKeywordSection(
+                scopeID: ScopeCatalog.commands,
+                explanation:
+                    "Type it, then a space, to search commands and custom commands only.")
         }
         .formStyle(.grouped)
         .sheet(item: $editor) { target in

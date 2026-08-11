@@ -69,10 +69,10 @@ enum SettingsSection: CaseIterable, Identifiable {
         case .general: return [.general, .permissions]
         case .launcher:
             return [
-                .applications, .systemSettings, .systemActions, .commands, .quicklinks, .webSearch,
-                .herdr, .vsCode
+                .applications, .systemSettings, .systemActions, .commands, .quicklinks
             ]
-        case .features: return [.snippets, .windowManagement, .clipboard, .emoji]
+        case .features:
+            return [.webSearch, .herdr, .vsCode, .snippets, .windowManagement, .clipboard, .emoji]
         case .advanced: return [.backup, .miscellaneous, .about]
         }
     }

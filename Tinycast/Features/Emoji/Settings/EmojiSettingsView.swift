@@ -33,6 +33,11 @@ struct EmojiSettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            ScopeKeywordSection(
+                scopeID: ScopeCatalog.emoji,
+                explanation:
+                    "Type it, then a space, to jump straight to the emoji picker.")
         }
         .formStyle(.grouped)
     }

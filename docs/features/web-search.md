@@ -41,9 +41,9 @@ well as `{argument}`; the coordinator captures the context per search for exactl
 
 ## Settings
 
-`Settings → Web Search`: enable, show-in-launcher, and the default engine — plus the keyword table,
-read-only. All three settings are carried in a settings backup: opening a link grants no permission
-class, so none of them is a consent flag ([decisions.md](../decisions.md) entry 8).
+`Settings → Web Search`: enable, show-in-launcher, the default engine, and a field per engine for its
+[scope keyword](palette.md#choosing-your-own). All of them are carried in a settings backup: opening a
+link grants no permission class, so none is a consent flag ([decisions.md](../decisions.md) entry 8).
 
 An engine id that no longer resolves — a renamed or dropped engine, a backup from a later build —
 falls back to Google rather than leaving the scope dead.

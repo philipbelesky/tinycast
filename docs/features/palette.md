@@ -133,6 +133,9 @@ The whole design is one transition rule, in `Launcher/Model/QueryScope.swift` �
 stays id-only because `AppEntry.Kind` and `PaletteMode` live in AppKit-importing files, and a grammar
 naming them could never be harness-compiled.
 
+Every keyword below is the **shipped default**; each is editable in that feature's own Settings
+pane, and the table is what a fresh install reads.
+
 | Keyword | Scope | Target | Chip |
 | --- | --- | --- | --- |
 | `a` | Applications | `.application` + `.systemSettings` | yes |
@@ -159,6 +162,31 @@ one: a sub-screen is already scoped by its mode, and the argument form's field i
 
 A disabled feature contributes no keyword, so `q` does nothing while Quicklinks is off rather than
 committing to an empty list.
+
+### Choosing your own
+
+`ScopeKeywords` (`Launcher/Model/`, Foundation-only, covered by `scope-test`) layers
+`AppSettings.scopeKeywords` — scope id → keyword — over the shipped table. Only overrides are stored,
+so a keyword edited back to its default is removed rather than pinned, and a later build can still
+move the default under it.
+
+`normalized` is **total**: the field accepts anything, and what the grammar ends up seeing is trimmed,
+lowercased, cut at the first inner space and capped at `maximumLength` (4). Cutting at the space is
+not cosmetic — a keyword containing one could never be adopted, since adoption reads the token *before*
+the committing space. An empty result is legitimate: it is how a feature is left with no keyword at
+all, which is why clearing the field is offered rather than refused.
+
+Two scopes may not share a keyword. `ScopeKeywordField` refuses the edit and names the scope already
+holding it, so a collision normally cannot be written. `ScopeKeywords.resolve` is the backstop for the
+ones that arrive anyway — an edited backup, a stale write — and strips the keyword from the **later**
+scope in declaration order rather than dropping either, so a token is never ambiguous about what it
+adopts.
+
+Conflicts are checked against **every** scope, not just the enabled ones: a keyword held by a
+switched-off feature is still taken, or turning that feature back on would silently steal it.
+
+`ScopeCatalog.allDefinitions` is what Settings edits against; `registry` is that same list filtered to
+what is currently enabled. Both are computed per call, so an edit reaches the palette immediately.
 
 ## Menu-open input freeze
 

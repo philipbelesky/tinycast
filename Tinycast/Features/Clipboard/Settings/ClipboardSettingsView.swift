@@ -68,6 +68,11 @@ struct ClipboardSettingsView: View {
                     Text("Permanently remove every saved clip and image.")
                 }
             }
+
+            ScopeKeywordSection(
+                scopeID: ScopeCatalog.clipboard,
+                explanation:
+                    "Type it, then a space, to jump straight to clipboard history.")
         }
         .formStyle(.grouped)
         .confirmationDialog(

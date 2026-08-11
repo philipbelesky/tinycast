@@ -28,6 +28,11 @@ struct QuicklinksSettingsView: View {
                 transfer
             }
             .settingsEnabled(settings.quicklinksEnabled)
+
+            ScopeKeywordSection(
+                scopeID: ScopeCatalog.quicklinks,
+                explanation:
+                    "Type it, then a space, to search quicklinks only.")
         }
         .formStyle(.grouped)
         // Presented from the pane, so "Create Quicklink" can open it from the palette.

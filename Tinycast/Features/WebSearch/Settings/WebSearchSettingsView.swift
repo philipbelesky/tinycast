@@ -36,14 +36,21 @@ struct WebSearchSettingsView: View {
             }
             .settingsEnabled(settings.webSearchEnabled)
 
-            Section("Keywords") {
+            Section {
                 ForEach(WebSearchEngine.builtIn) { engine in
-                    LabeledContent {
-                        KeyCapChip(text: engine.keyword, style: .outline)
-                    } label: {
-                        Label(engine.name, systemImage: engine.symbol)
-                    }
+                    ScopeKeywordField(
+                        scopeID: ScopeCatalog.scope(for: engine, settings: settings).id,
+                        title: engine.name)
                 }
+            } header: {
+                Text("Keywords")
+            } footer: {
+                Text(
+                    "Type an engine's keyword, then a space, to send the rest of the query to it. "
+                    + "Clear a field to leave that engine with no keyword."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
             .settingsEnabled(settings.webSearchEnabled)
         }

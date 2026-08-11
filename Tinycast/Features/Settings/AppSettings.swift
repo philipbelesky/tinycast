@@ -30,6 +30,12 @@ final class AppSettings {
     @ObservationIgnored private let defaults = UserDefaults.standard
     private typealias Key = AppSettingsKey
 
+    /// Scope id → the keyword the user chose for it. Only overrides are stored, so a scope whose
+    /// shipped keyword still stands is absent, and an empty value is a scope deliberately unreachable.
+    var scopeKeywords: [String: String] {
+        didSet { defaults.set(scopeKeywords, forKey: Key.scopeKeywords.rawValue) }
+    }
+
     /// What `AppIndex` scans, in scan order; editing it re-indexes, being observed.
     var searchScopes: [String] {
         didSet { defaults.set(searchScopes, forKey: Key.searchScopes.rawValue) }
@@ -248,6 +254,8 @@ final class AppSettings {
             defaults.object(forKey: Key.showFavoritesInCompactMode.rawValue) == nil
             || defaults.bool(forKey: Key.showFavoritesInCompactMode.rawValue)
         // Unset seeds the defaults; a stored empty array is a deliberately cleared list.
+        scopeKeywords =
+            defaults.dictionary(forKey: Key.scopeKeywords.rawValue) as? [String: String] ?? [:]
         searchScopes =
             defaults.stringArray(forKey: Key.searchScopes.rawValue) ?? SearchScopes.defaults
         openOnCursorScreen =

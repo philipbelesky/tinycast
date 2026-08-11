@@ -87,6 +87,63 @@ struct ScopeTest {
                 ScopeDefinition(keyword: "", id: "scope:blank", title: "Blank", symbol: "star")
             ]) == nil)
 
+        // MARK: - Custom keywords
+
+        check("an unset keyword normalizes to nothing", ScopeKeywords.normalized("") == "")
+        check("surrounding whitespace is trimmed", ScopeKeywords.normalized("  q  ") == "q")
+        check("a keyword is lowercased, since adoption ignores case", ScopeKeywords.normalized("Q") == "q")
+        check(
+            "everything from the first inner space is dropped, so the space still commits",
+            ScopeKeywords.normalized("go og") == "go")
+        check(
+            "an over-long keyword is truncated rather than rejected",
+            ScopeKeywords.normalized("quicklinks") == "quic")
+        check("the cap is what the field allows", ScopeKeywords.maximumLength == 4)
+
+        check(
+            "no override leaves the shipped keyword",
+            ScopeKeywords.resolve(registry, overrides: [:]) == registry)
+        let renamed = ScopeKeywords.resolve(registry, overrides: ["scope:quicklinks": "L"])
+        check("an override replaces one keyword", renamed.first?.keyword == "l")
+        check("and leaves the others alone", renamed.map(\.keyword) == ["l", "g", "e"])
+        check(
+            "the renamed scope is what the grammar now adopts",
+            QueryScope.adopting("l ", in: renamed)?.scope.id == "scope:quicklinks")
+        check(
+            "and its shipped keyword no longer adopts",
+            QueryScope.adopting("q ", in: renamed) == nil)
+        check(
+            "an override to empty leaves the scope unreachable rather than restoring the default",
+            ScopeKeywords.resolve(registry, overrides: ["scope:quicklinks": ""]).first?.keyword == "")
+        check(
+            "an override for an unknown scope is ignored",
+            ScopeKeywords.resolve(registry, overrides: ["scope:nope": "n"]) == registry)
+
+        // A collision can only arrive from an edited backup or a stale write; the earlier scope keeps
+        // the keyword, so the registry is never ambiguous about what a token adopts.
+        let collided = ScopeKeywords.resolve(registry, overrides: ["scope:web:google": "q"])
+        check("a collision leaves the earlier scope holding the keyword", collided[0].keyword == "q")
+        check("and strips it from the later one", collided[1].keyword == "")
+        check(
+            "so a colliding token still adopts exactly one scope",
+            QueryScope.adopting("q ", in: collided)?.scope.id == "scope:quicklinks")
+
+        check(
+            "a keyword already in use is reported as a conflict",
+            ScopeKeywords.conflict(for: "g", assignedTo: "scope:quicklinks", in: registry)?.id
+                == "scope:web:google")
+        check(
+            "a scope keeping its own keyword conflicts with nothing",
+            ScopeKeywords.conflict(for: "q", assignedTo: "scope:quicklinks", in: registry) == nil)
+        check(
+            "an unused keyword conflicts with nothing",
+            ScopeKeywords.conflict(for: "z", assignedTo: "scope:quicklinks", in: registry) == nil)
+        check(
+            "clearing a keyword conflicts with nothing, however many are already empty",
+            ScopeKeywords.conflict(
+                for: "", assignedTo: "scope:quicklinks",
+                in: ScopeKeywords.resolve(registry, overrides: ["scope:emoji": ""])) == nil)
+
         print(failures == 0 ? "\nALL PASSED" : "\n\(failures) FAILED")
         exit(failures == 0 ? 0 : 1)
     }

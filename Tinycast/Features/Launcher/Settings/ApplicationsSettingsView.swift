@@ -10,6 +10,11 @@ struct ApplicationsSettingsView: View {
                 kind: .application,
                 header: "Applications",
                 searchPrompt: "Search applications…")
+
+            ScopeKeywordSection(
+                scopeID: ScopeCatalog.applications,
+                explanation:
+                    "Type it, then a space, to search applications and System Settings panes only.")
         }
         .formStyle(.grouped)
     }

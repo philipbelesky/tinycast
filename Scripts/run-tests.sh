@@ -66,7 +66,8 @@ L=Tinycast/Features/Launcher/Model
 run fuzz-test              $L/SearchRelevance.swift
 run ranking-test           $L/SearchRelevance.swift $L/LauncherRankingStore.swift
 run scopes-test            $L/SearchScopes.swift
-run scope-test             $L/QueryScope.swift
+run scope-test             $L/QueryScope.swift \
+                           $L/ScopeKeywords.swift
 run calc-test              Tinycast/Features/Calculator/Model/*.swift
 run clipboard-test         Tinycast/Features/Clipboard/Model/ClipboardStore.swift
 run emoji-test             Tinycast/Features/Emoji/Model/EmojiCatalog.swift \

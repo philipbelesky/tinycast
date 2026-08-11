@@ -56,6 +56,11 @@ struct HerdrSettingsView: View {
                 .foregroundStyle(.secondary)
             }
             .settingsEnabled(settings.herdrEnabled)
+
+            ScopeKeywordSection(
+                scopeID: ScopeCatalog.herdr,
+                explanation:
+                    "Type it, then a space, to search herdr workspaces and tabs only.")
         }
         .formStyle(.grouped)
         .task { await store.refresh() }

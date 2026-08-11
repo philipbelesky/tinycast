@@ -63,7 +63,7 @@ If a change touches anything in the right column, the harness on the left is man
 | `snippets-test` | all of `Snippets/Model/` and `Snippets/Service/`, plus `Platform/HealthTicker.swift` |
 | `raycast-test` | `Backup/Model/RaycastFormat.swift`, `RaycastV1Decoder.swift`, `Service/Gunzip.swift` |
 | `settings-backup-test` | `Settings/AppSettingsKey.swift`, `Backup/Model/SettingsBackupCoverage.swift` |
-| `scope-test` | `Launcher/Model/QueryScope.swift` |
+| `scope-test` | `Launcher/Model/QueryScope.swift`, `ScopeKeywords.swift` |
 | `websearch-test` | `WebSearch/Model/WebSearchEngine.swift` |
 | `herdr-test` | `Herdr/Model/HerdrTarget.swift`, `HerdrHost.swift` |
 | `vscode-test` | `VSCode/Model/VSCodeProject.swift` |

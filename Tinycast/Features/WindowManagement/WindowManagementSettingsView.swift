@@ -20,6 +20,11 @@ struct WindowManagementSettingsView: View {
                 commands
             }
             .settingsEnabled(settings.windowManagementEnabled)
+
+            ScopeKeywordSection(
+                scopeID: ScopeCatalog.windowManagement,
+                explanation:
+                    "Type it, then a space, to search window commands and system actions only.")
         }
         .formStyle(.grouped)
     }

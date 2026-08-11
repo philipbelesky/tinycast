@@ -52,6 +52,8 @@ struct SettingsBackup: Codable {
         var herdrTerminalBundleID: String?
         var vsCodeEnabled: Bool?
         var vsCodeShowInLauncher: Bool?
+        /// Carried: a keyword is a typing preference, and grants nothing.
+        var scopeKeywords: [String: String]?
     }
 
     /// Combos keep the legacy shape, so older files import. docs/features/hotkeys.md#persistence
@@ -119,7 +121,8 @@ extension SettingsBackup {
             herdrShowInLauncher: s.herdrShowInLauncher,
             herdrTerminalBundleID: s.herdrTerminalBundleID,
             vsCodeEnabled: s.vsCodeEnabled,
-            vsCodeShowInLauncher: s.vsCodeShowInLauncher)
+            vsCodeShowInLauncher: s.vsCodeShowInLauncher,
+            scopeKeywords: s.scopeKeywords)
 
         let hk = core.hotKeys
         var hotkeys = HotkeyBackup()
@@ -306,6 +309,10 @@ extension SettingsBackup {
         }
         if let flag = s.vsCodeShowInLauncher {
             settings.vsCodeShowInLauncher = flag
+            count += 1
+        }
+        if let keywords = s.scopeKeywords {
+            settings.scopeKeywords = keywords
             count += 1
         }
         if let flag = s.webSearchEnabled {

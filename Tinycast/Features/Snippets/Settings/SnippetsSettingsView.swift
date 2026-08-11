@@ -44,6 +44,11 @@ struct SnippetsSettingsView: View {
                 libraryNotices
             }
             .settingsEnabled(settings.snippetsEnabled)
+
+            ScopeKeywordSection(
+                scopeID: ScopeCatalog.snippets,
+                explanation:
+                    "Type it, then a space, to search snippets only.")
         }
         .formStyle(.grouped)
         .sheet(item: $editor) { target in

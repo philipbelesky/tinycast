@@ -40,6 +40,11 @@ struct VSCodeSettingsView: View {
                 .foregroundStyle(.secondary)
             }
             .settingsEnabled(settings.vsCodeEnabled)
+
+            ScopeKeywordSection(
+                scopeID: ScopeCatalog.vsCode,
+                explanation:
+                    "Type it, then a space, to search VS Code projects only.")
         }
         .formStyle(.grouped)
         .task { await store.refresh() }
