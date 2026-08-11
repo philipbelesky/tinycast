@@ -26,7 +26,7 @@ Each app channel owns a separate library:
 ~/Library/Application Support/<bundle-id>/Snippets/
 ```
 
-Debug (`com.tinycast.app.dev`), beta, and stable therefore never share snippet files. The storage
+Debug (`com.belesky.tinycast.dev`), beta, and stable therefore never share snippet files. The storage
 root and bundle identifier are injectable in the standalone harness so tests cannot touch a real
 library.
 

@@ -41,7 +41,7 @@ project settings in `project.yml`, run `xcodegen generate` and commit the result
 
 ### The dev channel
 
-Debug builds are a separate channel: **`Tinycast Dev.app`**, bundle id `com.tinycast.app.dev`. Every
+Debug builds are a separate channel: **`Tinycast Dev.app`**, bundle id `com.belesky.tinycast.dev`. Every
 persisted thing is keyed by bundle id — `~/Library/Preferences/<id>.plist` (settings and hotkey
 bindings), `~/Library/Caches/<id>/` (clipboard history, calculator history, exchange rates, frequent
 emoji), `~/Library/Application Support/<id>/` (the onboarding marker and snippets), the iCloud
@@ -53,7 +53,7 @@ Consequences worth knowing:
 
 - The dev build asks for Accessibility on its own the first time, and starts with **no** hotkeys bound
   and onboarding unseen. Grant and bind once; it persists across rebuilds, because the fixed build path
-  and the `Tinycast Self-Signed` identity keep the TCC grant alive.
+  and the stable signing identity keep the TCC grant alive.
 - Don't bind the same global hotkey in both — whichever registered first wins.
 - The Hyper Key's Caps Lock remap is `hidutil` state, which is **system-wide, not per-bundle**: quitting
   one build clears the remap for the other, which then needs a rebind or a relaunch to restore it.

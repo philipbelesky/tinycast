@@ -41,12 +41,13 @@ armed.
 ## Channels
 
 The KVS entitlement identifier is `$(TeamIdentifierPrefix)$(CFBundleIdentifier)`, so each channel
-that can carry it syncs in its own store and the dev-channel invariant holds with zero code. Today
-only the Debug channel carries it (`TinycastDev.entitlements`): the entitlement needs Apple-issued
-provisioning, and `com.tinycast.app` is registered to a different team, so the release App ID cannot
-be provisioned at all. On any build without the entitlement, the enable-time `synchronize()` probe
-fails and the pane reports that sync isn't available for this build — never a silent stall. Syncing
-on installed builds means moving the release channel to a bundle id the team can register.
+syncs in its own store and the dev-channel invariant holds with zero code. The entitlement lives in
+`TinycastFork.entitlements` for every config, and it needs Apple-issued provisioning — which is the
+reason the fork's channels are `com.belesky.tinycast` / `.dev` rather than upstream's ids:
+`com.tinycast.app` is registered to a different Apple team and could never be provisioned (FORK.md
+divergence 10). On any build signed without the entitlement — upstream's self-signed CI identity —
+the enable-time `synchronize()` probe fails and the pane reports that sync isn't available for this
+build, never a silent stall.
 
 ## Layout
 

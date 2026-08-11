@@ -34,9 +34,11 @@ targets:
       - path: Tinycast
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.tinycast.app
+        # Fork-local ids: com.tinycast.app is another team's App ID, which iCloud provisioning needs.
+        PRODUCT_BUNDLE_IDENTIFIER: com.belesky.tinycast
         INFOPLIST_FILE: Tinycast/Info.plist
-        CODE_SIGN_ENTITLEMENTS: Tinycast/Tinycast.entitlements
+        # Fork-local: upstream's entitlements plus the iCloud KVS grant. FORK.md divergence 10.
+        CODE_SIGN_ENTITLEMENTS: Tinycast/TinycastFork.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: tinycast
         COMBINE_HIDPI_IMAGES: YES
         LD_RUNPATH_SEARCH_PATHS:
@@ -48,6 +50,4 @@ targets:
         # inheriting — and corrupting — the installed app's state.
         Debug:
           PRODUCT_NAME: Tinycast Dev
-          PRODUCT_BUNDLE_IDENTIFIER: com.tinycast.app.dev
-          # Dev-only: com.tinycast.app belongs to another team, so only this App ID can carry iCloud.
-          CODE_SIGN_ENTITLEMENTS: Tinycast/TinycastDev.entitlements
+          PRODUCT_BUNDLE_IDENTIFIER: com.belesky.tinycast.dev

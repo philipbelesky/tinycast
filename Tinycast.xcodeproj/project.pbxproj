@@ -256,6 +256,7 @@
 		0A97C1CFD02D55E955AFA72B /* WindowActionMemory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowActionMemory.swift; sourceTree = "<group>"; };
 		0C3B9645DB2293FA144B5AA2 /* Paster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Paster.swift; sourceTree = "<group>"; };
 		0EDB1EEB97CC5F6B0B81FFD6 /* LauncherRankingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherRankingStore.swift; sourceTree = "<group>"; };
+		100C3011D0ACAF3B2EC61DDB /* TinycastFork.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TinycastFork.entitlements; sourceTree = "<group>"; };
 		102C22092D130BD8E1A07CD6 /* SnippetExpansionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetExpansionCoordinator.swift; sourceTree = "<group>"; };
 		1062FB7F8A6AB66269CE5A29 /* HerdrSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrSettingsView.swift; sourceTree = "<group>"; };
 		10CA256F25AE638EA9EDAACC /* SyncPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncPlan.swift; sourceTree = "<group>"; };
@@ -398,7 +399,6 @@
 		95BFA41B0D7F369A8CF1E013 /* HyperKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HyperKey.swift; sourceTree = "<group>"; };
 		95E3AA9E226F39DBB232501F /* RaycastImportV2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaycastImportV2.swift; sourceTree = "<group>"; };
 		976A1F05AD82DB8A04B3C3F9 /* MessageHUDView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageHUDView.swift; sourceTree = "<group>"; };
-		98451AC80CA4B619DAB9ABB8 /* TinycastDev.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TinycastDev.entitlements; sourceTree = "<group>"; };
 		9979DED5579535D1F0A32DBF /* AppWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppWindowController.swift; sourceTree = "<group>"; };
 		9A7F606D7F71B6FC0CC6ABC8 /* UninstallScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UninstallScanner.swift; sourceTree = "<group>"; };
 		9AAFBFA70EF62B67F7357E0E /* UninstallCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UninstallCoordinator.swift; sourceTree = "<group>"; };
@@ -1224,7 +1224,7 @@
 				4DA7B926405DAC632C056418 /* Info.plist */,
 				45D4BA6E1BD8EB1F96A8927F /* Tinycast.entitlements */,
 				6621A88681E993D49EEF07A3 /* tinycast.icon */,
-				98451AC80CA4B619DAB9ABB8 /* TinycastDev.entitlements */,
+				100C3011D0ACAF3B2EC61DDB /* TinycastFork.entitlements */,
 			);
 			path = Tinycast;
 			sourceTree = "<group>";
@@ -1799,14 +1799,14 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = tinycast;
-				CODE_SIGN_ENTITLEMENTS = Tinycast/TinycastDev.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Tinycast/TinycastFork.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				INFOPLIST_FILE = Tinycast/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.tinycast.app.dev;
+				PRODUCT_BUNDLE_IDENTIFIER = com.belesky.tinycast.dev;
 				PRODUCT_NAME = "Tinycast Dev";
 				SDKROOT = macosx;
 			};
@@ -1816,14 +1816,14 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = tinycast;
-				CODE_SIGN_ENTITLEMENTS = Tinycast/Tinycast.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Tinycast/TinycastFork.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				INFOPLIST_FILE = Tinycast/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.tinycast.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.belesky.tinycast;
 				SDKROOT = macosx;
 			};
 			name = Release;

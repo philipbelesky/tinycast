@@ -32,6 +32,7 @@ covers where the fork **departs** from those.
 | 7 | [Replace-on-import for quicklinks](#7--replace-on-import-for-quicklinks) | Low — one button, one method | Yes, small |
 | 8 | [Linear view opener](#8--linear-view-opener) | Medium — the same `AppEntry.Kind` surface as 4 | Unlikely — niche, and networked |
 | 9 | [Header-clearing edge dissolve](#9--header-clearing-edge-dissolve) | **High** — rewrites the top half of a file upstream calls off-limits | Yes — it fixes a real artifact |
+| 10 | [iCloud settings sync](#10--icloud-settings-sync) | Medium — `project.yml` ids/entitlements, `AppCore`, a `SettingsBackup` split | No — needs provisioning upstream refuses |
 
 Keep each divergence as **its own commit**, never squashed together. Rebasing `philip` onto a new
 `origin/main` then replays them one at a time, and a divergence that upstream has since made redundant
@@ -334,25 +335,32 @@ re-apply this, since upstream's shape and this fork's transparent header cannot 
 ## 10 — iCloud settings sync
 
 **Touches:** a new `Features/Sync/` (two pure models with a harness, a consented store, a Backup-pane
-section), the KVS entitlement in `Tinycast.entitlements`, `AppCore` wiring, and a split of
-`SettingsBackup.swift` that moved `gather`/`apply` to `Backup/Service/SettingsBackupApplying.swift`
-so the payload struct is harness-compilable.
+section), the fork's bundle ids and `TinycastFork.entitlements` in `project.yml`, `AppCore` wiring,
+and a split of `SettingsBackup.swift` that moved `gather`/`apply` to
+`Backup/Service/SettingsBackupApplying.swift` so the payload struct is harness-compilable.
 
 The backup payload mirrored through `NSUbiquitousKeyValueStore`, last writer wins — the whole design
 is decisions entry 36, the invariants in [sync.md](docs/features/sync.md). The consent flag follows
 the `CurrencyRateStore` shape and carries the same warning as divergence 8: `settings-backup-test`
 cannot catch it moving into `AppSettings`; only the invariant forbids it.
 
-The signing constraint is the fork-specific part, and it bites twice.
+The signing constraint is the fork-specific part, and it renamed the channels.
 `com.apple.developer.ubiquity-kvstore-identifier` must be authorized by an Apple-issued provisioning
-profile, which rules out upstream's `Tinycast Self-Signed` CI identity outright. And
-`com.tinycast.app` is registered to a *different* Apple team, so this fork's team cannot provision
-the release App ID either — only `com.tinycast.app.dev` could be registered, which is why the
-entitlement lives in a Debug-only `TinycastDev.entitlements` (first build wants
-`-allowProvisioningUpdates`, which registers the App ID's iCloud capability). On every build without
-the entitlement, KVS no-ops and the enable-time `synchronize()` probe reports sync unavailable — a
-visible dialog, never a silent stall. Sync on installed (Release) builds waits on moving the release
-channel to a team-registrable bundle id, which is a channel migration and its own decision.
+profile, which rules out upstream's `Tinycast Self-Signed` CI identity outright — and upstream's
+`com.tinycast.app` is registered to a *different* Apple team, so this fork's team could never
+provision the release App ID at all. **The fork therefore ships as `com.belesky.tinycast`
+(Release) and `com.belesky.tinycast.dev` (Debug)**, both set in `project.yml` alongside
+`TinycastFork.entitlements` — upstream's entitlements plus the KVS grant, kept as a separate file so
+upstream's `Tinycast.entitlements` stays pristine. A first build on a new machine wants
+`-allowProvisioningUpdates`, which registers the App IDs' iCloud capability. On any build signed
+without the entitlement, KVS no-ops and the enable-time `synchronize()` probe reports sync
+unavailable — a visible dialog, never a silent stall.
+
+The rename resets everything keyed by bundle id on an installed Mac: prefs, caches, Application
+Support, TCC grants, the login item. `Scripts/migrate-channel.sh` copies the data classes across
+(prefs, caches, App Support) from the `com.tinycast.app` ids; Accessibility and Launch at Login must
+be re-granted by hand, and the old app removed. Upstream's `.github/workflows/release.yml` still
+builds under upstream's ids — its builds simply report sync unavailable.
 
 **On merge:** unlikely to be upstreamable while upstream signs self-signed. If upstream ever adopts
 real signing and its own sync, prefer its transport but keep this fork's decision table and the
