@@ -163,7 +163,7 @@ final class AppSettings {
         }
     }
 
-    /// Not a consent flag: the network switch is `LinearViewStore.isEnabled`, which no import
+    /// Not a consent flag: the network switch is `LinearStore.isEnabled`, which no import
     /// can reach. This only decides whether consented views also show in the root search.
     var linearShowInLauncher: Bool {
         didSet { defaults.set(linearShowInLauncher, forKey: Key.linearShowInLauncher.rawValue) }

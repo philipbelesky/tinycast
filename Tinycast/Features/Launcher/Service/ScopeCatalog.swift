@@ -64,7 +64,7 @@ enum ScopeCatalog {
         Entry(
             definition: ScopeDefinition(
                 keyword: "l", id: linear, title: "Linear", symbol: "line.3.horizontal.decrease.circle"),
-            target: .kinds([.linearView]))
+            target: .kinds([.linearTarget]))
     ]
 
     private static let modes: [Entry] = [

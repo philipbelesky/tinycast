@@ -104,7 +104,7 @@ run snippets-test          Tinycast/Platform/NotificationToken.swift \
 run herdr-test             Tinycast/Features/Herdr/Model/HerdrTarget.swift \
                            Tinycast/Features/Herdr/Model/HerdrHost.swift
 run vscode-test            Tinycast/Features/VSCode/Model/VSCodeProject.swift
-run linear-test            Tinycast/Features/Linear/Model/LinearView.swift \
+run linear-test            Tinycast/Features/Linear/Model/LinearTarget.swift \
                            Tinycast/Features/Linear/Model/LinearCredentials.swift \
                            Tinycast/Platform/SubprocessEnvironment.swift
 run websearch-test         Tinycast/Features/WebSearch/Model/WebSearchEngine.swift \

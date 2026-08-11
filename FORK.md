@@ -266,7 +266,8 @@ coordinator, a settings pane), plus the same hook set as divergences 5 and 6 —
 `AppEntry.Kind.linearView`, an `AppIndex` slice, a `LauncherCoordinator` branch, `ScopeCatalog`'s `l`,
 `PaletteCoordinator.onShow`, `AppCore` wiring, `SettingsTab` and the settings/backup registries.
 
-`l payments` lists the views in every workspace the `linear` CLI is logged in to; ↵ opens one. It is
+`l payments` lists every workspace's Linear sidebar — saved views, projects, initiatives; ↵ opens
+one. It is
 the **second networked feature** in the app and the first the fork added, so it copies
 `CurrencyRateStore` rather than inventing a second consent shape: flag on the store, three guards,
 re-checked across the await, cache deleted on withdrawal.

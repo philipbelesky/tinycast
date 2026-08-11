@@ -1,16 +1,17 @@
 # Linear views
 
-`l payments` lists the views in every Linear workspace the `linear` CLI is logged in to; ↵ opens one
-in the desktop app or the browser. Saved views come from Linear; the fixed pages every workspace has —
-Inbox, My Issues, Projects, Initiatives, Settings — are added locally and can be switched off.
+`l payments` lists what is in the sidebar of every Linear workspace the `linear` CLI is logged in to;
+↵ opens one in the desktop app or the browser. Four kinds of target: **saved views**, **projects** and
+**initiatives**, all from Linear, plus the fixed pages every workspace has — Inbox, My Issues,
+Projects, Initiatives, Settings — which are added locally and can be switched off.
 
-Issues are deliberately absent. This feature opens views and nothing else.
+Issues are deliberately absent. This feature opens destinations, not records.
 
 ## Invariants
 
 - **This is a networked feature, so it ships off behind a consent dialog** naming Linear, the cadence
   and what leaves the machine ([decisions.md](../decisions.md) entries 10, 11). The flag lives on
-  `LinearViewStore`, **never** in `AppSettings`, so no settings import can grant it. `linearShowInLauncher`
+  `LinearStore`, **never** in `AppSettings`, so no settings import can grant it. `linearShowInLauncher`
   and `linearDestination` are ordinary settings and are backed up; neither can turn the network on.
 - **Tinycast never sees a Linear token.** Every request goes through the `linear` CLI, which holds the
   credentials in the system keyring. The only file read directly is `~/.config/linear/credentials.toml`,
@@ -21,17 +22,22 @@ Issues are deliberately absent. This feature opens views and nothing else.
   reads its own executable — `linear` is Deno-compiled and exits 1 with "Did not find magic
   bytes". The symptom is vicious: the feature works from a terminal and from a released build,
   and fails only while debugging. See [development.md](../development.md#spawning-a-tool).
-- **`Model/LinearView.swift` and `Model/LinearCredentials.swift` are Foundation-only and pure**, so
+- **`Model/LinearTarget.swift` and `Model/LinearCredentials.swift` are Foundation-only and pure**, so
   `linear-test` compiles the shipped parser, URL builder and icon map.
 - **`linear api` answers HTTP 200 with an `errors` array**, so a failed query is not a thrown error.
-  `LinearView.parse` returns an empty array for anything it cannot read, and the store treats an empty
+  `LinearTarget.parse` returns an empty array for anything it cannot read, and the store treats an empty
   fetch as a failure to report rather than a list to publish — a bad refresh never blanks the cache.
-- **A view id carries its workspace.** Two workspaces can hold a view of the same name — this machine
-  has two called `Terminal` — so the id is `<urlKey>/<path>` and the row reads `philipb › Timekept`.
+- **A target id carries its workspace.** Two workspaces can hold a view of the same name — this
+  machine has two called `Terminal` — so the id is `<urlKey>/<path>` and the row reads
+  `philipb › Timekept`.
+- **A project's path comes from Linear's own `url`, never from its id.** The url carries a name slug
+  (`project/tvtunes-d4539ca85332`) that no client could reconstruct. A url that does not sit under
+  this workspace is dropped rather than opened, so a redirect can never be followed blindly. Saved
+  views are the opposite case: `CustomView` exposes no `url`, so their path *is* built, from `slugId`.
 
 ## Consent and cadence
 
-`LinearViewStore` is shaped after `CurrencyRateStore` and keeps its three guards: a disabled feature
+`LinearStore` is shaped after `CurrencyRateStore` and keeps its three guards: a disabled feature
 does not read its own cache at startup, does not publish rows, and does not fetch. Consent is
 re-checked on the far side of the fetch too, so a toggle flipped off mid-refresh discards the result
 rather than publishing something it no longer authorises.
@@ -44,18 +50,18 @@ that file.
 ## Where a view comes from
 
 ```
-palette opens → PaletteCoordinator.onShow → LinearViewStore.refreshIfStale
+palette opens → PaletteCoordinator.onShow → LinearStore.refreshIfStale
                                                    ↓
               LinearClient.snapshot — one `linear --workspace <slug> api …` per workspace
                                                    ↓
-        LinearView.parse → LinearViewStore.views (+ disk cache) → AppIndex.setLinearViews
+        LinearTarget.parse → LinearStore.views (+ disk cache) → AppIndex.setLinearTargets
                                                    ↓
                     ↵ → LinearCoordinator.open → NSWorkspace, app or browser
 ```
 
-## Opening: two URLs for one view
+## Opening: two URLs for one target
 
-A view is a path under its workspace, and only the prefix differs:
+A target is a path under its workspace, and only the prefix differs:
 
 ```
 browser   https://linear.app/philipb/view/c3f94e04a1e5
@@ -74,10 +80,11 @@ same focus-then-reveal split [herdr](herdr.md) needs.
 
 ## Settings
 
-`Settings → Linear`: the consent switch, show-in-launcher, the destination picker, a built-in views
-toggle, a Refresh Now button with the last-read time, and the [scope keyword](palette.md#choosing-your-own).
+`Settings → Linear`: the consent switch, show-in-launcher, the destination picker, a built-in pages
+toggle, a Refresh Now button with the last-read count and time, and the
+[scope keyword](palette.md#choosing-your-own).
 
 ## Not here
 
-Issues, projects and documents; creating or tracking anything; per-view hotkeys; and any use of the
-API beyond listing view names. The CLI can do all of it — that is not a reason for a launcher to.
+Issues, documents and teams; creating or tracking anything; per-target hotkeys; and any use of the
+API beyond listing names. The CLI can do all of it — that is not a reason for a launcher to.

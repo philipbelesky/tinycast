@@ -16,17 +16,30 @@ enum LinearDestination: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-/// One Linear view — saved by the user, or one of the fixed pages every workspace has.
+/// One thing in a Linear sidebar worth opening: a saved view, a project, an initiative, or one
+/// of the fixed pages every workspace has.
 /// See docs/features/linear.md.
-struct LinearView: Identifiable, Hashable, Sendable {
+struct LinearTarget: Identifiable, Hashable, Sendable {
     enum Kind: String, Sendable {
         case saved
         case builtIn
+        case project
+        case initiative
 
         var label: String {
             switch self {
             case .saved: return "Linear View"
             case .builtIn: return "Linear"
+            case .project: return "Linear Project"
+            case .initiative: return "Linear Initiative"
+            }
+        }
+
+        var symbol: String {
+            switch self {
+            case .project: return "square.stack.3d.up"
+            case .initiative: return "flag"
+            case .saved, .builtIn: return LinearTarget.defaultSymbol
             }
         }
     }
@@ -62,37 +75,69 @@ struct LinearView: Identifiable, Hashable, Sendable {
     }
 
     /// The pages every workspace has, which no query returns because they are routes, not records.
-    static func builtIn(for urlKey: String, workspaceSlug: String) -> [LinearView] {
+    static func builtIn(for urlKey: String, workspaceSlug: String) -> [LinearTarget] {
         [("Inbox", "inbox", "tray"), ("My Issues", "my-issues", "person.crop.circle"),
          ("Projects", "projects", "square.stack.3d.up"),
          ("Initiatives", "initiatives", "flag"), ("Settings", "settings", "gearshape")]
             .map { name, path, symbol in
-                LinearView(
+                LinearTarget(
                     workspaceSlug: workspaceSlug, workspaceURLKey: urlKey, name: name, path: path,
                     kind: .builtIn, symbol: symbol)
             }
     }
 
-    /// The saved views in one `organization`+`customViews` reply. Empty for anything unreadable —
+    /// Everything openable in one workspace's reply. Empty for anything unreadable —
     /// `linear api` answers 200 with an `errors` array, so a failed query lands here, not in a throw.
-    static func parse(_ payload: Data, workspaceSlug: String) -> [LinearView] {
+    static func parse(_ payload: Data, workspaceSlug: String) -> [LinearTarget] {
         guard let root = try? JSONSerialization.jsonObject(with: payload) as? [String: Any],
             let data = root["data"] as? [String: Any],
             let organization = data["organization"] as? [String: Any],
-            let urlKey = (organization["urlKey"] as? String)?.nilIfBlank,
-            let nodes = (data["customViews"] as? [String: Any])?["nodes"] as? [[String: Any]]
+            let urlKey = (organization["urlKey"] as? String)?.nilIfBlank
         else { return [] }
+        // A workspace with no saved views still has projects worth listing.
+        let nodes = (data["customViews"] as? [String: Any])?["nodes"] as? [[String: Any]] ?? []
 
-        return nodes.compactMap { node -> LinearView? in
+        let views = nodes.compactMap { node -> LinearTarget? in
             guard let name = (node["name"] as? String)?.nilIfBlank,
                 let slugID = (node["slugId"] as? String)?.nilIfBlank
             else { return nil }
-            return LinearView(
+            return LinearTarget(
                 workspaceSlug: workspaceSlug, workspaceURLKey: urlKey, name: name,
                 path: "view/" + slugID, kind: .saved,
                 symbol: symbol(forLinearIcon: node["icon"] as? String))
         }
-        .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        let sidebar = [("projects", Kind.project), ("initiatives", Kind.initiative)]
+            .flatMap { key, kind in
+                linked(in: data, key: key, kind: kind, urlKey: urlKey, workspaceSlug: workspaceSlug)
+            }
+        return (views + sidebar)
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+    }
+
+    /// Projects and initiatives sit beside the saved views in the sidebar and are just as worth
+    /// opening. Linear returns a full url for each — with a name slug no client could reconstruct —
+    /// so the path is taken from that rather than built from an id.
+    private static func linked(
+        in data: [String: Any], key: String, kind: Kind, urlKey: String, workspaceSlug: String
+    ) -> [LinearTarget] {
+        let nodes = (data[key] as? [String: Any])?["nodes"] as? [[String: Any]] ?? []
+        return nodes.compactMap { node in
+            guard let name = (node["name"] as? String)?.nilIfBlank,
+                let address = (node["url"] as? String)?.nilIfBlank,
+                let path = path(inWorkspace: urlKey, of: address)
+            else { return nil }
+            return LinearTarget(
+                workspaceSlug: workspaceSlug, workspaceURLKey: urlKey, name: name, path: path,
+                kind: kind, symbol: kind.symbol)
+        }
+    }
+
+    /// Everything after the workspace, or nil when the url belongs somewhere else entirely — which
+    /// keeps a redirect or a stray host from being reopened as if it were this workspace's.
+    static func path(inWorkspace urlKey: String, of address: String) -> String? {
+        let prefix = "https://linear.app/" + urlKey + "/"
+        guard address.hasPrefix(prefix) else { return nil }
+        return String(address.dropFirst(prefix.count)).nilIfBlank
     }
 
     /// Linear names its icons in its own vocabulary; anything unmapped keeps the view visible.

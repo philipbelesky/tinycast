@@ -3,10 +3,13 @@ import Foundation
 /// Talks to Linear through the `linear` CLI, which holds the credentials so this app never does.
 /// See docs/features/linear.md.
 enum LinearClient {
-    /// One round trip per workspace: the url key the web app uses, plus every saved view.
+    /// One round trip per workspace: the url key the web app uses, then everything in its
+    /// sidebar worth opening. Projects and initiatives carry their own url; saved views do not.
     static let query = """
         { organization { urlKey name } \
-        customViews(first: 250) { nodes { id name slugId icon } } }
+        customViews(first: 250) { nodes { id name slugId icon } } \
+        projects(first: 250) { nodes { id name url } } \
+        initiatives(first: 250) { nodes { id name url } } }
         """
 
     /// A GUI app inherits none of a login shell's PATH, so the binary is looked for by hand.
@@ -58,7 +61,7 @@ enum LinearClient {
                     snapshot.failures.append(describe(slug, result))
                     continue
                 }
-                let saved = LinearView.parse(result.output, workspaceSlug: slug)
+                let saved = LinearTarget.parse(result.output, workspaceSlug: slug)
                 // The url key comes back with the views, so built-ins can only be named once a
                 // workspace has answered at least once.
                 guard let urlKey = saved.first?.workspaceURLKey else {
@@ -68,9 +71,9 @@ enum LinearClient {
                     continue
                 }
                 if includingBuiltIn {
-                    snapshot.views += LinearView.builtIn(for: urlKey, workspaceSlug: slug)
+                    snapshot.targets += LinearTarget.builtIn(for: urlKey, workspaceSlug: slug)
                 }
-                snapshot.views += saved
+                snapshot.targets += saved
             }
             return snapshot
         }.value
@@ -79,7 +82,7 @@ enum LinearClient {
     /// What a refresh found, and what it could not. A networked feature that fails silently is
     /// impossible to support, so every workspace that does not answer says why.
     struct Snapshot: Sendable {
-        var views: [LinearView] = []
+        var targets: [LinearTarget] = []
         var failures: [String] = []
     }
 

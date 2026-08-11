@@ -4,7 +4,7 @@ import Foundation
 /// same consent-outside-`AppSettings` rule. See docs/features/linear.md#consent.
 @MainActor
 @Observable
-final class LinearViewStore {
+final class LinearStore {
     static let provider = "Linear"
     static let providerURL = URL(string: "https://linear.app")!
     /// Views change rarely and each refresh costs one request per workspace, so this is generous.
@@ -14,7 +14,7 @@ final class LinearViewStore {
     private(set) var isEnabled: Bool
 
     /// Always empty without consent, whatever is left in the cache.
-    private(set) var views: [LinearView] = []
+    private(set) var targets: [LinearTarget] = []
     private(set) var lastRefreshed: Date?
     /// Why the last refresh came back short, verbatim from the CLI. Nil when it went fine.
     private(set) var lastError: String?
@@ -28,7 +28,7 @@ final class LinearViewStore {
         }
     }
 
-    @ObservationIgnored var onChange: (([LinearView]) -> Void)?
+    @ObservationIgnored var onChange: (([LinearTarget]) -> Void)?
 
     private static let consentKey = "linearViewsEnabled"
     private static let builtInKey = "linearIncludesBuiltInViews"
@@ -61,7 +61,7 @@ final class LinearViewStore {
         guard isEnabled, let data = try? Data(contentsOf: fileURL),
             let cache = try? JSONDecoder().decode(Cache.self, from: data)
         else { return }
-        views = cache.views.map(Self.view(from:))
+        targets = cache.views.map(Self.target(from:))
         lastRefreshed = cache.fetchedAt
     }
 
@@ -89,11 +89,11 @@ final class LinearViewStore {
         // withdrawn consent must not be handed a result it never authorised.
         guard isEnabled else { return false }
         lastError = snapshot.failures.isEmpty ? nil : snapshot.failures.joined(separator: "; ")
-        let fetched = snapshot.views
+        let fetched = snapshot.targets
         guard !fetched.isEmpty else { return false }
         lastRefreshed = Date()
         store(fetched)
-        views = fetched
+        targets = fetched
         // Published unconditionally: `AppIndex` already ignores an identical slice, and skipping it
         // here left a restored-from-disk list unpublished whenever a refresh confirmed it.
         onChange?(fetched)
@@ -109,19 +109,19 @@ final class LinearViewStore {
             Task { await refresh(force: true) }
             return
         }
-        views = []
+        targets = []
         lastRefreshed = nil
         lastError = nil
         try? FileManager.default.removeItem(at: fileURL)
         onChange?([])
     }
 
-    func view(id: String) -> LinearView? { views.first { $0.id == id } }
+    func target(id: String) -> LinearTarget? { targets.first { $0.id == id } }
 
-    private func store(_ views: [LinearView]) {
+    private func store(_ targets: [LinearTarget]) {
         let cache = Cache(
             fetchedAt: Date(),
-            views: views.map {
+            views: targets.map {
                 Cache.CachedView(
                     workspaceSlug: $0.workspaceSlug, workspaceURLKey: $0.workspaceURLKey,
                     name: $0.name, path: $0.path, kind: $0.kind.rawValue, symbol: $0.symbol)
@@ -130,10 +130,10 @@ final class LinearViewStore {
         try? data.write(to: fileURL, options: .atomic)
     }
 
-    private static func view(from cached: Cache.CachedView) -> LinearView {
-        LinearView(
+    private static func target(from cached: Cache.CachedView) -> LinearTarget {
+        LinearTarget(
             workspaceSlug: cached.workspaceSlug, workspaceURLKey: cached.workspaceURLKey,
             name: cached.name, path: cached.path,
-            kind: LinearView.Kind(rawValue: cached.kind) ?? .saved, symbol: cached.symbol)
+            kind: LinearTarget.Kind(rawValue: cached.kind) ?? .saved, symbol: cached.symbol)
     }
 }

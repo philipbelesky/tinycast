@@ -13,7 +13,7 @@ struct AppEntry: Identifiable, Hashable, Sendable {
         case webSearch
         case herdrTarget
         case vsCodeProject
-        case linearView
+        case linearTarget
 
         var descriptor: KindDescriptor {
             switch self {
@@ -61,9 +61,9 @@ struct AppEntry: Identifiable, Hashable, Sendable {
                 return KindDescriptor(
                     label: "VS Code", sectionTitle: "VS Code Projects",
                     openVerb: "Open in VS Code", canRevealInFinder: true, isSymbolIcon: false)
-            case .linearView:
+            case .linearTarget:
                 return KindDescriptor(
-                    label: "Linear", sectionTitle: "Linear Views",
+                    label: "Linear", sectionTitle: "Linear",
                     openVerb: "Open in Linear", canRevealInFinder: false, isSymbolIcon: true)
             }
         }
@@ -119,7 +119,7 @@ struct AppEntry: Identifiable, Hashable, Sendable {
         case .quicklink:
             return Quicklink.id(fromEntryID: id).map { .quicklink(id: $0) }
         // A web search needs a query; a herdr id and a project path can vanish between launches.
-        case .command, .snippet, .webSearch, .herdrTarget, .vsCodeProject, .linearView:
+        case .command, .snippet, .webSearch, .herdrTarget, .vsCodeProject, .linearTarget:
             return nil
         }
     }
@@ -144,7 +144,7 @@ struct AppEntry: Identifiable, Hashable, Sendable {
             return WebSearchEngine.engine(id: WebSearchEngine.id(fromEntryID: id) ?? "")?.symbol
                 ?? WebSearchEngine.default.symbol
         case .herdrTarget: return "macwindow"
-        case .application, .systemSettings, .vsCodeProject, .linearView: return "questionmark"
+        case .application, .systemSettings, .vsCodeProject, .linearTarget: return "questionmark"
         }
     }
 
@@ -264,12 +264,12 @@ final class AppIndex {
     }
 
     /// Replaces the Linear slice. Empty without consent, which the store enforces rather than this.
-    func setLinearViews(_ views: [LinearView]) {
+    func setLinearTargets(_ views: [LinearTarget]) {
         let entries = views.map { view in
             AppEntry(
                 id: view.entryID, name: view.displayName,
                 url: URL(string: "tinycast://linear/" + view.kind.rawValue)!,
-                bundleID: nil, kind: .linearView,
+                bundleID: nil, kind: .linearTarget,
                 // So the workspace name alone finds everything in it.
                 matchAliases: [view.workspaceURLKey, view.name],
                 symbolName: view.symbol)

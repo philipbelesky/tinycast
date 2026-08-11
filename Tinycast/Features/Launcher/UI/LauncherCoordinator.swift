@@ -65,8 +65,8 @@ final class LauncherCoordinator {
             windowCommandCoordinator.runWindowCommand(id: command.id)
             return
         }
-        if app.kind == .linearView {
-            guard let id = LinearView.id(fromEntryID: app.id) else { return }
+        if app.kind == .linearTarget {
+            guard let id = LinearTarget.id(fromEntryID: app.id) else { return }
             core.linearCoordinator.open(id: id)
             return
         }
@@ -111,7 +111,7 @@ final class LauncherCoordinator {
             let snippetID = String(app.id.dropFirst("snippet:".count))
             snippetExpansion.expandSnippet(id: snippetID, targetApp: previous)
         case .command, .customCommand, .systemAction, .windowCommand, .quicklink,
-            .webSearch, .herdrTarget, .vsCodeProject, .linearView:
+            .webSearch, .herdrTarget, .vsCodeProject, .linearTarget:
             break  // handled above
         }
     }

@@ -5,7 +5,7 @@ import SwiftUI
 struct LinearSettingsView: View {
     @Environment(AppCore.self) private var core
     @Environment(AppSettings.self) private var settings
-    private var store: LinearViewStore { core.linear }
+    private var store: LinearStore { core.linear }
     @State private var askingConsent = false
     @State private var refreshing = false
 
@@ -13,7 +13,7 @@ struct LinearSettingsView: View {
         @Bindable var settings = settings
         return Form {
             LauncherItemsSection(
-                kind: .linearView,
+                kind: .linearTarget,
                 header: "Linear",
                 searchPrompt: "Search views…")
 
@@ -103,7 +103,7 @@ struct LinearSettingsView: View {
     private var viewsStatus: String {
         if let lastError = store.lastError { return lastError }
         guard let refreshed = store.lastRefreshed else { return "Not fetched yet." }
-        return "\(store.views.count) views, last read \(refreshed.formatted(.relative(presentation: .named)))."
+        return "\(store.targets.count) views, last read \(refreshed.formatted(.relative(presentation: .named)))."
     }
 }
 
@@ -123,8 +123,9 @@ private struct LinearConsentSheet: View {
             }
 
             Text(
-                "Tinycast asks \(LinearViewStore.provider) for the names of your saved views, at "
-                + "most every six hours and only when you open the palette. It goes through the "
+                "Tinycast asks \(LinearStore.provider) for the names of your saved views, projects "
+                + "and initiatives, at most every six hours and only when you open the palette. "
+                + "It goes through the "
                 + "linear command line tool, so this app never sees your API token — the request "
                 + "covers \(workspaces == 1 ? "the workspace" : "the \(workspaces) workspaces") "
                 + "that tool is logged in to. No issue contents are read, and nothing you type is "
@@ -135,9 +136,9 @@ private struct LinearConsentSheet: View {
             .fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: Theme.Spacing.lg) {
-                Link(destination: LinearViewStore.providerURL) {
+                Link(destination: LinearStore.providerURL) {
                     HStack(spacing: Theme.Spacing.xs) {
-                        Text(LinearViewStore.providerURL.host() ?? "Provider")
+                        Text(LinearStore.providerURL.host() ?? "Provider")
                         Image(systemName: "arrow.up.right.square")
                     }
                     .font(.callout)

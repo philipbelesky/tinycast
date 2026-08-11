@@ -3,13 +3,13 @@ import AppKit
 /// Opens a Linear view, in the desktop app or the browser. See docs/features/linear.md.
 @MainActor
 final class LinearCoordinator {
-    private let store: LinearViewStore
+    private let store: LinearStore
     private let settings: AppSettings
     private let appIndex: AppIndex
     private let paletteCoordinator: PaletteCoordinator
 
     init(
-        store: LinearViewStore, settings: AppSettings, appIndex: AppIndex,
+        store: LinearStore, settings: AppSettings, appIndex: AppIndex,
         paletteCoordinator: PaletteCoordinator
     ) {
         self.store = store
@@ -20,7 +20,7 @@ final class LinearCoordinator {
 
     /// Republishes the launcher slice. Consent is the store's, so this only reads what it holds.
     func applyLinearPresence() {
-        appIndex.setLinearViews(settings.linearShowInLauncher ? store.views : [])
+        appIndex.setLinearTargets(settings.linearShowInLauncher ? store.targets : [])
     }
 
     func refresh() async {
@@ -28,7 +28,7 @@ final class LinearCoordinator {
     }
 
     func open(id: String) {
-        guard let view = store.view(id: id) else { return }
+        guard let view = store.target(id: id) else { return }
         let destination = settings.linearDestination
         guard let url = view.url(opening: destination) else { return }
         paletteCoordinator.hidePalette(restoreFocus: false)

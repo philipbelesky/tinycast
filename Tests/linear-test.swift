@@ -50,7 +50,7 @@ struct LinearTest {
 
         // MARK: - Views
 
-        let views = LinearView.parse(Data(payload.utf8), workspaceSlug: "philipb")
+        let views = LinearTarget.parse(Data(payload.utf8), workspaceSlug: "philipb")
         check("the workspace's url key is read", views.first?.workspaceURLKey == "philipb")
         check("a nameless view is dropped", !views.contains { $0.name.trimmed.isEmpty })
         check("a view with no slug is dropped, having nothing to open", views.count == 3)
@@ -63,14 +63,14 @@ struct LinearTest {
             views.first { $0.name == "Next Issues" }?.symbol == "checklist")
         check(
             "an unmapped icon falls back rather than dropping the view",
-            views.first { $0.name == "Projectless" }?.symbol == LinearView.defaultSymbol)
+            views.first { $0.name == "Projectless" }?.symbol == LinearTarget.defaultSymbol)
 
         check(
             "a GraphQL error payload yields no views rather than a crash",
-            LinearView.parse(Data(#"{"errors":[{"message":"nope"}]}"#.utf8), workspaceSlug: "x")
+            LinearTarget.parse(Data(#"{"errors":[{"message":"nope"}]}"#.utf8), workspaceSlug: "x")
                 .isEmpty)
         check(
-            "junk yields no views", LinearView.parse(Data("not json".utf8), workspaceSlug: "x").isEmpty)
+            "junk yields no views", LinearTarget.parse(Data("not json".utf8), workspaceSlug: "x").isEmpty)
 
         // MARK: - Destinations
 
@@ -88,12 +88,12 @@ struct LinearTest {
                 == "linear://linear.app/philipb/view/c3f94e04a1e5")
         check(
             "a built-in view opens a fixed path",
-            LinearView.builtIn(for: "philipb", workspaceSlug: "philipb")
+            LinearTarget.builtIn(for: "philipb", workspaceSlug: "philipb")
                 .first { $0.name == "Inbox" }?.url(opening: .browser)?.absoluteString
                 == "https://linear.app/philipb/inbox")
         check(
             "built-ins are marked as such, so they can be hidden as a group",
-            LinearView.builtIn(for: "philipb", workspaceSlug: "philipb").allSatisfy {
+            LinearTarget.builtIn(for: "philipb", workspaceSlug: "philipb").allSatisfy {
                 $0.kind == .builtIn
             })
 
@@ -104,17 +104,58 @@ struct LinearTest {
             timekept.displayName == "philipb › Timekept")
         check(
             "an entry id round-trips",
-            LinearView.id(fromEntryID: timekept.entryID) == timekept.id)
+            LinearTarget.id(fromEntryID: timekept.entryID) == timekept.id)
         check(
             "a foreign entry id yields nothing",
-            LinearView.id(fromEntryID: "herdr:w2") == nil)
+            LinearTarget.id(fromEntryID: "herdr:w2") == nil)
         // Two workspaces can both hold a view called "Terminal"; only the id keeps them apart.
-        let other = LinearView.parse(
+        let other = LinearTarget.parse(
             Data(payload.replacingOccurrences(of: "philipb", with: "plato").utf8),
             workspaceSlug: "platopayments")
         check(
             "the same view name in two workspaces yields two ids",
             Set(views.map(\.id)).isDisjoint(with: Set(other.map(\.id))))
+
+        // MARK: - Projects and initiatives
+
+        // A project is what sits in the sidebar next to the saved views, and Linear hands back a
+        // full url for it — including a name slug no client could reconstruct — so the path is
+        // taken from that rather than built.
+        let sidebar = """
+            {"data":{"organization":{"urlKey":"philipb","name":"philipb"},
+            "customViews":{"nodes":[]},
+            "projects":{"nodes":[
+            {"id":"p1","name":"TVtunes","url":"https://linear.app/philipb/project/tvtunes-d4539ca85332"},
+            {"id":"p2","name":"No URL","url":null},
+            {"id":"p3","name":"Elsewhere","url":"https://example.com/philipb/project/nope"}]},
+            "initiatives":{"nodes":[
+            {"id":"i1","name":"Q3","url":"https://linear.app/philipb/initiative/q3-abc123"}]}}}
+            """
+        let mixed = LinearTarget.parse(Data(sidebar.utf8), workspaceSlug: "philipb")
+        check(
+            "a project becomes a target",
+            mixed.contains { $0.name == "TVtunes" && $0.kind == .project })
+        check(
+            "its path comes from Linear's own url, name slug and all",
+            mixed.first { $0.name == "TVtunes" }?.path == "project/tvtunes-d4539ca85332")
+        check(
+            "so the browser url is the one Linear gave",
+            mixed.first { $0.name == "TVtunes" }?.url(opening: .browser)?.absoluteString
+                == "https://linear.app/philipb/project/tvtunes-d4539ca85332")
+        check(
+            "and the desktop url is that path under linear://",
+            mixed.first { $0.name == "TVtunes" }?.url(opening: .app)?.absoluteString
+                == "linear://linear.app/philipb/project/tvtunes-d4539ca85332")
+        check(
+            "an initiative becomes a target too",
+            mixed.contains { $0.name == "Q3" && $0.kind == .initiative })
+        check("a project with no url is dropped", !mixed.contains { $0.name == "No URL" })
+        check(
+            "a url outside the workspace is dropped rather than opened",
+            !mixed.contains { $0.name == "Elsewhere" })
+        check(
+            "a payload carrying only projects still yields the workspace's url key",
+            mixed.first?.workspaceURLKey == "philipb")
 
         // MARK: - The environment a spawned tool inherits
 

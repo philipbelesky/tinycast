@@ -210,9 +210,9 @@ Activation is the one launcher path that also raises a *different* app afterward
 
 ## Linear views
 
-`AppEntry.Kind.linearView` publishes the saved views of every logged-in Linear workspace, plus each
-one's built-in pages. It is the only launcher slice behind a **consent gate**: the switch lives on
-`LinearViewStore`, not `AppSettings`, so the slice is empty until the user has said yes to a dialog
+`AppEntry.Kind.linearTarget` publishes what is in every logged-in Linear workspace's sidebar — saved
+views, projects, initiatives — plus each one's built-in pages. It is the only launcher slice behind a **consent gate**: the switch lives on
+`LinearStore`, not `AppSettings`, so the slice is empty until the user has said yes to a dialog
 naming the provider. See [linear.md](linear.md).
 
 ## Web search

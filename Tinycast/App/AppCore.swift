@@ -57,7 +57,7 @@ final class AppCore {
         store: vsCode, settings: settings, appIndex: appIndex,
         paletteCoordinator: paletteCoordinator)
 
-    @ObservationIgnored private(set) lazy var linear = LinearViewStore()
+    @ObservationIgnored private(set) lazy var linear = LinearStore()
     @ObservationIgnored private(set) lazy var linearCoordinator = LinearCoordinator(
         store: linear, settings: settings, appIndex: appIndex,
         paletteCoordinator: paletteCoordinator)
