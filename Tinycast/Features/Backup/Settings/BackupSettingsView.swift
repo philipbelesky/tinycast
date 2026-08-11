@@ -46,6 +46,8 @@ struct BackupSettingsView: View {
                 Text("Tinycast")
             }
 
+            SyncSettingsSection()
+
             Section {
                 LabeledContent {
                     Button("Choose…") { chooseRaycastFile() }

@@ -39,6 +39,7 @@ open with an `## Invariants` section; read it before changing anything in that a
 [custom commands](features/custom-commands.md) ·
 [uninstall](features/uninstall.md) ·
 [backup](features/backup.md) ·
+[sync](features/sync.md) ·
 [Raycast import](features/raycast-import.md)
 
 ## Contributing

@@ -52,7 +52,7 @@ frosted surface. Dark mode is not a switch; it is a second design.
 
 ### 5 — There is no XCTest target
 
-The test suite is `Scripts/run-tests.sh`, driving twenty-four standalone harnesses.
+The test suite is `Scripts/run-tests.sh`, driving twenty-five standalone harnesses.
 
 **Why:** each harness compiles the *shipped* sources it guards, so the pure/effect boundary is enforced by
 compilation rather than by convention — a stray `import AppKit` in a `Model/` folder breaks the build of a
@@ -473,3 +473,30 @@ The one-per-pause debounce is part of the promise the dialog makes, not a perfor
 
 **What would change this:** an engine whose suggest endpoint needs a key, which would put a credential
 in the picture and change what the dialog has to say.
+
+### 36 — Settings sync is the backup payload through iCloud key-value storage, last writer wins
+
+`SettingsSyncStore` mirrors `SettingsBackup` — wholesale, unchanged — through one
+`NSUbiquitousKeyValueStore` key, as a compact envelope whose `writtenAt`/`writtenBy` are display
+metadata only. Its consent flag is `settingsSyncEnabled` on the store. `SyncPlan.decide` picks a
+direction from content hashes alone; when both sides changed, the trigger breaks the tie. After an
+apply, the local bookkeeping hash is **re-gathered from live state**, never copied from the remote.
+
+**Why:** KVS is zero-infrastructure and offline-tolerant, and the payload is a few KB against its
+1 MB cap. Reusing `SettingsBackup` means the coverage harness and the `snippetsEnabled` exclusion
+(entries 7, 9) guard the synced payload structurally rather than by convention. The tie-break rule is
+"the winner is whoever the user touched last": on the local-change trigger the user just touched a
+control *here*, and clobbering it would visibly flip their toggle back; at startup or on a push the
+remote envelope is the freshest action anywhere. The re-gather closes a loop: apply skips conflicting
+hotkeys, so a Mac that bookmarked the remote hash as its own state would see a phantom local change
+and two Macs would rewrite iCloud at each other forever. Enable-time consent replaces the manual
+import's executable-confirmation gate — that gate defends against a foreign file, while a synced
+envelope is self-authored under the same iCloud account, and a dialog per background apply would be a
+storm — so the consent sheet says plainly that other Macs' shortcuts and commands apply
+automatically, and every apply reports a HUD summary. The envelope is unversioned on purpose: every
+payload field is optional, so a mixed-version pair of Macs degrades to a partial apply (entry 21's
+"internal formats change freely" already covers the rest).
+
+**What would change this:** a payload approaching the 1 MB cap (snippet bodies, clipboard history),
+which is CloudKit or file-sync territory, or a real need for per-field merge, which hash-based
+last-writer-wins cannot express.

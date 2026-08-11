@@ -32,7 +32,7 @@ Independently of the folder tree, every mature subsystem has converged on the sa
 └──────────────────────────────────┬─────────────────────────────────────────┘
                                    │ published through
 ┌─ OBSERVABLE STATE ───────────────▼─────────────────────────────────────────┐
-│ 26 @MainActor @Observable stores, sessions, indices and State types        │
+│ 27 @MainActor @Observable stores, sessions, indices and State types        │
 └──────────────────────────────────┬─────────────────────────────────────────┘
                                    │ rendered by
 ┌─ VIEW ───────────────────────────▼─────────────────────────────────────────┐
@@ -123,7 +123,7 @@ imperatively from AppKit.
 
 ## Observation
 
-26 types are `@MainActor @Observable`. Nothing uses `ObservableObject` or `@Published`, and views read
+27 types are `@MainActor @Observable`. Nothing uses `ObservableObject` or `@Published`, and views read
 state through `@Environment` rather than `@EnvironmentObject`.
 
 Three things about this model are easy to get wrong:
@@ -180,7 +180,7 @@ Tinycast/
   Features/
     PaletteRowIndex.swift   the flat selection index — palette-owned, so it sits at the top
     Launcher/ Clipboard/ Calculator/ Emoji/ Quicklinks/ Snippets/ Uninstall/
-    SystemActions/ CustomCommands/ HotKeys/ Backup/ WindowManagement/ Onboarding/
+    SystemActions/ CustomCommands/ HotKeys/ Backup/ Sync/ WindowManagement/ Onboarding/
         Model/      pure — the harness inputs
         Service/    effects — stores, monitors, runners, AppKit glue
         UI/         screens, views, and the feature's coordinator

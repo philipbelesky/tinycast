@@ -49,3 +49,5 @@ targets:
         Debug:
           PRODUCT_NAME: Tinycast Dev
           PRODUCT_BUNDLE_IDENTIFIER: com.tinycast.app.dev
+          # Dev-only: com.tinycast.app belongs to another team, so only this App ID can carry iCloud.
+          CODE_SIGN_ENTITLEMENTS: Tinycast/TinycastDev.entitlements

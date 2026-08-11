@@ -326,6 +326,33 @@ recorded there as well as here.
 **On merge:** take upstream's file only if it has grown a material behind the header; otherwise
 re-apply this, since upstream's shape and this fork's transparent header cannot both be right.
 
+## 10 — iCloud settings sync
+
+**Touches:** a new `Features/Sync/` (two pure models with a harness, a consented store, a Backup-pane
+section), the KVS entitlement in `Tinycast.entitlements`, `AppCore` wiring, and a split of
+`SettingsBackup.swift` that moved `gather`/`apply` to `Backup/Service/SettingsBackupApplying.swift`
+so the payload struct is harness-compilable.
+
+The backup payload mirrored through `NSUbiquitousKeyValueStore`, last writer wins — the whole design
+is decisions entry 36, the invariants in [sync.md](docs/features/sync.md). The consent flag follows
+the `CurrencyRateStore` shape and carries the same warning as divergence 8: `settings-backup-test`
+cannot catch it moving into `AppSettings`; only the invariant forbids it.
+
+The signing constraint is the fork-specific part, and it bites twice.
+`com.apple.developer.ubiquity-kvstore-identifier` must be authorized by an Apple-issued provisioning
+profile, which rules out upstream's `Tinycast Self-Signed` CI identity outright. And
+`com.tinycast.app` is registered to a *different* Apple team, so this fork's team cannot provision
+the release App ID either — only `com.tinycast.app.dev` could be registered, which is why the
+entitlement lives in a Debug-only `TinycastDev.entitlements` (first build wants
+`-allowProvisioningUpdates`, which registers the App ID's iCloud capability). On every build without
+the entitlement, KVS no-ops and the enable-time `synchronize()` probe reports sync unavailable — a
+visible dialog, never a silent stall. Sync on installed (Release) builds waits on moving the release
+channel to a team-registrable bundle id, which is a channel migration and its own decision.
+
+**On merge:** unlikely to be upstreamable while upstream signs self-signed. If upstream ever adopts
+real signing and its own sync, prefer its transport but keep this fork's decision table and the
+re-gather bookkeeping rule (entry 36), which are transport-independent.
+
 ## Merging upstream
 
 ```sh

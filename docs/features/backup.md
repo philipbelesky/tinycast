@@ -16,7 +16,9 @@ feature lives in `Features/Backup/`.
 - **Consent flags never live in `AppSettings`.** `CurrencyRateStore` owns its own, precisely so a backup
   cannot carry it. A new networked feature follows that shape.
 - The format is internal and may change freely. The only requirement is that **export → import
-  round-trips within one build** — there is no version field and no migration.
+  round-trips within one build** — there is no version field and no migration. iCloud sync
+  ([sync.md](sync.md)) carries this same payload between Macs; every field being optional is what
+  lets a mixed-version pair degrade to a partial apply instead of failing.
 
 ## Layout
 
@@ -24,6 +26,7 @@ feature lives in `Features/Backup/`.
 | --- | --- |
 | `Model/SettingsBackup.swift` | The `SettingsData` payload and its `Codable` shape |
 | `Model/SettingsBackupCoverage.swift` | The coverage declaration the harness checks |
+| `Service/SettingsBackupApplying.swift` | `gather(from:)` / `apply(to:)` — the live-store half |
 | `Model/RaycastFormat.swift` | Detects v1 vs v2 — the only branch between the two |
 | `Model/RaycastV1Decoder.swift` | v1 decrypt and decode |
 | `Model/RaycastImportV1.swift` | v1 → Tinycast field mapping and validation |

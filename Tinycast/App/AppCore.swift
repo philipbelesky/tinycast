@@ -63,6 +63,8 @@ final class AppCore {
         store: linear, settings: settings, appIndex: appIndex,
         paletteCoordinator: paletteCoordinator)
 
+    @ObservationIgnored private(set) lazy var settingsSync = SettingsSyncStore(core: self)
+
     @ObservationIgnored private(set) lazy var webSearchCoordinator = WebSearchCoordinator(
         paletteCoordinator: paletteCoordinator,
         clipboardHistory: { [unowned self] in self.snippetExpansion.clipboardHistoryForExpansion() })
@@ -218,6 +220,9 @@ final class AppCore {
 
             observeFeatureSwitches()
 
+            // After the quicklink load and hotkey start, so a first gather never syncs an empty state.
+            settingsSync.start()
+
             // First launch binds no hotkey, so guide once; the marker is written at show-time.
             if !OnboardingState.hasOnboarded {
                 OnboardingState.markShown()
@@ -256,6 +261,7 @@ final class AppCore {
         snippetTextInjector.prepareForTermination()
         snippetListener.stop()
         snippetsStore.stop()
+        settingsSync.stop()
     }
 
     // MARK: - Feature switches
