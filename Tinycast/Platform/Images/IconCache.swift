@@ -16,8 +16,8 @@ enum IconCache {
 
     /// Cache-only lookups (never decode) so a row can paint an already-warm icon on the same frame.
     static func cached(forFile path: String) -> NSImage? { cache.object(forKey: path as NSString) }
-    static func cachedSymbol(named name: String) -> NSImage? {
-        cache.object(forKey: ("symbol:" + name) as NSString)
+    static func cachedSymbol(named name: String, tint: ScopeTint? = nil) -> NSImage? {
+        cache.object(forKey: symbolKey(name, tint: tint))
     }
 
     /// A freshly-decoded, thereafter-immutable `NSImage` is safe to move across the actor boundary.
@@ -31,10 +31,10 @@ enum IconCache {
             return Decoded(image: icon(forFile: path))
         }.value.image
     }
-    static func loadSymbolAsync(named name: String) async -> NSImage? {
-        if let cached = cachedSymbol(named: name) { return cached }
+    static func loadSymbolAsync(named name: String, tint: ScopeTint? = nil) async -> NSImage? {
+        if let cached = cachedSymbol(named: name, tint: tint) { return cached }
         return await Task.detached(priority: .userInitiated) {
-            Decoded(image: symbolIcon(named: name))
+            Decoded(image: symbolIcon(named: name, tint: tint))
         }.value.image
     }
 
@@ -46,10 +46,18 @@ enum IconCache {
         return icon
     }
 
-    /// Command icons: a symbol on a tile, in the same shape as a real app icon.
-    static func symbolIcon(named name: String) -> NSImage {
-        let key = "symbol:" + name as NSString
+    /// The variant is part of the key, so one symbol can be both an inked tile and a tinted one.
+    private static func symbolKey(_ name: String, tint: ScopeTint?) -> NSString {
+        ("symbol:" + name + ":" + (tint?.rawValue ?? "")) as NSString
+    }
+
+    /// Command icons: a symbol on a tile, in the same shape as a real app icon. A tint reverses the
+    /// glyph out of a saturated fill instead — see docs/ui.md#category-tiles.
+    static func symbolIcon(named name: String, tint: ScopeTint? = nil) -> NSImage {
+        let key = symbolKey(name, tint: tint)
         if let cached = cache.object(forKey: key) { return cached }
+        let fill = tint.map(Theme.Colors.tile) ?? .black.withAlphaComponent(0.08)
+        let ink: NSColor = tint == nil ? .black.withAlphaComponent(0.80) : .white
 
         let side = displayPixel
         let image = NSImage(size: NSSize(width: side, height: side), flipped: false) { _ in
@@ -58,11 +66,10 @@ enum IconCache {
             let corner = 9 * Theme.scale
             let tile = NSRect(x: 0, y: 0, width: side, height: side)
                 .insetBy(dx: margin, dy: margin)
-            NSColor.black.withAlphaComponent(0.08).setFill()
+            fill.setFill()
             NSBezierPath(roundedRect: tile, xRadius: corner, yRadius: corner).fill()
 
-            guard let symbol = glyph(named: name, tint: .black.withAlphaComponent(0.80))
-            else { return true }
+            guard let symbol = glyph(named: name, tint: ink) else { return true }
             let size = symbol.size
             symbol.draw(
                 in: NSRect(

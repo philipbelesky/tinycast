@@ -207,6 +207,23 @@ enum Theme {
         static let glassFrost = Color.white.opacity(0.30)
         /// The violet of the app mark, used only to tint the About support callout.
         static let brand = Color(red: 0.525, green: 0.231, blue: 1.0)
+        /// A category tile's fill. Saturated on purpose: these carry a white glyph, and are the
+        /// one place this otherwise monochrome surface uses colour to tell things apart.
+        static func tile(_ tint: ScopeTint) -> NSColor {
+            switch tint {
+            case .blue: return .systemBlue
+            case .green: return .systemGreen
+            case .orange: return .systemOrange
+            case .purple: return .systemPurple
+            case .teal: return .systemTeal
+            case .indigo: return .systemIndigo
+            case .pink: return .systemPink
+            case .mint: return .systemMint
+            case .brown: return .systemBrown
+            case .slate: return .systemGray
+            }
+        }
+
         /// Destructive tint: a destructive label, and a `.danger` dialog's glyph.
         static let destructive = Color.red
         /// Success tint: the leading glyph of a `.success` dialog.

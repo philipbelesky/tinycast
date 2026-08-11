@@ -118,8 +118,10 @@ grep -rn "Color\.white\|\.white\.opacity\|NSColor\.white\|darkAqua" --include="*
   | grep -v "EmojiData.generated\|CurrencyData.generated"
 ```
 
-Every hit is either a *lifting* color (`panelTint`, `cardFill`, `glassFrost`, the onboarding gradient) or
-a bug this fork has to fix. There is no hit that is fine by default.
+Every hit is a *lifting* color (`panelTint`, `cardFill`, `glassFrost`, the onboarding gradient), the
+white glyph reversed out of a category tile (`IconCache`, divergence 4 — the tile behind it is
+saturated, so white is the legible ink there), or a bug this fork has to fix. There is no hit that is
+fine by default.
 
 ### Not verified visually by an agent
 
@@ -173,6 +175,12 @@ pane carries a `ScopeKeywordSection`, so nine upstream panes gain a section they
 `AppSettings.scopeKeywords` is a dictionary key upstream has no notion of. The panes for the fork's own
 features — Web Search, herdr, VS Code — also sit in the **Features** sidebar group rather than
 Launcher, so `SettingsSection.tabs` conflicts with any upstream reshuffle of the sidebar.
+
+Every scope also **publishes a row of its own** (`AppEntry.Kind.scope`, `AppIndex.setScopes`), leading
+the empty query and wearing a coloured category tile — `ScopeTint`, `Theme.Colors.tile(_:)` and the
+tinted branch of `IconCache.symbolIcon(named:tint:)`, all documented in
+[ui.md](docs/ui.md#category-tiles). That tile is the only white ink on this surface that divergence 2
+does not treat as a bug.
 
 This is the divergence most worth offering upstream — it is additive, it invents no new architecture,
 and the grammar is pure and tested. Until then, the conflict surface is what it touches: `AppIndex`
@@ -304,7 +312,8 @@ braid. Then, before calling it done — the standard gate from
 - [ ] Debug build compiles with no new warnings.
 - [ ] `./Scripts/lint.sh` is clean.
 - [ ] `grep -rln 'import AppKit\|import SwiftUI\|import Cocoa' Tinycast/Features/*/Model/` returns nothing.
-- [ ] **The white-alpha grep above returns only lifting colors** (divergence 2).
+- [ ] **The white-alpha grep above returns only lifting colors and the category tile's glyph**
+      (divergences 2, 4).
 - [ ] **New or merged views carry no magic numbers** — every length and font size comes from `Theme` (divergence 3).
 - [ ] **Signing survived** — if `xcodegen` ran, re-apply divergence 1.
 - [ ] **`PaletteCoordinator.onShow` still fires** — otherwise herdr, VS Code and Linear list stale

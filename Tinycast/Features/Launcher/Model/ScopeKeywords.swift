@@ -25,7 +25,7 @@ enum ScopeKeywords {
             if keyword.isEmpty || !taken.insert(keyword).inserted { keyword = "" }
             return ScopeDefinition(
                 keyword: keyword, id: definition.id, title: definition.title,
-                symbol: definition.symbol)
+                symbol: definition.symbol, tint: definition.tint)
         }
     }
 

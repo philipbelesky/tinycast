@@ -9,7 +9,7 @@ struct AppIconView: View {
         self.app = app
         _image = State(
             initialValue: app.isSymbolIcon
-                ? IconCache.cachedSymbol(named: app.symbolIconName)
+                ? IconCache.cachedSymbol(named: app.symbolIconName, tint: app.symbolTint)
                 : IconCache.cached(forFile: app.url.path))
     }
 
@@ -26,7 +26,7 @@ struct AppIconView: View {
             guard image == nil else { return }
             image =
                 app.isSymbolIcon
-                ? await IconCache.loadSymbolAsync(named: app.symbolIconName)
+                ? await IconCache.loadSymbolAsync(named: app.symbolIconName, tint: app.symbolTint)
                 : await IconCache.loadAsync(forFile: app.url.path)
         }
     }

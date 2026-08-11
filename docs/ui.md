@@ -147,6 +147,25 @@ the forced-light environment). **Selection always beats hover** when a row is bo
 
 ---
 
+## Category tiles
+
+The one place this surface uses hue. A scope row — the `a` Applications / `l` Linear rows the launcher
+opens with — carries a saturated tile with the glyph reversed out in **white**, so the ten categories
+are told apart at a glance rather than read. Nothing else on the surface is coloured this way; a
+command or quicklink keeps the ordinary tile, black 0.08 with black-0.80 ink.
+
+A scope names its colour rather than choosing one: `ScopeDefinition.tint` is a `ScopeTint` case,
+assigned in `ScopeCatalog`, and `Theme.Colors.tile(_:)` is the only place that maps a case to an
+`NSColor`. The model layer stays free of AppKit and `Theme` stays the only token source. `ScopeTint`
+has exactly one case per scope and no `red` — red means destructive here, and a tile means nothing at
+all.
+
+`IconCache.symbolIcon(named:tint:)` rasterizes both variants and keys the cache on the tint, so one
+symbol can be an inked tile in Settings and a coloured one in the launcher. Passing no tint is the
+inked variant; `AppEntry.symbolTint` is non-nil only for scope rows.
+
+---
+
 ## Panel structure
 
 Source: `Palette/PalettePanel.swift`, `Palette/RootPaletteView.swift`.

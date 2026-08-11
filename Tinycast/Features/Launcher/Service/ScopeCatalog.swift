@@ -33,48 +33,49 @@ enum ScopeCatalog {
     private static let filters: [Entry] = [
         Entry(
             definition: ScopeDefinition(
-                keyword: "a", id: applications, title: "Applications", symbol: "square.grid.2x2"),
+                keyword: "a", id: applications, title: "Applications", symbol: "square.grid.2x2", tint: .blue),
             target: .kinds([.application, .systemSettings])),
         Entry(
             definition: ScopeDefinition(
-                keyword: "q", id: quicklinks, title: "Quicklinks", symbol: Quicklink.sfSymbol),
+                keyword: "q", id: quicklinks, title: "Quicklinks", symbol: Quicklink.sfSymbol, tint: .green),
             target: .kinds([.quicklink])),
         Entry(
             definition: ScopeDefinition(
-                keyword: "s", id: snippets, title: "Snippets", symbol: "text.quote"),
+                keyword: "s", id: snippets, title: "Snippets", symbol: "text.quote", tint: .orange),
             target: .kinds([.snippet])),
         Entry(
             definition: ScopeDefinition(
-                keyword: "c", id: commands, title: "Commands", symbol: "terminal"),
+                keyword: "c", id: commands, title: "Commands", symbol: "terminal", tint: .purple),
             target: .kinds([.command, .customCommand])),
         Entry(
             definition: ScopeDefinition(
                 keyword: "w", id: windowManagement, title: "Window Management",
-                symbol: "macwindow.on.rectangle"),
+                symbol: "macwindow.on.rectangle", tint: .teal),
             target: .kinds([.windowCommand, .systemAction])),
         Entry(
             definition: ScopeDefinition(
-                keyword: "h", id: herdr, title: "herdr", symbol: "macwindow"),
+                keyword: "h", id: herdr, title: "herdr", symbol: "macwindow", tint: .brown),
             target: .kinds([.herdrTarget])),
         Entry(
             definition: ScopeDefinition(
                 keyword: "p", id: vsCode, title: "VS Code",
-                symbol: "chevron.left.forwardslash.chevron.right"),
+                symbol: "chevron.left.forwardslash.chevron.right", tint: .indigo),
             target: .kinds([.vsCodeProject])),
         Entry(
             definition: ScopeDefinition(
-                keyword: "l", id: linear, title: "Linear", symbol: "line.3.horizontal.decrease.circle"),
+                keyword: "l", id: linear, title: "Linear", symbol: "line.3.horizontal.decrease.circle",
+                tint: .pink),
             target: .kinds([.linearTarget]))
     ]
 
     private static let modes: [Entry] = [
         Entry(
             definition: ScopeDefinition(
-                keyword: "e", id: emoji, title: "Emoji & Symbols", symbol: "face.smiling"),
+                keyword: "e", id: emoji, title: "Emoji & Symbols", symbol: "face.smiling", tint: .mint),
             target: .mode(.emoji)),
         Entry(
             definition: ScopeDefinition(
-                keyword: "v", id: clipboard, title: "Clipboard", symbol: "doc.on.doc"),
+                keyword: "v", id: clipboard, title: "Clipboard", symbol: "doc.on.doc", tint: .slate),
             target: .mode(.clipboard))
     ]
 
@@ -153,8 +154,9 @@ enum ScopeCatalog {
         case herdr: return settings.herdrEnabled
         case vsCode: return settings.vsCodeEnabled
         case linear: return settings.linearShowInLauncher
-        default: return id.hasPrefix("scope:" + WebSearchEngine.entryIDPrefix)
-            ? settings.webSearchEnabled : true
+        default:
+            return id.hasPrefix("scope:" + WebSearchEngine.entryIDPrefix)
+                ? settings.webSearchEnabled : true
         }
     }
 }

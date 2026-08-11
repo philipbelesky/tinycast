@@ -92,6 +92,8 @@ struct AppEntry: Identifiable, Hashable, Sendable {
     var matchAliases: [String] = []
     /// Per-item symbol, for the one kind whose glyph is the user's choice. Nil elsewhere.
     var symbolName: String?
+    /// Set only for a scope row, which is drawn as a coloured category tile rather than a wash.
+    var symbolTint: ScopeTint?
     /// Spotlight's `kMDItemAlternateNames`, ranked below the display name. Applications only.
     var alternateNames: [String] = []
     /// `CFBundleExecutable`, matched literally as a last resort. Applications only.
@@ -157,7 +159,8 @@ struct AppEntry: Identifiable, Hashable, Sendable {
 
     var icon: NSImage {
         isSymbolIcon
-            ? IconCache.symbolIcon(named: symbolIconName) : IconCache.icon(forFile: url.path)
+            ? IconCache.symbolIcon(named: symbolIconName, tint: symbolTint)
+            : IconCache.icon(forFile: url.path)
     }
 }
 
@@ -286,7 +289,7 @@ final class AppIndex {
                 bundleID: nil, kind: .scope,
                 // So typing the letter finds its own row, the way typing it and a space would arm it.
                 matchAliases: definition.keyword.isEmpty ? [] : [definition.keyword],
-                symbolName: definition.symbol)
+                symbolName: definition.symbol, symbolTint: definition.tint)
         }
         guard entries != scopeEntries else { return }
         scopeEntries = entries

@@ -128,6 +128,7 @@
 		86C36C0885D5820E70184CF6 /* PaletteCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C004F2C2EFDD340A73C6AB02 /* PaletteCoordinator.swift */; };
 		8855C67C7EE196E3F9EDE778 /* KeyCapChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5BA06E4CC7E8D40E3285F16 /* KeyCapChip.swift */; };
 		89872774514D83EC2BD60F1E /* CommandCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F0A68B2040582996EFBA877 /* CommandCatalog.swift */; };
+		8B18969DEF5FA15FB385B6CD /* ScopeTint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 452124F868396DE889409C08 /* ScopeTint.swift */; };
 		8CC7A4A5D4205843219A81C8 /* CustomCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF0880635E294D9DF55BAADA /* CustomCommand.swift */; };
 		8CFF2D2BF36F60659C8570A3 /* SettingsPaneScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23F7C8CBD0AA75D016DBFC06 /* SettingsPaneScanner.swift */; };
 		8D529C8F3AB579941067FE98 /* MessageHUDView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 976A1F05AD82DB8A04B3C3F9 /* MessageHUDView.swift */; };
@@ -310,6 +311,7 @@
 		43F3BC11AD77D8A58671F83E /* HotKeyAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotKeyAction.swift; sourceTree = "<group>"; };
 		445B0374FD5D74DBE23243CD /* PaletteScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteScreen.swift; sourceTree = "<group>"; };
 		44E065C3D4202597CAD5CE82 /* LinearTarget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinearTarget.swift; sourceTree = "<group>"; };
+		452124F868396DE889409C08 /* ScopeTint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScopeTint.swift; sourceTree = "<group>"; };
 		45D4BA6E1BD8EB1F96A8927F /* Tinycast.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Tinycast.entitlements; sourceTree = "<group>"; };
 		45EB979ECD44738BCD9E2F90 /* EmojiCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmojiCoordinator.swift; sourceTree = "<group>"; };
 		4AA61A2FAF4E49E466DA8F37 /* SettingsTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsTab.swift; sourceTree = "<group>"; };
@@ -1327,6 +1329,7 @@
 				0EDB1EEB97CC5F6B0B81FFD6 /* LauncherRankingStore.swift */,
 				93BB95BC928F2317C8EB30B4 /* QueryScope.swift */,
 				8118E9DB7BB46D2AD5783D4A /* ScopeKeywords.swift */,
+				452124F868396DE889409C08 /* ScopeTint.swift */,
 				ABB9DB77DCE25C41D86BB955 /* SearchRelevance.swift */,
 				3E4A7E45F7D1CC5FB8868715 /* SearchScopes.swift */,
 			);
@@ -1644,6 +1647,7 @@
 				783264171AC1A5E70627C537 /* ScopeChip.swift in Sources */,
 				135699EA54A3FE5072F4981D /* ScopeKeywordSection.swift in Sources */,
 				7E6FF6809EDA0830070BEF80 /* ScopeKeywords.swift in Sources */,
+				8B18969DEF5FA15FB385B6CD /* ScopeTint.swift in Sources */,
 				31E0E4E0782A79504CEB588D /* ScrollIntent.swift in Sources */,
 				07726F26DC68689F8984F467 /* Scrypt.swift in Sources */,
 				5770FB1A3FD29E27C25C944E /* SearchRelevance.swift in Sources */,

@@ -53,7 +53,7 @@ If a change touches anything in the right column, the harness on the left is man
 | `emoji-test` | `Emoji/Model/EmojiCatalog.swift`, `EmojiGridGeometry.swift`, the generated data |
 | `palette-selection-test` | `Features/PaletteRowIndex.swift` |
 | `hotkey-test` | `HotKeys/Model/DoubleTapModifier.swift`, `DoubleTapDetector.swift` |
-| `callout-test` | `DesignSystem/Theme.swift`, `HotKeys/UI/CalloutPlacement.swift` |
+| `callout-test` | `DesignSystem/Theme.swift`, `Launcher/Model/ScopeTint.swift`, `HotKeys/UI/CalloutPlacement.swift` |
 | `system-action-test` | `SystemActions/Model/SystemAction.swift` |
 | `volume-test` | `SystemActions/Model/VolumeLevel.swift` |
 | `window-command-test` | `WindowManagement/WindowCommand.swift`, `WindowLayout.swift`, `WindowActionMemory.swift` |
@@ -63,7 +63,7 @@ If a change touches anything in the right column, the harness on the left is man
 | `snippets-test` | all of `Snippets/Model/` and `Snippets/Service/`, plus `Platform/HealthTicker.swift` |
 | `raycast-test` | `Backup/Model/RaycastFormat.swift`, `RaycastV1Decoder.swift`, `Service/Gunzip.swift` |
 | `settings-backup-test` | `Settings/AppSettingsKey.swift`, `Backup/Model/SettingsBackupCoverage.swift` |
-| `scope-test` | `Launcher/Model/QueryScope.swift`, `ScopeKeywords.swift` |
+| `scope-test` | `Launcher/Model/QueryScope.swift`, `ScopeTint.swift`, `ScopeKeywords.swift` |
 | `websearch-test` | `WebSearch/Model/WebSearchEngine.swift` |
 | `herdr-test` | `Herdr/Model/HerdrTarget.swift`, `HerdrHost.swift` |
 | `vscode-test` | `VSCode/Model/VSCodeProject.swift` |

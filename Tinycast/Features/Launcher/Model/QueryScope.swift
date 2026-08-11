@@ -9,6 +9,8 @@ struct ScopeDefinition: Equatable, Hashable, Sendable, Identifiable {
     /// What the chip reads, and the section title while the scope is filtering.
     let title: String
     let symbol: String
+    /// Defaults so a definition rebuilt by `ScopeKeywords.resolve` never invents a colour.
+    var tint: ScopeTint = .slate
 }
 
 /// The palette's scope grammar. See docs/features/palette.md#scope-keywords.

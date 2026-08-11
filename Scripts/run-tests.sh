@@ -67,6 +67,7 @@ run fuzz-test              $L/SearchRelevance.swift
 run ranking-test           $L/SearchRelevance.swift $L/LauncherRankingStore.swift
 run scopes-test            $L/SearchScopes.swift
 run scope-test             $L/QueryScope.swift \
+                           $L/ScopeTint.swift \
                            $L/ScopeKeywords.swift
 run calc-test              Tinycast/Features/Calculator/Model/*.swift
 run clipboard-test         Tinycast/Features/Clipboard/Model/ClipboardStore.swift
@@ -80,6 +81,7 @@ run hotkey-test            Tinycast/Features/HotKeys/Model/DoubleTapModifier.swi
                            Tinycast/Features/HotKeys/Model/HyperKey.swift \
                            Tinycast/Features/HotKeys/Service/KeyShortcut.swift
 run callout-test           Tinycast/DesignSystem/Theme.swift \
+                           $L/ScopeTint.swift \
                            Tinycast/Features/HotKeys/UI/CalloutPlacement.swift
 run system-action-test     Tinycast/Features/SystemActions/Model/SystemAction.swift
 run volume-test            Tinycast/Features/SystemActions/Model/VolumeLevel.swift
