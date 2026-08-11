@@ -154,6 +154,14 @@ opens with — carries a saturated tile with the glyph reversed out in **white**
 are told apart at a glance rather than read. Nothing else on the surface is coloured this way; a
 command or quicklink keeps the ordinary tile, black 0.08 with black-0.80 ink.
 
+**The rows a scope reveals wear its colour too.** A herdr tab, a quicklink and a Linear view each take
+the tile of the scope that narrows the list to them, so the row and the scope that leads to it read as
+one category — `ScopeCatalog.tint(for:)` maps `AppEntry.Kind` back to the scope holding it, and
+`AppEntry.tileTint` prefers a scope row's own colour before falling back to it. Per-entry glyphs stay:
+a window layout and a Linear initiative keep the symbol that tells them apart from their neighbours,
+and only the tile behind it is shared. Applications are unaffected — they draw their real file icon,
+which no tint touches. A web search row has no scope row in the launcher, so it keeps the inked tile.
+
 A scope names its colour rather than choosing one: `ScopeDefinition.tint` is a `ScopeTint` case,
 assigned in `ScopeCatalog`, and `Theme.Colors.tile(_:)` is the only place that maps a case to an
 `NSColor`. The model layer stays free of AppKit and `Theme` stays the only token source. `ScopeTint`

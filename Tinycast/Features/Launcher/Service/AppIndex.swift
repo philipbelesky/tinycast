@@ -157,9 +157,13 @@ struct AppEntry: Identifiable, Hashable, Sendable {
         }
     }
 
-    var icon: NSImage {
+    /// A scope row's own colour, or the colour of the scope that reveals this kind — so a herdr
+    /// tab and the herdr row that leads to it read as the same category. docs/ui.md#category-tiles
+    @MainActor var tileTint: ScopeTint? { symbolTint ?? ScopeCatalog.tint(for: kind) }
+
+    @MainActor var icon: NSImage {
         isSymbolIcon
-            ? IconCache.symbolIcon(named: symbolIconName, tint: symbolTint)
+            ? IconCache.symbolIcon(named: symbolIconName, tint: tileTint)
             : IconCache.icon(forFile: url.path)
     }
 }

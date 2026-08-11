@@ -175,8 +175,8 @@ finds the Linear row as readily as typing the word does.
 Each row carries its keyword as a keycap, in the same slot a bound hotkey's keycaps occupy — read
 from the catalog at render rather than baked onto the entry, so a keyword edited in Settings is never
 shown stale. Its icon is a coloured category tile rather than the ordinary inked one, one hue per
-scope, which is what separates Quicklinks from Linear at a glance — see
-[ui.md](../ui.md#category-tiles).
+scope — and the rows that scope reveals wear the same colour, so a herdr tab and the herdr row that
+leads to it read as one category. See [ui.md](../ui.md#category-tiles).
 
 A scope is only offered when something is actually behind it: `AppCore` drops any filter scope whose
 kinds have no published entries. That is what stops a feature which is off — or merely unconsented,

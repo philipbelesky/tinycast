@@ -107,6 +107,15 @@ enum ScopeCatalog {
         allDefinitions(settings: settings).first { $0.id == id }
     }
 
+    /// The tile colour a kind wears, so a row matches the scope that narrows the list to it.
+    /// Settings play no part: a row's colour cannot depend on whether its keyword is live.
+    static func tint(for kind: AppEntry.Kind) -> ScopeTint? {
+        filters.first { entry in
+            guard case .kinds(let kinds) = entry.target else { return false }
+            return kinds.contains(kind)
+        }?.definition.tint
+    }
+
     /// Only the scopes that can currently do something: a disabled feature offers no keyword.
     static func registry(settings: AppSettings) -> [ScopeDefinition] {
         entries(settings: settings).map(\.definition)
