@@ -21,6 +21,12 @@ without the `xattr` step a browser download needs. Override the destination with
 destination that doesn't exist is skipped rather than failing the build, so CI and a fresh clone are
 unaffected.
 
+The DMG carries only the app: with iCloud settings sync enabled (Settings → Backup,
+[features/sync.md](features/sync.md)) the configuration — settings, hotkeys, quicklinks, custom
+commands, favorites — follows the iCloud account to every Mac that opts in. A Mac still holding an
+old `com.tinycast.app` install runs `Scripts/migrate-channel.sh` once to carry its data into the
+renamed channel ([FORK.md](../FORK.md) divergence 10).
+
 ## Signing & Gatekeeper
 
 CI releases sign with the stable `Tinycast Self-Signed` identity and local builds with whatever
