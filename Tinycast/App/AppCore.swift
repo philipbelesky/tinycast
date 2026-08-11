@@ -148,6 +148,8 @@ final class AppCore {
             herdr.onChange = { [weak self] _ in self?.herdrCoordinator.applyHerdrPresence() }
             vsCode.onChange = { [weak self] _ in self?.vsCodeCoordinator.applyVSCodePresence() }
             linear.onChange = { [weak self] _ in self?.linearCoordinator.applyLinearPresence() }
+            // Linear is the only slice restored from disk, so it has rows before any refresh.
+            linearCoordinator.applyLinearPresence()
             // Both mirror something outside the app, so both re-read on the palette's own trigger.
             paletteCoordinator.onShow = { [weak self] in
                 guard let self else { return }

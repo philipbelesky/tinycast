@@ -92,8 +92,9 @@ final class LinearViewStore {
         guard !fetched.isEmpty else { return false }
         lastRefreshed = Date()
         store(fetched)
-        guard fetched != views else { return true }
         views = fetched
+        // Published unconditionally: `AppIndex` already ignores an identical slice, and skipping it
+        // here left a restored-from-disk list unpublished whenever a refresh confirmed it.
         onChange?(fetched)
         return true
     }
