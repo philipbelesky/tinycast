@@ -14,6 +14,7 @@ struct AppEntry: Identifiable, Hashable, Sendable {
         case herdrTarget
         case vsCodeProject
         case linearTarget
+        case scope
 
         var descriptor: KindDescriptor {
             switch self {
@@ -65,6 +66,10 @@ struct AppEntry: Identifiable, Hashable, Sendable {
                 return KindDescriptor(
                     label: "Linear", sectionTitle: "Linear",
                     openVerb: "Open in Linear", canRevealInFinder: false, isSymbolIcon: true)
+            case .scope:
+                return KindDescriptor(
+                    label: "Scope", sectionTitle: "Search Scopes",
+                    openVerb: "Narrow the Search", canRevealInFinder: false, isSymbolIcon: true)
             }
         }
     }
@@ -119,7 +124,8 @@ struct AppEntry: Identifiable, Hashable, Sendable {
         case .quicklink:
             return Quicklink.id(fromEntryID: id).map { .quicklink(id: $0) }
         // A web search needs a query; a herdr id and a project path can vanish between launches.
-        case .command, .snippet, .webSearch, .herdrTarget, .vsCodeProject, .linearTarget:
+        case .command, .snippet, .webSearch, .herdrTarget, .vsCodeProject, .linearTarget,
+            .scope:
             return nil
         }
     }
@@ -144,7 +150,8 @@ struct AppEntry: Identifiable, Hashable, Sendable {
             return WebSearchEngine.engine(id: WebSearchEngine.id(fromEntryID: id) ?? "")?.symbol
                 ?? WebSearchEngine.default.symbol
         case .herdrTarget: return "macwindow"
-        case .application, .systemSettings, .vsCodeProject, .linearTarget: return "questionmark"
+        case .application, .systemSettings, .vsCodeProject, .linearTarget, .scope:
+            return "questionmark"
         }
     }
 
@@ -209,6 +216,7 @@ final class AppIndex {
     private var herdrEntries: [AppEntry] = []
     private var vsCodeEntries: [AppEntry] = []
     private var linearEntries: [AppEntry] = []
+    private var scopeEntries: [AppEntry] = []
     /// Built-in commands minus the quicklink ones while the feature is off.
     private var commandEntries: [AppEntry] = CommandCatalog.all
     private var alternateNameCache = SpotlightNames.Cache()
@@ -260,6 +268,23 @@ final class AppIndex {
         guard entries != quicklinkEntries || commands != commandEntries else { return }
         quicklinkEntries = entries
         commandEntries = commands
+        publishEntries()
+    }
+
+    /// The keywords, as rows. Activating one arms the scope instead of opening anything, which is
+    /// why they lead the empty query: they are the map of what the launcher can be narrowed to.
+    func setScopes(_ definitions: [ScopeDefinition]) {
+        let entries = definitions.map { definition in
+            AppEntry(
+                id: definition.id, name: definition.title,
+                url: URL(string: "tinycast://scope/" + definition.id)!,
+                bundleID: nil, kind: .scope,
+                // So typing the letter finds its own row, the way typing it and a space would arm it.
+                matchAliases: definition.keyword.isEmpty ? [] : [definition.keyword],
+                symbolName: definition.symbol)
+        }
+        guard entries != scopeEntries else { return }
+        scopeEntries = entries
         publishEntries()
     }
 
@@ -445,7 +470,8 @@ final class AppIndex {
     private func publishEntries() {
         // Each slice arrives in its own display order; the slice order is the section order.
         let updated =
-            discoveredEntries + quicklinkEntries + vsCodeEntries + herdrEntries + linearEntries
+            scopeEntries + discoveredEntries + quicklinkEntries + vsCodeEntries + herdrEntries
+            + linearEntries
             + webSearchEntries
             + snippetEntries + Self.systemActionEntries + windowCommandEntries
             + customCommandEntries + commandEntries

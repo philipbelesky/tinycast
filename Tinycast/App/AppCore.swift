@@ -145,6 +145,7 @@ final class AppCore {
             customCommandCoordinator.applyCustomCommandsPresence()
             applyWindowCommandsPresence()
             applyWebSearchPresence()
+            applyScopePresence()
             herdr.onChange = { [weak self] _ in self?.herdrCoordinator.applyHerdrPresence() }
             vsCode.onChange = { [weak self] _ in self?.vsCodeCoordinator.applyVSCodePresence() }
             linear.onChange = { [weak self] _ in self?.linearCoordinator.applyLinearPresence() }
@@ -156,6 +157,9 @@ final class AppCore {
                 await herdrCoordinator.refresh()
                 await vsCodeCoordinator.refresh()
                 await linearCoordinator.refresh()
+                // The registry follows the feature switches and the user's keywords, so it is
+                // re-read here rather than tracked from a dozen places.
+                applyScopePresence()
             }
             quicklinks.onChange = { [weak self] _ in
                 self?.quicklinkCoordinator.applyQuicklinksPresence()
@@ -320,6 +324,11 @@ final class AppCore {
     private func applyWindowCommandsPresence() {
         let visible = settings.windowManagementEnabled && settings.windowManagementShowInLauncher
         appIndex.setWindowCommandsVisible(visible)
+    }
+
+    /// The scope rows, which lead the launcher's empty query. See docs/features/palette.md.
+    private func applyScopePresence() {
+        appIndex.setScopes(ScopeCatalog.launcherDefinitions(settings: settings))
     }
 
     private func applyWebSearchPresence() {

@@ -74,6 +74,7 @@ struct LauncherList: View {
         }
         // Publication order, so rows match the flat index.
         let kinds: [AppEntry.Kind] = [
+            .scope,
             .application, .systemSettings, .quicklink, .vsCodeProject, .herdrTarget, .linearTarget,
             .webSearch, .snippet,
             .systemAction, .windowCommand, .customCommand, .command

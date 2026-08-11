@@ -149,6 +149,11 @@ struct GeneralSettingsView: View {
             } header: {
                 Text("General")
             }
+
+            LauncherItemsSection(
+                kind: .scope,
+                header: "Search Scopes",
+                searchPrompt: "Search scopes…")
         }
         .formStyle(.grouped)
         .confirmationDialog(

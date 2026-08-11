@@ -93,6 +93,19 @@ enum ScopeCatalog {
             ?? webEntry(engine).definition
     }
 
+    /// The scopes that earn a launcher row. A search engine is left out because it already has one
+    /// of its own, which arms the same scope — two rows for one thing would be a lie about the list.
+    static func launcherDefinitions(settings: AppSettings) -> [ScopeDefinition] {
+        entries(settings: settings).compactMap { entry in
+            if case .webSearch = entry.target { return nil }
+            return entry.definition
+        }
+    }
+
+    static func definition(id: String, settings: AppSettings) -> ScopeDefinition? {
+        allDefinitions(settings: settings).first { $0.id == id }
+    }
+
     /// Only the scopes that can currently do something: a disabled feature offers no keyword.
     static func registry(settings: AppSettings) -> [ScopeDefinition] {
         entries(settings: settings).map(\.definition)

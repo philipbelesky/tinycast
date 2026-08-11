@@ -82,6 +82,21 @@ final class LauncherCoordinator {
             core.herdrCoordinator.focus(targetID: id)
             return
         }
+        // Before the palette hides: selecting a scope is exactly typing its keyword and a space.
+        if app.kind == .scope {
+            guard let definition = ScopeCatalog.definition(id: app.id, settings: core.settings) else {
+                return
+            }
+            // A mode scope is a screen rather than a chip, the same as adopting one by typing.
+            if case .mode(let mode) = ScopeCatalog.target(for: definition, settings: core.settings) {
+                core.palette.prepare(mode: mode)
+                return
+            }
+            core.palette.scope = definition
+            core.palette.query = ""
+            core.palette.selection = 0
+            return
+        }
         // Before the palette hides: a named engine has no query yet, so it arms its own scope
         // and waits for one — the same state typing its keyword would have reached.
         if app.kind == .webSearch {
@@ -111,7 +126,7 @@ final class LauncherCoordinator {
             let snippetID = String(app.id.dropFirst("snippet:".count))
             snippetExpansion.expandSnippet(id: snippetID, targetApp: previous)
         case .command, .customCommand, .systemAction, .windowCommand, .quicklink,
-            .webSearch, .herdrTarget, .vsCodeProject, .linearTarget:
+            .webSearch, .herdrTarget, .vsCodeProject, .linearTarget, .scope:
             break  // handled above
         }
     }

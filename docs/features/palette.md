@@ -164,6 +164,26 @@ one: a sub-screen is already scoped by its mode, and the argument form's field i
 A disabled feature contributes no keyword, so `q` does nothing while Quicklinks is off rather than
 committing to an empty list.
 
+### Scopes are rows too
+
+A keyword is only half the affordance: nobody discovers `p` by guessing. Every scope also publishes a
+launcher row of kind `.scope`, and **activating one is exactly typing its keyword and a space** —
+`PaletteState.scope` is armed, the query clears, the chip appears. A mode scope switches screen
+instead, the same as adopting one by typing. The keyword rides along as a match alias, so typing `l`
+finds the Linear row as readily as typing the word does.
+
+Those rows are published **first**, so they lead the launcher's empty query ahead of applications:
+opening the palette on nothing now shows what the search can be narrowed *to*, which is the one list
+that explains the rest. Favorites still pin above them.
+
+Search engines are deliberately left out of that slice. Each already publishes a `.webSearch` row
+which arms the same scope, and two rows for one destination would misrepresent the list.
+
+The registry follows the feature switches and the user's keywords, so `AppCore` re-reads it whenever
+the palette opens rather than tracking a dozen settings — the same trigger herdr, VS Code and Linear
+already use. `Settings → General → Search Scopes` hides the category, or any single scope, through
+`VisibilityStore` like every other launcher category.
+
 ### Choosing your own
 
 `ScopeKeywords` (`Launcher/Model/`, Foundation-only, covered by `scope-test`) layers

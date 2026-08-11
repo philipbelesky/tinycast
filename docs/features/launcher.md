@@ -128,7 +128,7 @@ permission-aware failures. With the palette closed it targets the frontmost app,
 Quit All act on the same window a palette launch would have.
 
 System actions occupy their own launcher section and their own Settings pane. The empty-query publication
-order is applications, System Settings, quicklinks, VS Code, herdr, Linear, web search, snippets, system actions, window
+order is search scopes, applications, System Settings, quicklinks, VS Code, herdr, Linear, web search, snippets, system actions, window
 commands, custom commands, then built-in commands; the sectioned view filters in that same order so the
 visible rows remain identical to the flat selection index.
 Search, favorites, visibility and learned ranking work through the normal `AppEntry` path, and every
@@ -207,6 +207,13 @@ time the palette opens rather than on a timer. The slice is empty whenever herdr
 isn't running, which is the same shape as the feature being switched off — no row and no report.
 Activation is the one launcher path that also raises a *different* app afterwards. See
 [herdr.md](herdr.md).
+
+## Search scopes
+
+`AppEntry.Kind.scope` publishes one row per live scope keyword, ahead of every other slice so it leads
+the empty query. Activating one arms the scope rather than opening anything — the same shape as a web
+search row, and the same code path a typed keyword takes. See
+[palette.md](palette.md#scopes-are-rows-too).
 
 ## Linear views
 
