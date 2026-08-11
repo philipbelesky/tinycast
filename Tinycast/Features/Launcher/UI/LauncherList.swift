@@ -14,7 +14,10 @@ struct LauncherList: View {
     var onCalcActions: () -> Void = {}
     /// The one row a web scope shows; it replaces the list rather than joining it.
     var webSearch: WebSearchPrompt?
+    /// Completions for what is typed, beneath that row. Empty without consent — see the store.
+    var suggestions: [String] = []
     var onActivateWebSearch: () -> Void = {}
+    var onActivateSuggestion: (String) -> Void = { _ in }
     let onActivate: (AppEntry) -> Void
     let onActions: (AppEntry) -> Void
     @Environment(RunningAppsMonitor.self) private var runningApps
@@ -24,6 +27,8 @@ struct LauncherList: View {
 
     /// What the scoped search row draws: already-composed text, so the list stays presentational.
     struct WebSearchPrompt: Equatable {
+        /// The engine's entry id, which is also what the screen calls this row.
+        let id: String
         let title: String
         let symbol: String
         let sectionTitle: String
@@ -33,12 +38,14 @@ struct LauncherList: View {
         case header(String)
         case calc(CalcResult)
         case webSearch(WebSearchPrompt)
+        case suggestion(String)
         case app(AppEntry)
         var id: String {
             switch self {
             case .header(let title): return "header-" + title
             case .calc: return LauncherList.calcRowID
-            case .webSearch: return LauncherList.webSearchRowID
+            case .webSearch(let prompt): return prompt.id
+            case .suggestion(let text): return SearchSuggestions.rowID(text)
             case .app(let app): return app.id
             }
         }
@@ -47,15 +54,17 @@ struct LauncherList: View {
     /// Scroll target for the current selection.
     private var selectedRowID: String? { calcSelected ? Self.calcRowID : selectedID }
 
-    /// Whether the selection sits on flat index 0: the calc card, else the first result.
+    /// Whether the selection sits on flat index 0: the calc card, the search row, else the first result.
     private var firstRowSelected: Bool {
-        calc != nil ? calcSelected : selectedID != nil && selectedID == results.first?.id
+        if let webSearch { return selectedID == webSearch.id }
+        return calc != nil ? calcSelected : selectedID != nil && selectedID == results.first?.id
     }
 
     private var rows: [Row] {
         // A web scope owns the query outright, so nothing else can be on screen to index into.
         if let webSearch {
             return [.header(webSearch.sectionTitle), .webSearch(webSearch)]
+                + suggestions.map(Row.suggestion)
         }
         var calcRows: [Row] = []
         if let calc { calcRows = [.header("Calculator"), .calc(calc)] }
@@ -107,9 +116,16 @@ struct LauncherList: View {
                                         .onRightClick(perform: onCalcActions)
                                         .padding(.bottom, Theme.Spacing.xs)
                                 case .webSearch(let prompt):
-                                    WebSearchRow(prompt: prompt, selected: true)
+                                    WebSearchRow(prompt: prompt, selected: selectedID == prompt.id)
                                         .contentShape(Rectangle())
                                         .onTapGesture(perform: onActivateWebSearch)
+                                case .suggestion(let text):
+                                    SuggestionRow(
+                                        text: text, symbol: webSearch?.symbol ?? "magnifyingglass",
+                                        selected: selectedID == SearchSuggestions.rowID(text)
+                                    )
+                                    .contentShape(Rectangle())
+                                    .onTapGesture { onActivateSuggestion(text) }
                                 case .app(let app):
                                     AppRow(
                                         app: app,
@@ -149,7 +165,40 @@ struct LauncherList: View {
     }
 }
 
-/// The scoped search row. Always selected: it is the only row a web scope puts on screen.
+/// One completion offered by the engine. It searches for itself, so it reads as the query it is.
+private struct SuggestionRow: View {
+    let text: String
+    let symbol: String
+    let selected: Bool
+    @State private var hovered = false
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.lg) {
+            Image(systemName: symbol)
+                .font(Theme.Typography.rowTitle)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(.secondary)
+                .frame(width: Theme.Size.rowIcon, height: Theme.Size.rowIcon)
+            Text(text)
+                .font(Theme.Typography.rowTitle)
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Spacer()
+            Text("Suggestion")
+                .font(Theme.Typography.rowTrailing)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, Theme.Spacing.md)
+        .padding(.vertical, Theme.Spacing.sm)
+        .background(
+            RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
+                .fill(selected ? Theme.Colors.selection : (hovered ? Theme.Colors.rowHover : .clear))
+        )
+        .armedHover($hovered)
+    }
+}
+
+/// The scoped search row: the query verbatim, above whatever the engine suggests it might become.
 private struct WebSearchRow: View {
     let prompt: LauncherList.WebSearchPrompt
     let selected: Bool

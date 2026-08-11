@@ -169,7 +169,9 @@ struct RootPaletteView: View {
             adoptScopeIfTyped()
             vm.selection = 0
             scroll = ScrollIntent(kind: .top)
+            refreshSuggestions()
         }
+        .onChange(of: vm.scope) { refreshSuggestions() }
         .onChange(of: vm.mode) {
             vm.selection = 0
             showActions = false
@@ -562,6 +564,18 @@ struct RootPaletteView: View {
         }
         vm.scope = adoption.scope
         vm.query = adoption.remainder
+    }
+
+    /// Suggestions follow the armed engine and the typed query, and stop the moment either leaves —
+    /// the store asks for nothing without consent, so this can be called unconditionally.
+    private func refreshSuggestions() {
+        guard vm.mode == .launcher, let scope = vm.scope,
+            case .webSearch(let engine) = ScopeCatalog.target(for: scope, settings: settings)
+        else {
+            core.searchSuggestions.clear()
+            return
+        }
+        core.searchSuggestions.update(engine: engine, query: vm.query)
     }
 
     private func activateSelection() {

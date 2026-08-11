@@ -119,6 +119,89 @@ struct WebSearchTest {
                 }())
         }
 
+        // MARK: - Suggest endpoints
+
+        for engine in WebSearchEngine.builtIn {
+            check(
+                "\(engine.name) has a suggest endpoint, over https, carrying the query",
+                {
+                    guard let url = engine.suggestURL(for: "swift actors") else { return false }
+                    return url.scheme == "https" && url.absoluteString.contains("swift%20actors")
+                }())
+        }
+        check(
+            "an engine with no suggest endpoint asks for nothing",
+            WebSearchEngine(
+                id: "custom", name: "Custom", keyword: "c",
+                urlTemplate: "https://example.com/?q={argument}", symbol: "globe"
+            ).suggestURL(for: "swift") == nil)
+        check(
+            "an empty query asks for nothing, so a bare keyword sends no keystrokes",
+            WebSearchEngine.google.suggestURL(for: "   ") == nil)
+        check(
+            "a query that could add a parameter is encoded, not appended",
+            WebSearchEngine.google.suggestURL(for: "tea&sugar=on")?.absoluteString
+                .contains("tea%26sugar%3Don") == true)
+        check(
+            "a plaintext suggest endpoint is refused — a keystroke feed may not go in the clear",
+            WebSearchEngine(
+                id: "plain", name: "Plain", keyword: "p",
+                urlTemplate: "https://example.com/?q={argument}", symbol: "globe",
+                suggestTemplate: "http://example.com/ac?q={argument}"
+            ).suggestURL(for: "swift") == nil)
+
+        // MARK: - Parsing what a suggest endpoint answers
+
+        /// The OpenSearch shape all four engines reply in.
+        func reply(_ json: String) -> [String] {
+            SearchSuggestions.parse(Data(json.utf8), typed: "swift act")
+        }
+
+        check(
+            "the second element is the suggestion list, in the order it arrived",
+            reply(#"["swift act",["swift actor","swift action","swift active"]]"#)
+                == ["swift actor", "swift action", "swift active"])
+        check(
+            "Google's trailing metadata is ignored",
+            reply(#"["swift act",["swift actor"],[],{"google:suggestsubtypes":[[512]]}]"#)
+                == ["swift actor"])
+        check(
+            "the suggestion that repeats what was typed is dropped — its row is already above",
+            reply(#"["swift act",["swift act","swift actor"]]"#) == ["swift actor"])
+        check(
+            "and case and surrounding space don't save it",
+            reply(#"["swift act",["  Swift Act  ","swift actor"]]"#) == ["swift actor"])
+        check(
+            "duplicates collapse to the first",
+            reply(#"["swift act",["swift actor","Swift Actor","swift action"]]"#)
+                == ["swift actor", "swift action"])
+        check(
+            "no more than the row cap, however many arrive",
+            SearchSuggestions.parse(
+                Data(#"["q",["a","b","c","d","e","f","g","h","i"]]"#.utf8), typed: "q"
+            ).count == SearchSuggestions.limit)
+        check(
+            "non-string elements are skipped rather than aborting the list",
+            reply(#"["swift act",["swift actor",5,null,{"a":1},"swift action"]]"#)
+                == ["swift actor", "swift action"])
+        check(
+            "a suggestion carrying a newline is dropped, since a row is one line",
+            reply("[\"swift act\",[\"swift\\nactor\",\"swift action\"]]") == ["swift action"])
+        check(
+            "an absurdly long suggestion is dropped rather than truncated",
+            reply(#"["swift act",["\#(String(repeating: "a", count: 200))","swift action"]]"#)
+                == ["swift action"])
+        check("empty data yields nothing", SearchSuggestions.parse(Data(), typed: "q").isEmpty)
+        check("unparseable JSON yields nothing", reply("{not json").isEmpty)
+        check("an object reply yields nothing", reply(#"{"suggestions":["a"]}"#).isEmpty)
+        check("a one-element reply yields nothing", reply(#"["swift act"]"#).isEmpty)
+        check(
+            "a reply whose second element isn't a list yields nothing",
+            reply(#"["swift act","swift actor"]"#).isEmpty)
+        check(
+            "a reply of nothing but the typed query yields nothing",
+            reply(#"["swift act",["swift act"]]"#).isEmpty)
+
         print(failures == 0 ? "\nALL PASSED" : "\n\(failures) FAILED")
         exit(failures == 0 ? 0 : 1)
     }

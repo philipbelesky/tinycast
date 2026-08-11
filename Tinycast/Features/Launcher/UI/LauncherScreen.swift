@@ -16,6 +16,8 @@ struct LauncherScreen: PaletteScreen {
     private let calc: CalcResult?
     /// Set only while a web scope is committed; it owns row 0 the way the calc card does.
     private let webSearch: WebSearchEngine?
+    /// What the engine offers for the query, beneath that row; consent-gated by the store.
+    private let suggestions: [String]
     /// Resolved in `init`: the palette indexes this several times per event, so it can't recompute.
     let rows: [Row]
 
@@ -55,8 +57,11 @@ struct LauncherScreen: PaletteScreen {
         self.results = results
         self.calc = calc
         self.webSearch = engine
+        // Empty until the query's own reply lands, and empty forever without consent.
+        self.suggestions =
+            engine == nil ? [] : core.searchSuggestions.suggestions(for: vm.query)
         if let engine {
-            self.rows = [.webSearch(engine)]
+            self.rows = [.webSearch(engine)] + suggestions.map(Row.suggestion)
         } else {
             self.rows = calc.map { [.calc($0)] + entries } ?? entries
         }
@@ -66,12 +71,14 @@ struct LauncherScreen: PaletteScreen {
     enum Row: Equatable, Identifiable {
         case calc(CalcResult)
         case webSearch(WebSearchEngine)
+        case suggestion(String)
         case entry(AppEntry)
 
         var id: String {
             switch self {
             case .calc: return "calc-card"
             case .webSearch(let engine): return engine.entryID
+            case .suggestion(let text): return SearchSuggestions.rowID(text)
             case .entry(let app): return app.id
             }
         }
@@ -87,6 +94,7 @@ struct LauncherScreen: PaletteScreen {
         switch row(at: clampedSelection) {
         case .calc: return "Copy Answer"
         case .webSearch(let engine): return "Search \(engine.name)"
+        case .suggestion: return webSearch.map { "Search \($0.name)" } ?? "Search"
         case .entry(let app): return app.kind.descriptor.openVerb
         case nil: return "Open Application"
         }
@@ -113,7 +121,7 @@ struct LauncherScreen: PaletteScreen {
         // An empty scoped query has nothing to search for yet; the row still invites text.
         case .webSearch(let engine):
             return core.webSearchCoordinator.canSearch(engine: engine, query: vm.query)
-        case .entry, nil: return true
+        case .suggestion, .entry, nil: return true
         }
     }
 
@@ -130,7 +138,7 @@ struct LauncherScreen: PaletteScreen {
                     if let index = rows.firstIndex(of: .entry(app)) { vm.selection = index }
                 })
         // A search has one action, and ↵ already is it.
-        case .webSearch, nil:
+        case .webSearch, .suggestion, nil:
             return nil
         }
     }
@@ -141,6 +149,10 @@ struct LauncherScreen: PaletteScreen {
         case .calc(let result): core.calculatorCoordinator.copyCalculatorResult(result)
         case .webSearch(let engine):
             core.webSearchCoordinator.search(engine: engine, query: vm.query)
+        // A suggestion searches for itself, not for what is still in the field.
+        case .suggestion(let text):
+            guard let engine = webSearch else { break }
+            core.webSearchCoordinator.search(engine: engine, query: text)
         case .entry(let app): core.launcherCoordinator.launch(app, searchQuery: vm.query)
         case nil: break
         }
@@ -187,7 +199,7 @@ struct LauncherScreen: PaletteScreen {
         let showSections = vm.query.trimmingCharacters(in: .whitespaces).isEmpty
         LauncherList(
             results: results,
-            selectedID: entry(at: selection)?.id,
+            selectedID: row(at: selection)?.id,
             favoriteCount: showSections ? results.prefix(while: favorites.isFavorite).count : 0,
             showSections: showSections,
             scroll: scroll,
@@ -204,11 +216,18 @@ struct LauncherScreen: PaletteScreen {
             },
             webSearch: webSearch.map {
                 LauncherList.WebSearchPrompt(
+                    id: $0.entryID,
                     title: core.webSearchCoordinator.rowTitle(engine: $0, query: vm.query),
                     symbol: $0.symbol,
                     sectionTitle: AppEntry.Kind.webSearch.descriptor.sectionTitle)
             },
+            suggestions: suggestions,
             onActivateWebSearch: { activate(at: 0) },
+            onActivateSuggestion: { text in
+                guard let index = rows.firstIndex(of: .suggestion(text)) else { return }
+                vm.selection = index
+                activate(at: index)
+            },
             onActivate: { core.launcherCoordinator.launch($0, searchQuery: vm.query) },
             onActions: { app in
                 if let index = rows.firstIndex(of: .entry(app)) { vm.selection = index }

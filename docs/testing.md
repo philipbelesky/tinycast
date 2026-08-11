@@ -64,7 +64,7 @@ If a change touches anything in the right column, the harness on the left is man
 | `raycast-test` | `Backup/Model/RaycastFormat.swift`, `RaycastV1Decoder.swift`, `Service/Gunzip.swift` |
 | `settings-backup-test` | `Settings/AppSettingsKey.swift`, `Backup/Model/SettingsBackupCoverage.swift` |
 | `scope-test` | `Launcher/Model/QueryScope.swift`, `ScopeTint.swift`, `ScopeKeywords.swift` |
-| `websearch-test` | `WebSearch/Model/WebSearchEngine.swift` |
+| `websearch-test` | `WebSearch/Model/WebSearchEngine.swift`, `SearchSuggestions.swift` |
 | `herdr-test` | `Herdr/Model/HerdrTarget.swift`, `HerdrHost.swift` |
 | `vscode-test` | `VSCode/Model/VSCodeProject.swift` |
 | `linear-test` | `Linear/Model/LinearTarget.swift`, `LinearCredentials.swift` |

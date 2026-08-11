@@ -110,6 +110,7 @@ run linear-test            Tinycast/Features/Linear/Model/LinearTarget.swift \
                            Tinycast/Features/Linear/Model/LinearCredentials.swift \
                            Tinycast/Platform/SubprocessEnvironment.swift
 run websearch-test         Tinycast/Features/WebSearch/Model/WebSearchEngine.swift \
+                           Tinycast/Features/WebSearch/Model/SearchSuggestions.swift \
                            Tinycast/Features/Snippets/Model/SnippetTemplateEngine.swift \
                            Tinycast/Features/Snippets/Model/Snippet.swift
 run raycast-test           Tinycast/Features/Backup/Model/RaycastFormat.swift \

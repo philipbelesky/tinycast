@@ -24,6 +24,7 @@ final class AppCore {
     let visibility = VisibilityStore()
     let calcHistory = CalculatorHistoryStore()
     let currencyRates = CurrencyRateStore()
+    let searchSuggestions = SearchSuggestionStore()
     let emojiIndex = EmojiIndex()
     let frequentEmoji = FrequentEmojiStore()
     let runningApps = RunningAppsMonitor()

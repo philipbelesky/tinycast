@@ -458,3 +458,18 @@ and the literal text two different things, which is what lets backspace undo exa
 
 **What would change this:** multi-token scoping (`q g foo`), which would need a real parser and a
 different undo story.
+
+### 35 — A suggest feed is consented separately from the feature it completes, and keeps nothing
+
+Web search ships on; `SearchSuggestionStore` ships off behind its own dialog, and its flag lives on
+the store under `searchSuggestionsEnabled` rather than in `AppSettings`. The store has no cache at
+all — no file, no `URLCache`, no cookies.
+
+**Why:** every other networked feature sends something the app chose (a currency pair, a list of
+workspace names). This one sends what the *user is typing*, which is a different class of data and
+deserves a different answer than "the feature is on, so it fetches". Keeping nothing follows from the
+same reasoning: a rate table is public data worth caching, a query is the user's and worth forgetting.
+The one-per-pause debounce is part of the promise the dialog makes, not a performance tweak.
+
+**What would change this:** an engine whose suggest endpoint needs a key, which would put a credential
+in the picture and change what the dialog has to say.

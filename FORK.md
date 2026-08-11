@@ -177,6 +177,14 @@ pane carries a `ScopeKeywordSection`, so nine upstream panes gain a section they
 features — Web Search, herdr, VS Code — also sit in the **Features** sidebar group rather than
 Launcher, so `SettingsSection.tabs` conflicts with any upstream reshuffle of the sidebar.
 
+Web search also grew **query suggestions** (`WebSearch/Model/SearchSuggestions.swift`,
+`Service/SearchSuggestionStore.swift`), which is the fork's third networked feature and the only one
+anywhere that sends what the user *types*. It ships off behind its own dialog, keeps no cache and no
+cookies, and its flag is not in `AppSettings` — [decisions.md](docs/decisions.md) entry 35. The hooks
+are a `.suggestion` case in both row models and a `refreshSuggestions()` call in `RootPaletteView`'s
+query and scope `onChange`; `LauncherList.WebSearchPrompt` gained an `id` so the selection can move off
+the search row onto a suggestion.
+
 Every scope also **publishes a row of its own** (`AppEntry.Kind.scope`, `AppIndex.setScopes`), leading
 the empty query and wearing a coloured category tile — `ScopeTint`, `Theme.Colors.tile(_:)` and the
 tinted branch of `IconCache.symbolIcon(named:tint:)`, all documented in
