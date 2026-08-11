@@ -4,10 +4,15 @@ This checkout is a **fork of [`abue-ammar/tinycast`](https://github.com/abue-amm
 the `origin` remote and the mainline this file calls **upstream**. Fork work lives on branch `philip`;
 `main` tracks `origin/main` untouched, so it is always a clean mirror of upstream.
 
-This file exists for one job: **merging upstream without losing, re-litigating or half-reverting the
-local changes.** Every divergence is listed below with what it touches, why it exists, and what to do
-when upstream moves the same code. Anything not listed here is not intentional — treat it as drift and
-take upstream's side.
+It is a **personal** fork, and a permanent one. It ships to the author's own Macs and nowhere else, so
+nothing here is waiting to become a pull request — the "Upstreamable?" column below is a note on how
+foreign each change would look to mainline, not a plan. What *is* wanted is the traffic in the other
+direction: upstream keeps moving, and this fork keeps absorbing it.
+
+That is the one job this file exists for: **merging upstream without losing, re-litigating or
+half-reverting the local changes.** Every divergence is listed below with what it touches, why it
+exists, and what to do when upstream moves the same code. Anything not listed here is not intentional —
+treat it as drift and take upstream's side.
 
 Read [decisions.md](docs/decisions.md) first for the choices *upstream* made deliberately. This file only
 covers where the fork **departs** from those.

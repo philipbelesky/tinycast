@@ -6,6 +6,29 @@ opener, a VS Code project opener, a Linear view opener, iCloud settings sync, wi
 emoji picker. SwiftUI + AppKit, running as an accessory with no Dock
 icon (`LSUIElement`). Zero third-party dependencies.
 
+## What this checkout is: one person's fork
+
+This is **Philip's personal fork of [`abue-ammar/tinycast`](https://github.com/abue-ammar/tinycast)**,
+on branch `philip`; `main` stays a clean mirror of upstream. It is **not released**: no App Store, no
+notarization, no other users. `./Scripts/build-dmg.sh` drops a DMG into iCloud Drive, which is how it
+reaches the author's other Macs, and that is the whole distribution story
+([release.md](docs/release.md)).
+
+The install base being known changes what is worth building. A feature that suits exactly one person's
+workflow — the herdr, VS Code and Linear openers — is the point rather than scope creep, and there is
+no stranger's data to migrate or old install to keep working, which is the same reason the
+latest-only posture below costs nothing.
+
+**Absorbing upstream is still a goal, so the fork stays cheap to merge.** Every upstream file touched
+is a future conflict: prefer additive, localized changes, put genuinely new work in its own
+`Features/` folder rather than threading it through existing ones, and never reformat or restructure
+an upstream file in passing. Anything that departs from upstream belongs in [FORK.md](FORK.md), one
+commit per divergence.
+
+**What this does *not* license.** "Only my machines" is not an argument for a weaker consent gate, a
+skipped harness or an undocumented change. The consent shape exists because the data is the author's,
+not because strangers might see it, and the bar below is what keeps a fork this size mergeable at all.
+
 ## Posture: latest-only, always
 
 **Tinycast targets one macOS — the current stable release — and nothing else.** macOS 26+, the Xcode 26
