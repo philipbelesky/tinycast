@@ -16,8 +16,8 @@ final class LinearViewStore {
     /// Always empty without consent, whatever is left in the cache.
     private(set) var views: [LinearView] = []
     private(set) var lastRefreshed: Date?
-    /// Set when a refresh reached the CLI but every workspace failed, so the pane can say so.
-    private(set) var lastRefreshFailed = false
+    /// Why the last refresh came back short, verbatim from the CLI. Nil when it went fine.
+    private(set) var lastError: String?
 
     /// Built-ins are routes rather than saved work, so they are opt-out on their own.
     var includesBuiltIn: Bool {
@@ -84,11 +84,12 @@ final class LinearViewStore {
         guard isEnabled, !refreshing else { return false }
         refreshing = true
         defer { refreshing = false }
-        let fetched = await LinearClient.snapshot(includingBuiltIn: includesBuiltIn)
+        let snapshot = await LinearClient.snapshot(includingBuiltIn: includesBuiltIn)
         // Re-checked on the far side of the await: the toggle may have gone off mid-fetch, and a
         // withdrawn consent must not be handed a result it never authorised.
         guard isEnabled else { return false }
-        lastRefreshFailed = fetched.isEmpty
+        lastError = snapshot.failures.isEmpty ? nil : snapshot.failures.joined(separator: "; ")
+        let fetched = snapshot.views
         guard !fetched.isEmpty else { return false }
         lastRefreshed = Date()
         store(fetched)
@@ -110,7 +111,7 @@ final class LinearViewStore {
         }
         views = []
         lastRefreshed = nil
-        lastRefreshFailed = false
+        lastError = nil
         try? FileManager.default.removeItem(at: fileURL)
         onChange?([])
     }

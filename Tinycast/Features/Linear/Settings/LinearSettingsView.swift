@@ -101,9 +101,7 @@ struct LinearSettingsView: View {
     }
 
     private var viewsStatus: String {
-        if store.lastRefreshFailed && store.views.isEmpty {
-            return "The last refresh returned nothing — check `linear auth list`."
-        }
+        if let lastError = store.lastError { return lastError }
         guard let refreshed = store.lastRefreshed else { return "Not fetched yet." }
         return "\(store.views.count) views, last read \(refreshed.formatted(.relative(presentation: .named)))."
     }
