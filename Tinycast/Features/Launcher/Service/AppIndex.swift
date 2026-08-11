@@ -271,6 +271,11 @@ final class AppIndex {
         publishEntries()
     }
 
+    /// Whether any published entry belongs to one of these kinds.
+    func hasEntries(ofAnyKind kinds: Set<AppEntry.Kind>) -> Bool {
+        apps.contains { kinds.contains($0.kind) }
+    }
+
     /// The keywords, as rows. Activating one arms the scope instead of opening anything, which is
     /// why they lead the empty query: they are the map of what the launcher can be narrowed to.
     func setScopes(_ definitions: [ScopeDefinition]) {

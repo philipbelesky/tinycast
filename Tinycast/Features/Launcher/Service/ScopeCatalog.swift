@@ -145,7 +145,9 @@ enum ScopeCatalog {
     private static func isLive(_ id: String, settings: AppSettings) -> Bool {
         switch id {
         case quicklinks: return settings.quicklinksEnabled
-        case snippets: return settings.snippetsShowInLauncher
+        // `snippetsEnabled` is the keystroke-listening consent and ships off, so the
+        // show-in-launcher flag alone would offer a scope for a feature that is not running.
+        case snippets: return settings.snippetsEnabled && settings.snippetsShowInLauncher
         case commands: return settings.customCommandsEnabled
         case windowManagement: return settings.windowManagementEnabled
         case herdr: return settings.herdrEnabled

@@ -328,7 +328,15 @@ final class AppCore {
 
     /// The scope rows, which lead the launcher's empty query. See docs/features/palette.md.
     private func applyScopePresence() {
-        appIndex.setScopes(ScopeCatalog.launcherDefinitions(settings: settings))
+        let offered = ScopeCatalog.launcherDefinitions(settings: settings).filter { definition in
+            // A filter scope with nothing behind it would open an empty list; a mode scope is a
+            // screen and always has something to show. This is what keeps a feature that is off —
+            // or merely unconsented, which no setting records — from advertising a scope.
+            guard case .kinds(let kinds)? = ScopeCatalog.target(for: definition, settings: settings)
+            else { return true }
+            return appIndex.hasEntries(ofAnyKind: kinds)
+        }
+        appIndex.setScopes(offered)
     }
 
     private func applyWebSearchPresence() {

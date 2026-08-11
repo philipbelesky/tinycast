@@ -172,6 +172,15 @@ launcher row of kind `.scope`, and **activating one is exactly typing its keywor
 instead, the same as adopting one by typing. The keyword rides along as a match alias, so typing `l`
 finds the Linear row as readily as typing the word does.
 
+Each row carries its keyword as a keycap, in the same slot a bound hotkey's keycaps occupy — read
+from the catalog at render rather than baked onto the entry, so a keyword edited in Settings is never
+shown stale.
+
+A scope is only offered when something is actually behind it: `AppCore` drops any filter scope whose
+kinds have no published entries. That is what stops a feature which is off — or merely unconsented,
+which no setting records — from advertising a scope that opens an empty list. Mode scopes are screens
+and always qualify.
+
 Those rows are published **first**, so they lead the launcher's empty query ahead of applications:
 opening the palette on nothing now shows what the search can be narrowed *to*, which is the one list
 that explains the rest. Favorites still pin above them.

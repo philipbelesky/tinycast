@@ -186,6 +186,7 @@ private struct AppRow: View {
     let running: Bool
     /// Observed so a hotkey set/cleared in Settings re-renders the row's keycaps immediately.
     @Environment(HotKeyManager.self) private var hotKeys
+    @Environment(AppSettings.self) private var settings
     @State private var hovered = false
 
     /// Selection wins over hover when a row is both; otherwise hover shows its fainter layer.
@@ -195,8 +196,13 @@ private struct AppRow: View {
         return .clear
     }
 
-    /// Keycaps for this entry's hotkey, or `nil` if none is bound.
+    /// Keycaps for this entry's hotkey — or, for a scope, the keyword that arms it. Read from the
+    /// catalog rather than carried on the entry, so an edited keyword is never a stale row.
     private var shortcutCaps: [String]? {
+        if app.kind == .scope {
+            let keyword = ScopeCatalog.definition(id: app.id, settings: settings)?.keyword
+            return keyword.flatMap { $0.isEmpty ? nil : [$0] }
+        }
         guard let action = app.hotKeyAction else { return nil }
         return hotKeys.binding(for: action)?.keycaps
     }
