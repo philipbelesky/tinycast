@@ -54,6 +54,9 @@ struct SettingsBackup: Codable {
         var vsCodeShowInLauncher: Bool?
         /// Carried: a keyword is a typing preference, and grants nothing.
         var scopeKeywords: [String: String]?
+        // Carried: neither is the Linear consent flag, which lives on the store and never leaves it.
+        var linearShowInLauncher: Bool?
+        var linearDestination: String?
     }
 
     /// Combos keep the legacy shape, so older files import. docs/features/hotkeys.md#persistence
@@ -122,7 +125,9 @@ extension SettingsBackup {
             herdrTerminalBundleID: s.herdrTerminalBundleID,
             vsCodeEnabled: s.vsCodeEnabled,
             vsCodeShowInLauncher: s.vsCodeShowInLauncher,
-            scopeKeywords: s.scopeKeywords)
+            scopeKeywords: s.scopeKeywords,
+            linearShowInLauncher: s.linearShowInLauncher,
+            linearDestination: s.linearDestination.rawValue)
 
         let hk = core.hotKeys
         var hotkeys = HotkeyBackup()
@@ -313,6 +318,14 @@ extension SettingsBackup {
         }
         if let keywords = s.scopeKeywords {
             settings.scopeKeywords = keywords
+            count += 1
+        }
+        if let flag = s.linearShowInLauncher {
+            settings.linearShowInLauncher = flag
+            count += 1
+        }
+        if let destination = s.linearDestination.flatMap(LinearDestination.init(rawValue:)) {
+            settings.linearDestination = destination
             count += 1
         }
         if let flag = s.webSearchEnabled {

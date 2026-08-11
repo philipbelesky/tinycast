@@ -145,6 +145,7 @@ pane, and the table is what a fresh install reads.
 | `w` | Window Management | `.windowCommand` + `.systemAction` | yes |
 | `h` | herdr | `.herdrTarget` | yes |
 | `p` | VS Code | `.vsCodeProject` | yes |
+| `l` | Linear | `.linearView` | yes |
 | `g` `d` `b` `k` | Google / DuckDuckGo / Bing / Kagi | [web search](web-search.md) | yes |
 | `e` | Emoji & Symbols | `PaletteMode.emoji` | no |
 | `v` | Clipboard | `PaletteMode.clipboard` | no |

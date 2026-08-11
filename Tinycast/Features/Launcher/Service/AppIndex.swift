@@ -13,6 +13,7 @@ struct AppEntry: Identifiable, Hashable, Sendable {
         case webSearch
         case herdrTarget
         case vsCodeProject
+        case linearView
 
         var descriptor: KindDescriptor {
             switch self {
@@ -60,6 +61,10 @@ struct AppEntry: Identifiable, Hashable, Sendable {
                 return KindDescriptor(
                     label: "VS Code", sectionTitle: "VS Code Projects",
                     openVerb: "Open in VS Code", canRevealInFinder: true, isSymbolIcon: false)
+            case .linearView:
+                return KindDescriptor(
+                    label: "Linear", sectionTitle: "Linear Views",
+                    openVerb: "Open in Linear", canRevealInFinder: false, isSymbolIcon: true)
             }
         }
     }
@@ -114,7 +119,7 @@ struct AppEntry: Identifiable, Hashable, Sendable {
         case .quicklink:
             return Quicklink.id(fromEntryID: id).map { .quicklink(id: $0) }
         // A web search needs a query; a herdr id and a project path can vanish between launches.
-        case .command, .snippet, .webSearch, .herdrTarget, .vsCodeProject:
+        case .command, .snippet, .webSearch, .herdrTarget, .vsCodeProject, .linearView:
             return nil
         }
     }
@@ -139,7 +144,7 @@ struct AppEntry: Identifiable, Hashable, Sendable {
             return WebSearchEngine.engine(id: WebSearchEngine.id(fromEntryID: id) ?? "")?.symbol
                 ?? WebSearchEngine.default.symbol
         case .herdrTarget: return "macwindow"
-        case .application, .systemSettings, .vsCodeProject: return "questionmark"
+        case .application, .systemSettings, .vsCodeProject, .linearView: return "questionmark"
         }
     }
 
@@ -203,6 +208,7 @@ final class AppIndex {
     private var webSearchEntries: [AppEntry] = []
     private var herdrEntries: [AppEntry] = []
     private var vsCodeEntries: [AppEntry] = []
+    private var linearEntries: [AppEntry] = []
     /// Built-in commands minus the quicklink ones while the feature is off.
     private var commandEntries: [AppEntry] = CommandCatalog.all
     private var alternateNameCache = SpotlightNames.Cache()
@@ -254,6 +260,22 @@ final class AppIndex {
         guard entries != quicklinkEntries || commands != commandEntries else { return }
         quicklinkEntries = entries
         commandEntries = commands
+        publishEntries()
+    }
+
+    /// Replaces the Linear slice. Empty without consent, which the store enforces rather than this.
+    func setLinearViews(_ views: [LinearView]) {
+        let entries = views.map { view in
+            AppEntry(
+                id: view.entryID, name: view.displayName,
+                url: URL(string: "tinycast://linear/" + view.kind.rawValue)!,
+                bundleID: nil, kind: .linearView,
+                // So the workspace name alone finds everything in it.
+                matchAliases: [view.workspaceURLKey, view.name],
+                symbolName: view.symbol)
+        }
+        guard entries != linearEntries else { return }
+        linearEntries = entries
         publishEntries()
     }
 
@@ -423,7 +445,8 @@ final class AppIndex {
     private func publishEntries() {
         // Each slice arrives in its own display order; the slice order is the section order.
         let updated =
-            discoveredEntries + quicklinkEntries + vsCodeEntries + herdrEntries + webSearchEntries
+            discoveredEntries + quicklinkEntries + vsCodeEntries + herdrEntries + linearEntries
+            + webSearchEntries
             + snippetEntries + Self.systemActionEntries + windowCommandEntries
             + customCommandEntries + commandEntries
         guard updated != apps else { return }

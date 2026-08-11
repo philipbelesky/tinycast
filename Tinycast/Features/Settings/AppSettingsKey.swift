@@ -36,4 +36,6 @@ enum AppSettingsKey: String, CaseIterable {
     case vsCodeEnabled = "vsCodeEnabled"
     case vsCodeShowInLauncher = "vsCodeShowInLauncher"
     case scopeKeywords = "scopeKeywords"
+    case linearShowInLauncher = "linearShowInLauncher"
+    case linearDestination = "linearDestination"
 }

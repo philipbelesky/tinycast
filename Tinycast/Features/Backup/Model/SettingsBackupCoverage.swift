@@ -35,7 +35,9 @@ enum SettingsBackupCoverage {
         "herdrTerminalBundleID": .herdrTerminalBundleID,
         "vsCodeEnabled": .vsCodeEnabled,
         "vsCodeShowInLauncher": .vsCodeShowInLauncher,
-        "scopeKeywords": .scopeKeywords
+        "scopeKeywords": .scopeKeywords,
+        "linearShowInLauncher": .linearShowInLauncher,
+        "linearDestination": .linearDestination
     ]
 
     /// The `SettingsData` fields no `AppSettings` key stands behind, and what they read instead.

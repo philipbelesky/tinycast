@@ -25,6 +25,7 @@ enum ScopeCatalog {
     static let windowManagement = "scope:window-management"
     static let herdr = "scope:herdr"
     static let vsCode = "scope:vscode"
+    static let linear = "scope:linear"
     static let emoji = "scope:emoji"
     static let clipboard = "scope:clipboard"
 
@@ -59,7 +60,11 @@ enum ScopeCatalog {
             definition: ScopeDefinition(
                 keyword: "p", id: vsCode, title: "VS Code",
                 symbol: "chevron.left.forwardslash.chevron.right"),
-            target: .kinds([.vsCodeProject]))
+            target: .kinds([.vsCodeProject])),
+        Entry(
+            definition: ScopeDefinition(
+                keyword: "l", id: linear, title: "Linear", symbol: "line.3.horizontal.decrease.circle"),
+            target: .kinds([.linearView]))
     ]
 
     private static let modes: [Entry] = [
@@ -132,6 +137,7 @@ enum ScopeCatalog {
         case windowManagement: return settings.windowManagementEnabled
         case herdr: return settings.herdrEnabled
         case vsCode: return settings.vsCodeEnabled
+        case linear: return settings.linearShowInLauncher
         default: return id.hasPrefix("scope:" + WebSearchEngine.entryIDPrefix)
             ? settings.webSearchEnabled : true
         }

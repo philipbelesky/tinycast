@@ -128,7 +128,7 @@ permission-aware failures. With the palette closed it targets the frontmost app,
 Quit All act on the same window a palette launch would have.
 
 System actions occupy their own launcher section and their own Settings pane. The empty-query publication
-order is applications, System Settings, quicklinks, VS Code, herdr, web search, snippets, system actions, window
+order is applications, System Settings, quicklinks, VS Code, herdr, Linear, web search, snippets, system actions, window
 commands, custom commands, then built-in commands; the sectioned view filters in that same order so the
 visible rows remain identical to the flat selection index.
 Search, favorites, visibility and learned ranking work through the normal `AppEntry` path, and every
@@ -208,9 +208,16 @@ isn't running, which is the same shape as the feature being switched off — no 
 Activation is the one launcher path that also raises a *different* app afterwards. See
 [herdr.md](herdr.md).
 
+## Linear views
+
+`AppEntry.Kind.linearView` publishes the saved views of every logged-in Linear workspace, plus each
+one's built-in pages. It is the only launcher slice behind a **consent gate**: the switch lives on
+`LinearViewStore`, not `AppSettings`, so the slice is empty until the user has said yes to a dialog
+naming the provider. See [linear.md](linear.md).
+
 ## Web search
 
-`AppEntry.Kind.webSearch` publishes one entry per engine, between the herdr and snippet slices.
+`AppEntry.Kind.webSearch` publishes one entry per engine, between the Linear and snippet slices.
 An entry carries no query, so activating one arms its scope instead of opening anything, and its
 `hotKeyAction` is nil — a bare chord has no way to supply search text. See
 [web-search.md](web-search.md), and [palette.md](palette.md#scope-keywords) for the keywords that

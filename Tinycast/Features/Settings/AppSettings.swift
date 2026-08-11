@@ -163,6 +163,16 @@ final class AppSettings {
         }
     }
 
+    /// Not a consent flag: the network switch is `LinearViewStore.isEnabled`, which no import
+    /// can reach. This only decides whether consented views also show in the root search.
+    var linearShowInLauncher: Bool {
+        didSet { defaults.set(linearShowInLauncher, forKey: Key.linearShowInLauncher.rawValue) }
+    }
+
+    var linearDestination: LinearDestination {
+        didSet { defaults.set(linearDestination.rawValue, forKey: Key.linearDestination.rawValue) }
+    }
+
     /// Reads VS Code's own record of what it has opened; nothing leaves the machine.
     var vsCodeEnabled: Bool {
         didSet { defaults.set(vsCodeEnabled, forKey: Key.vsCodeEnabled.rawValue) }
@@ -254,6 +264,12 @@ final class AppSettings {
             defaults.object(forKey: Key.showFavoritesInCompactMode.rawValue) == nil
             || defaults.bool(forKey: Key.showFavoritesInCompactMode.rawValue)
         // Unset seeds the defaults; a stored empty array is a deliberately cleared list.
+        linearShowInLauncher =
+            defaults.object(forKey: Key.linearShowInLauncher.rawValue) == nil
+            || defaults.bool(forKey: Key.linearShowInLauncher.rawValue)
+        linearDestination =
+            defaults.string(forKey: Key.linearDestination.rawValue)
+            .flatMap(LinearDestination.init(rawValue:)) ?? .app
         scopeKeywords =
             defaults.dictionary(forKey: Key.scopeKeywords.rawValue) as? [String: String] ?? [:]
         searchScopes =

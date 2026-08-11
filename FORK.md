@@ -25,6 +25,7 @@ covers where the fork **departs** from those.
 | 5 | [herdr opener](#5--herdr-opener) | Medium — the same `AppEntry.Kind` surface as 4 | Unlikely — niche third-party tool |
 | 6 | [VS Code project opener](#6--vs-code-project-opener) | Medium — the same `AppEntry.Kind` surface as 4 | Yes, as a feature |
 | 7 | [Replace-on-import for quicklinks](#7--replace-on-import-for-quicklinks) | Low — one button, one method | Yes, small |
+| 8 | [Linear view opener](#8--linear-view-opener) | Medium — the same `AppEntry.Kind` surface as 4 | Unlikely — niche, and networked |
 
 Keep each divergence as **its own commit**, never squashed together. Rebasing `philip` onto a new
 `origin/main` then replays them one at a time, and a divergence that upstream has since made redundant
@@ -256,6 +257,30 @@ quietly turn a replace into a partial wipe.
 parameter and keep the ordering — decode, then confirm, then delete — since that is what stops an
 unreadable file from costing a library.
 
+---
+
+## 8 — Linear view opener
+
+**Touches:** a new `Features/Linear/` (two pure models with a harness, a client, a consented store, a
+coordinator, a settings pane), plus the same hook set as divergences 5 and 6 —
+`AppEntry.Kind.linearView`, an `AppIndex` slice, a `LauncherCoordinator` branch, `ScopeCatalog`'s `l`,
+`PaletteCoordinator.onShow`, `AppCore` wiring, `SettingsTab` and the settings/backup registries.
+
+`l payments` lists the views in every workspace the `linear` CLI is logged in to; ↵ opens one. It is
+the **second networked feature** in the app and the first the fork added, so it copies
+`CurrencyRateStore` rather than inventing a second consent shape: flag on the store, three guards,
+re-checked across the await, cache deleted on withdrawal.
+
+Two things not to lose. The consent flag must stay out of `AppSettings` — `settings-backup-test` will
+not catch it moving, because a new key there is legal; only the invariant forbids it. And the desktop
+app's link handling is a genuine trap: `Linear.app` declares no URL scheme and does not claim
+`https://linear.app`, so the https URL opens it and does nothing. `linear://` works, but only because
+Electron registers it at runtime — a Mac where Linear has never launched has no handler, which is what
+the browser fallback in `LinearCoordinator` is for.
+
+**On merge:** same rule as divergences 5 and 6. If upstream grows its own consent helper, this should
+adopt it rather than keep a parallel one.
+
 ## Merging upstream
 
 ```sh
@@ -264,20 +289,21 @@ git checkout main && git merge --ff-only origin/main   # keep the mirror clean
 git checkout philip && git rebase origin/main           # replay the divergences
 ```
 
-Rebase rather than merge, so the fork stays a readable stack of the seven commits above rather than a
+Rebase rather than merge, so the fork stays a readable stack of the eight commits above rather than a
 braid. Then, before calling it done — the standard gate from
 [testing.md](docs/testing.md#definition-of-done) plus the fork-specific checks:
 
-- [ ] `./Scripts/run-tests.sh` passes (23 harnesses; `scope-test`, `websearch-test`, `herdr-test` and
-      `vscode-test` are fork-local).
+- [ ] `./Scripts/run-tests.sh` passes (24 harnesses; `scope-test`, `websearch-test`, `herdr-test`,
+      `vscode-test` and `linear-test` are fork-local).
 - [ ] Debug build compiles with no new warnings.
 - [ ] `./Scripts/lint.sh` is clean.
 - [ ] `grep -rln 'import AppKit\|import SwiftUI\|import Cocoa' Tinycast/Features/*/Model/` returns nothing.
 - [ ] **The white-alpha grep above returns only lifting colors** (divergence 2).
 - [ ] **New or merged views carry no magic numbers** — every length and font size comes from `Theme` (divergence 3).
 - [ ] **Signing survived** — if `xcodegen` ran, re-apply divergence 1.
-- [ ] **`PaletteCoordinator.onShow` still fires** — otherwise herdr and VS Code list stale state
-      (divergences 5, 6).
+- [ ] **`PaletteCoordinator.onShow` still fires** — otherwise herdr, VS Code and Linear list stale
+      state (divergences 5, 6, 8).
+- [ ] **Linear's consent flag is still on the store, not in `AppSettings`** (divergence 8).
 - [ ] The palette, a dialog and both HUDs were opened and *looked at*. No agent here can do this.
 
 ## Adding a divergence
