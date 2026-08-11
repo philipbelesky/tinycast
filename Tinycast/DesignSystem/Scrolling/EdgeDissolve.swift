@@ -2,10 +2,12 @@ import SwiftUI
 
 /// Scroll-driven edge dissolve for a scroll view underlapping the palette's floating bars, a port of Raycast's scroll-area mask (see `docs/ui.md` → The edge dissolve).
 struct EdgeDissolveMask: ViewModifier {
-    /// Band lengths: the bar's occupied height plus Raycast's overshoot into the list (32px below the header, 28px above the footer).
-    var topFade: CGFloat = Theme.Size.headerHeight + Theme.Size.headerPadding + 32
+    /// The header's own height: it carries no material, so content has to be *gone* by its bottom edge rather than ghosting through the search field.
+    var topBand: CGFloat = Theme.Size.headerHeight + Theme.Size.headerPadding
+    /// How far past the header the ramp runs, and how far the list scrolls before that band is clear.
+    var topOvershoot: CGFloat = 20
+    /// The footer is floating glass, so content still dissolves *into* it across Raycast's 28px overshoot.
     var bottomFade: CGFloat = Theme.Size.bottomBarHeight + 28
-    private static let topMinAlpha: CGFloat = 0.15
     private static let bottomMinAlpha: CGFloat = 0.25
 
     /// How much content is hidden beyond each edge, 0 when the list rests against it.
@@ -50,13 +52,14 @@ struct EdgeDissolveMask: ViewModifier {
 
     private func stops(height: CGFloat) -> [Gradient.Stop] {
         guard canScroll, height > 0 else { return [.init(color: .black, location: 0)] }
+        // Opaque at rest, since content rests against the header's edge; clear once an overshoot of it has passed under.
+        let hidden = min(topDistance / topOvershoot, 1)
         // Midpoint alpha eases from 1 toward the floor as a full band of content scrolls past (Raycast: opacity = 1 − (1 − min) · clamp(scrollDistance / fadeHeight, 0, 1)).
-        let topAlpha = 1 - (1 - Self.topMinAlpha) * min(topDistance / topFade, 1)
         let bottomAlpha = 1 - (1 - Self.bottomMinAlpha) * min(bottomDistance / bottomFade, 1)
         return [
             .init(color: .black.opacity(0), location: 0),
-            .init(color: .black.opacity(topAlpha), location: topFade / 2 / height),
-            .init(color: .black, location: topFade / height),
+            .init(color: .black.opacity(1 - hidden), location: topBand / height),
+            .init(color: .black, location: (topBand + topOvershoot) / height),
             .init(color: .black, location: 1 - bottomFade / height),
             .init(color: .black.opacity(bottomAlpha), location: 1 - bottomFade / 2 / height),
             .init(color: .black.opacity(0), location: 1)

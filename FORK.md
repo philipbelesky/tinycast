@@ -26,6 +26,7 @@ covers where the fork **departs** from those.
 | 6 | [VS Code project opener](#6--vs-code-project-opener) | Medium — the same `AppEntry.Kind` surface as 4 | Yes, as a feature |
 | 7 | [Replace-on-import for quicklinks](#7--replace-on-import-for-quicklinks) | Low — one button, one method | Yes, small |
 | 8 | [Linear view opener](#8--linear-view-opener) | Medium — the same `AppEntry.Kind` surface as 4 | Unlikely — niche, and networked |
+| 9 | [Header-clearing edge dissolve](#9--header-clearing-edge-dissolve) | **High** — rewrites the top half of a file upstream calls off-limits | Yes — it fixes a real artifact |
 
 Keep each divergence as **its own commit**, never squashed together. Rebasing `philip` onto a new
 `origin/main` then replays them one at a time, and a divergence that upstream has since made redundant
@@ -294,6 +295,28 @@ reintroduces a bug that only appears when the app is launched from Xcode.
 
 **On merge:** same rule as divergences 5 and 6. If upstream grows its own consent helper, this should
 adopt it rather than keep a parallel one.
+
+---
+
+## 9 — Header-clearing edge dissolve
+
+**Touches:** the top half of `DesignSystem/Scrolling/EdgeDissolve.swift` — `topFade`/`topMinAlpha`
+became `topBand`/`topOvershoot`, and the two top gradient stops moved. The bottom half is untouched.
+
+Upstream fades the top band to a floor of **0.15 at mid-band** and only reaches full opacity 32pt
+*below* the header, which leaves scrolled content 45–95% opaque at the search field's own edge and
+dims rows that are fully visible. That reads as the search bar sitting on top of the list — worst in
+the emoji grid, where a row is 70pt of saturated colour. Here the top band clears to **0** at the
+header's bottom edge, over a 20pt overshoot: opaque at rest, gone once a sliver has scrolled under.
+
+The asymmetry is the point. The footer is floating glass and hides what ghosts into it, so its band
+keeps upstream's shape and floor; the header carries no material at all, so nothing may survive it.
+
+This is the one upstream file marked off-limits (decisions entry 28), which is why the amendment is
+recorded there as well as here.
+
+**On merge:** take upstream's file only if it has grown a material behind the header; otherwise
+re-apply this, since upstream's shape and this fork's transparent header cannot both be right.
 
 ## Merging upstream
 

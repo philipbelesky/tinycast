@@ -345,6 +345,13 @@ Both are exempt from the comment budget and from edits.
 until proven otherwise. Needing to touch one to fix a scroll bug is the signal that the real fix belongs
 elsewhere — a scroll target, an inset, an intent.
 
+**Amended 2026-08-11, on an explicit report that the search bar sat on top of the list.** It did: the
+top band floored at 0.15 *mid-band* and only reached full opacity 32pt below the bar, leaving content
+45–95% visible at the bar's own edge (measured off a screenshot: ink gap 108 against 170 for an
+unobstructed row) and dimming rows that were fully visible. The top band now clears to 0 at the header's
+edge. The bottom is untouched — the footer is glass, so ghosting into it is the intended look. The rule
+otherwise stands: this was a change to the look, requested as one, not a scroll bug worked around here.
+
 **What would change this:** an explicit task to change that look.
 
 ### 29 — `AppIndex.refresh` collapses trailing refreshes rather than cancelling and restarting

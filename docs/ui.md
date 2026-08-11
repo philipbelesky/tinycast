@@ -186,8 +186,9 @@ The signature effect. A scroll-driven `LinearGradient` mask on each list so rows
 a floating bar, ghost beneath it, and vanish only at the window edge. Attach with `.edgeDissolve()` on
 the `ScrollView`, **before `.thinScrollbar()`** (so the scrollbar overlay stays unmasked).
 
-- Fade bands: top = `headerHeight + headerPadding + 32`, bottom = `bottomBarHeight + 28` — each overshoots its bar into the visible list, so the ramp finishes ~32/28px _past_ the bar rather than cliffing at its edge.
-- Alpha floors mid-scroll (not to 0): **top 0.15, bottom 0.25**, eased by how much content is hidden past the edge (`1 − (1 − floor)·clamp(dist/band, 0, 1)`).
+- **The two edges are not symmetric, because the two bars are not.** The bottom bar is floating glass, so content dissolves _into_ it across `bottomBarHeight + 28`, flooring at **0.25** — the glass hides the rest. The header carries no material of its own, so anything still visible at its bottom edge reads as content sitting on top of the search field; there the mask goes to **0**.
+- Top: the band is the header's own height (`headerHeight + headerPadding`), and it clears over `topOvershoot` (20pt) — opaque at rest, since content rests against the bar's edge, fully transparent once an overshoot of it has scrolled under. The ramp back to full opacity finishes 20pt below the bar, so a row softens only in its last sliver before it disappears.
+- Bottom alpha eases by how much content is hidden past the edge (`1 − (1 − floor)·clamp(dist/band, 0, 1)`).
 - Only masks when the list is scrollable; the edge stop stays transparent so rubber-band bounces still dissolve. A list that fits gets no mask.
 - The mask spans the scroll view's **full** frame (`.ignoresSafeArea()`) — otherwise the bars' safe-area insets shift the gradient onto at-rest rows.
 
