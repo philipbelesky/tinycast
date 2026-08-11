@@ -134,6 +134,7 @@
 		903FFCACE52FFA25958AD832 /* SnippetArgumentsPrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = A80495AE6BF7CE22BD6B20EE /* SnippetArgumentsPrompt.swift */; };
 		906C261B36E9E0B597198E3D /* UninstallRules.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E7DAF3FFEE6CAB656B0FA8A /* UninstallRules.swift */; };
 		9229286C78240516FE89D930 /* LinearCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C33BA8B98AD8475CC9302D6C /* LinearCoordinator.swift */; };
+		931A3537AC2C939DAE4D19B0 /* SubprocessEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9D70776D9B307EA4DE7244D /* SubprocessEnvironment.swift */; };
 		935F7433BB0C0ECDE6FA3BF3 /* ClipboardScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 548C83C4086CD9FB8E85B222 /* ClipboardScreen.swift */; };
 		939F3944AE8D36A8C337D46F /* Signposts.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9044F107ADD5896746DBC35 /* Signposts.swift */; };
 		94887F8E18AB2C08A8273897 /* Permissions.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA7B3EB88881CEEFCE71448D /* Permissions.swift */; };
@@ -438,6 +439,7 @@
 		D2D032AC22E53BB9997E492F /* CalculatorHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalculatorHistoryStore.swift; sourceTree = "<group>"; };
 		D43F1080FB443A1D0616790E /* FavoritesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesStore.swift; sourceTree = "<group>"; };
 		D6BBB0C45203E7939BC8BF40 /* LinearViewStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinearViewStore.swift; sourceTree = "<group>"; };
+		D9D70776D9B307EA4DE7244D /* SubprocessEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubprocessEnvironment.swift; sourceTree = "<group>"; };
 		DA8CBA97041AAA96C0B7FF2E /* BackupActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupActions.swift; sourceTree = "<group>"; };
 		DB1752929BA1ACC0BC54865C /* HUDPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDPanel.swift; sourceTree = "<group>"; };
 		DB5FA545F484D7666E9A5F14 /* RunningAppsMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunningAppsMonitor.swift; sourceTree = "<group>"; };
@@ -507,6 +509,7 @@
 				AA7B3EB88881CEEFCE71448D /* Permissions.swift */,
 				C60EA0AC5DE3E4E728649DB9 /* ProcessTable.swift */,
 				F9044F107ADD5896746DBC35 /* Signposts.swift */,
+				D9D70776D9B307EA4DE7244D /* SubprocessEnvironment.swift */,
 			);
 			path = Platform;
 			sourceTree = "<group>";
@@ -1676,6 +1679,7 @@
 				3BC6CC35889FFC77D640C7CA /* SnippetsSettingsView.swift in Sources */,
 				7BDB7CF7F1352015F6AC96C3 /* SnippetsStore.swift in Sources */,
 				089C174783A60216FCC952B3 /* SpotlightNames.swift in Sources */,
+				931A3537AC2C939DAE4D19B0 /* SubprocessEnvironment.swift in Sources */,
 				FF934DD9FBD8F26BAB72ACD1 /* SymbolImage.swift in Sources */,
 				71AA40FC4B8C57FFDE5F8DFC /* SystemAction.swift in Sources */,
 				A11EB7D1852FB3D56DDBE7C3 /* SystemActionCoordinator.swift in Sources */,

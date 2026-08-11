@@ -172,3 +172,20 @@ Only unambiguous data is emitted. Anything two currencies claim — `dollars`, `
 left out and decided by hand in `CalcCurrency.contested`, the one currency table still written by hand.
 Re-run the script when a currency is added or retired; nothing breaks in the meantime, since an
 unquoted code just reports "no exchange rate".
+
+## Spawning a tool
+
+Anything that shells out sets `process.environment = SubprocessEnvironment.inherited` rather than
+letting the child inherit the app's environment as-is.
+
+Xcode injects debugging dylibs into a Debug run — `libMainThreadChecker`, `libBacktraceRecording`,
+the view-debugger support library — through `DYLD_INSERT_LIBRARIES`, and every subprocess inherits
+them. That is enough to break any tool which reads its own executable to find an appended payload:
+a Deno-compiled binary exits 1 with `error: Did not find magic bytes`. Go and Rust tools are
+unaffected, which is why `herdr` worked and `linear` did not.
+
+The symptom is worth recognising, because it inverts the usual order of trust: the feature works from
+a terminal, works from a signed `.app` launched with `open`, works from a Release build — and fails
+**only** when the app is launched from Xcode, which is the one way it is usually run while being
+written. `SubprocessEnvironment.stripping` drops `DYLD_*` and `__XPC_DYLD_*` and keeps everything
+else; `linear-test` pins exactly that.

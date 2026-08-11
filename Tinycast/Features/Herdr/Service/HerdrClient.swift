@@ -71,6 +71,7 @@ enum HerdrClient {
         let stdout = Pipe()
         process.executableURL = URL(fileURLWithPath: executable)
         process.arguments = arguments
+        process.environment = SubprocessEnvironment.inherited
         // Load-bearing: a herdr that waited on input would hang the palette's refresh.
         process.standardInput = FileHandle.nullDevice
         process.standardOutput = stdout

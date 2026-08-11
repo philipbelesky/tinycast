@@ -278,6 +278,11 @@ app's link handling is a genuine trap: `Linear.app` declares no URL scheme and d
 Electron registers it at runtime — a Mac where Linear has never launched has no handler, which is what
 the browser fallback in `LinearCoordinator` is for.
 
+A third thing, learned the hard way and now shared: `Platform/SubprocessEnvironment.swift`. Xcode's
+Debug-run dylib injection is inherited by every child process and breaks any tool that reads its own
+executable, so both this and `HerdrClient` strip `DYLD_*` before spawning. Deleting that line
+reintroduces a bug that only appears when the app is launched from Xcode.
+
 **On merge:** same rule as divergences 5 and 6. If upstream grows its own consent helper, this should
 adopt it rather than keep a parallel one.
 

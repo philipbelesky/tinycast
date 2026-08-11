@@ -114,6 +114,7 @@ enum LinearClient {
         let stderr = Pipe()
         process.executableURL = URL(fileURLWithPath: executable)
         process.arguments = arguments
+        process.environment = SubprocessEnvironment.inherited
         // Load-bearing: a CLI that stopped to prompt for a login would hang the refresh.
         process.standardInput = FileHandle.nullDevice
         process.standardOutput = stdout

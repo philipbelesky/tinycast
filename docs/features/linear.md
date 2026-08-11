@@ -16,6 +16,11 @@ Issues are deliberately absent. This feature opens views and nothing else.
   credentials in the system keyring. The only file read directly is `~/.config/linear/credentials.toml`,
   and only for its `workspaces` list — `LinearCredentials.parse` reads exactly two keys by name, so a
   migrated plaintext token in that file is never touched, which `linear-test` pins.
+- **A spawned tool gets `SubprocessEnvironment.inherited`, never the raw environment.** Xcode
+  injects debugging dylibs into a Debug run and children inherit them, which breaks any tool that
+  reads its own executable — `linear` is Deno-compiled and exits 1 with "Did not find magic
+  bytes". The symptom is vicious: the feature works from a terminal and from a released build,
+  and fails only while debugging. See [development.md](../development.md#spawning-a-tool).
 - **`Model/LinearView.swift` and `Model/LinearCredentials.swift` are Foundation-only and pure**, so
   `linear-test` compiles the shipped parser, URL builder and icon map.
 - **`linear api` answers HTTP 200 with an `errors` array**, so a failed query is not a thrown error.

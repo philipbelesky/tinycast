@@ -116,6 +116,30 @@ struct LinearTest {
             "the same view name in two workspaces yields two ids",
             Set(views.map(\.id)).isDisjoint(with: Set(other.map(\.id))))
 
+        // MARK: - The environment a spawned tool inherits
+
+        // Xcode injects debugging dylibs into a Debug run and every child inherits them, which is
+        // enough to break a Deno-compiled binary outright: `linear` exits 1 with "Did not find
+        // magic bytes" because the injection disturbs the self-read it does to find its payload.
+        let polluted = [
+            "PATH": "/opt/homebrew/bin", "HOME": "/Users/philip",
+            "DYLD_INSERT_LIBRARIES": "/Applications/Xcode.app/…/libMainThreadChecker.dylib",
+            "DYLD_LIBRARY_PATH": "/…/Build/Products/Debug",
+            "DYLD_FRAMEWORK_PATH": "/…/Build/Products/Debug",
+            "__XPC_DYLD_LIBRARY_PATH": "/…/Build/Products/Debug",
+            "MY_DYLD_SETTING": "kept"
+        ]
+        let cleaned = SubprocessEnvironment.stripping(polluted)
+        check(
+            "every dynamic-loader variable is dropped",
+            cleaned.keys.allSatisfy { !$0.hasPrefix("DYLD_") && !$0.hasPrefix("__XPC_DYLD_") })
+        check("PATH survives, or nothing would resolve", cleaned["PATH"] == "/opt/homebrew/bin")
+        check("HOME survives, or the CLI loses its credentials", cleaned["HOME"] == "/Users/philip")
+        check(
+            "a variable that merely contains the prefix is left alone",
+            cleaned["MY_DYLD_SETTING"] == "kept")
+        check("nothing else is dropped", cleaned.count == 3)
+
         print(failures == 0 ? "\nALL PASSED" : "\n\(failures) FAILED")
         exit(failures == 0 ? 0 : 1)
     }
