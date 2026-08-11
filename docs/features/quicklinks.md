@@ -183,6 +183,15 @@ can't import its own duplicates. Skipped entries are counted and reported in the
 takes a fresh identity for every entry, so it can never collide with a shortcut an existing quicklink
 owns.
 
+**Replace** is the same read with a different destination: the file becomes the whole library instead
+of adding to it. It merges into *nothing*, which is what keeps the two paths honest — a replacement
+still drops the file's own duplicates, still refuses a record missing a name or a link, and still takes
+fresh identities, so nothing imported can inherit a deleted item's shortcut. The confirmation names
+both counts and is asked **after** the file decodes and **before** anything is deleted, so an
+unreadable file can never cost you a library. Removal unwinds every reference the way a single delete
+does — shortcut, favorite slot, learned ranking — rather than leaving them pointing at ids that are
+gone. With an empty library there is nothing to lose, so it imports without asking.
+
 Quicklinks and their bindings also ride in native settings backups, and the settings flags with them.
 Unlike `snippetsEnabled`, `quicklinksEnabled` grants no permission class and enables no listening, so
 excluding it would be cargo-culting.

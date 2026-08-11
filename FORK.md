@@ -24,6 +24,7 @@ covers where the fork **departs** from those.
 | 4 | [Scope keywords + web search](#4--scope-keywords-and-web-search) | Medium — hooks into `AppIndex`, `RootPaletteView`, `AppEntry.Kind` | Yes, as a feature |
 | 5 | [herdr opener](#5--herdr-opener) | Medium — the same `AppEntry.Kind` surface as 4 | Unlikely — niche third-party tool |
 | 6 | [VS Code project opener](#6--vs-code-project-opener) | Medium — the same `AppEntry.Kind` surface as 4 | Yes, as a feature |
+| 7 | [Replace-on-import for quicklinks](#7--replace-on-import-for-quicklinks) | Low — one button, one method | Yes, small |
 
 Keep each divergence as **its own commit**, never squashed together. Rebasing `philip` onto a new
 `origin/main` then replays them one at a time, and a divergence that upstream has since made redundant
@@ -57,6 +58,14 @@ settings.base:
 That is the durable fix, at the price of a permanent three-line conflict with upstream in a file that
 rarely changes. A git-ignored `.xcconfig` included from `project.yml` would avoid even that, at the cost
 of a file upstream doesn't know about.
+
+`Scripts/build-dmg.sh` followed: it used to hardcode `CODE_SIGN_STYLE=Manual`, the self-signed identity
+and `--timestamp=none`, which meant it aborted on line 10 of a fork checkout because that identity was
+never created here. It now leaves signing to `project.yml` and only preflights that the identity
+resolves, defaulting to `Apple Development` and overridable with `TINYCAST_SIGN_IDENTITY`. The same
+script gained a fork-local drop step — the finished DMG is copied to `TINYCAST_DMG_DROP`, defaulting to
+`~/Library/Mobile Documents/com~apple~CloudDocs/Resources` — which is skipped when the directory is
+absent, so it is inert upstream and on CI.
 
 **On merge:** take upstream's `project.pbxproj` whole — hand-resolving it is never worth it — keep the
 fork's three lines in `project.yml`, then run `xcodegen generate` and commit the result. If you ever
@@ -146,7 +155,8 @@ Converting them to tokens is part of finishing the merge, not a follow-up.
 
 ## 4 — Scope keywords and web search
 
-**Touches:** two new pure models (`Launcher/Model/QueryScope.swift`, `WebSearch/Model/WebSearchEngine.swift`)
+**Touches:** three new pure models (`Launcher/Model/QueryScope.swift`, `Launcher/Model/ScopeKeywords.swift`,
+`WebSearch/Model/WebSearchEngine.swift`)
 with a harness each, `Launcher/Service/ScopeCatalog.swift`, `WebSearch/Service/`, `WebSearch/Settings/`,
 `Palette/ScopeChip.swift` — plus hooks in `AppIndex`, `LauncherScreen`, `LauncherList`,
 `LauncherCoordinator`, `RootPaletteView`, `PaletteWindowController`, `PaletteState`, `AppCore`,
@@ -156,6 +166,12 @@ A keyword plus a space narrows the root search (`q github`) or routes the rest o
 engine (`g swift actors`). Upstream has neither; both are documented as if they were native, in
 [palette.md](docs/features/palette.md#scope-keywords) and [web-search.md](docs/features/web-search.md),
 with [decisions.md](docs/decisions.md) entry 34 for the adopt-on-transition rule.
+
+Keywords are **user-editable**, which is the part with the widest settings surface: every scope-owning
+pane carries a `ScopeKeywordSection`, so nine upstream panes gain a section they did not have, and
+`AppSettings.scopeKeywords` is a dictionary key upstream has no notion of. The panes for the fork's own
+features — Web Search, herdr, VS Code — also sit in the **Features** sidebar group rather than
+Launcher, so `SettingsSection.tabs` conflicts with any upstream reshuffle of the sidebar.
 
 This is the divergence most worth offering upstream — it is additive, it invents no new architecture,
 and the grammar is pure and tested. Until then, the conflict surface is what it touches: `AppIndex`
@@ -217,6 +233,29 @@ canonical one is a regression that looks like a cleanup. `vscode.md` says so at 
 `canRevealInFinder: true` and `isSymbolIcon: false`, so upstream code assuming "synthetic implies
 symbol icon" will be wrong.
 
+---
+
+## 7 — Replace-on-import for quicklinks
+
+**Touches:** `Quicklinks/UI/QuicklinkCoordinator.swift` (one parameter, one private method),
+`Quicklinks/Settings/QuicklinksSettingsView.swift` (one button), three assertions in
+`Tests/quicklink-test.swift`, and `docs/features/quicklinks.md`.
+
+Upstream's import only ever *adds*, skipping what you already have. This fork adds a **Replace** button
+that makes the file the whole library, for the case this fork actually has: quicklinks generated from
+a bookmarks file, re-exported whenever the bookmarks change, where merging leaves renamed and deleted
+entries behind forever.
+
+It adds no new machinery — the wipe reuses `replaceQuicklinks`, which upstream already has for backup
+restore and which unwinds every reference, and the file is prepared with
+`QuicklinkArchive.merge(incoming, into: [])`. That empty-library merge is the whole trick and the
+harness now pins it: a change that made `merge` behave differently against an empty library would
+quietly turn a replace into a partial wipe.
+
+**On merge:** low risk. If upstream reworks the import flow, re-apply the `replacingExisting`
+parameter and keep the ordering — decode, then confirm, then delete — since that is what stops an
+unreadable file from costing a library.
+
 ## Merging upstream
 
 ```sh
@@ -225,7 +264,7 @@ git checkout main && git merge --ff-only origin/main   # keep the mirror clean
 git checkout philip && git rebase origin/main           # replay the divergences
 ```
 
-Rebase rather than merge, so the fork stays a readable stack of the six commits above rather than a
+Rebase rather than merge, so the fork stays a readable stack of the seven commits above rather than a
 braid. Then, before calling it done — the standard gate from
 [testing.md](docs/testing.md#definition-of-done) plus the fork-specific checks:
 

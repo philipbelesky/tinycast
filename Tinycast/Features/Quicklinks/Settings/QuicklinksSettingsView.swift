@@ -129,6 +129,14 @@ struct QuicklinksSettingsView: View {
                 Text("Add quicklinks from a JSON file, skipping any you already have.")
             }
             LabeledContent {
+                Button("Replace…") {
+                    Task { await core.quicklinkCoordinator.importQuicklinks(replacingExisting: true) }
+                }
+            } label: {
+                Text("Replace quicklinks")
+                Text("Delete every quicklink, then import the file as your whole library.")
+            }
+            LabeledContent {
                 Button("Export…") { Task { await core.quicklinkCoordinator.exportQuicklinks() } }
                     .disabled(store.quicklinks.isEmpty)
             } label: {

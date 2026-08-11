@@ -351,6 +351,18 @@ struct QuicklinkTests {
         expect(
             reimported.imported == 0 && reimported.skipped == 2,
             "importing the same file twice adds nothing")
+
+        // Replacing the library merges into nothing, so this is the whole of what lands on a wipe.
+        let replacement = QuicklinkArchive.merge(incoming, into: [])
+        expect(
+            replacement.additions.map(\.name) == ["github", "Repos", "Jira"],
+            "a replacement keeps everything the file itself does not duplicate")
+        expect(
+            replacement.skipped == 1,
+            "and still drops the file's own in-batch duplicate rather than importing it twice")
+        expect(
+            QuicklinkArchive.merge([link("  ", "https://blank.example.com")], into: []).imported == 0,
+            "a nameless record is dropped even when there is nothing to compare it against")
     }
 
     static func archiveAcceptsAHandWrittenFile() {

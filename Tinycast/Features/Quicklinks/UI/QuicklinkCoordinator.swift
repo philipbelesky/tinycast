@@ -285,10 +285,15 @@ final class QuicklinkCoordinator {
         }
     }
 
-    func importQuicklinks() async {
+    /// `replacingExisting` makes the file the whole library rather than adding to it.
+    func importQuicklinks(replacingExisting: Bool = false) async {
         guard let url = BackupActions.chooseJSONFile() else { return }
         do {
             let incoming = try QuicklinkArchive.decode(Data(contentsOf: url))
+            if replacingExisting {
+                await replaceLibrary(with: incoming)
+                return
+            }
             let merge = QuicklinkArchive.merge(incoming, into: store.quicklinks)
             let added = store.append(merge.additions)
             // Everything offered was already here, so say so rather than "0 imported".
@@ -312,5 +317,44 @@ final class QuicklinkCoordinator {
                 title: "Import Failed", message: error.localizedDescription,
                 symbol: Quicklink.sfSymbol, tone: .danger)
         }
+    }
+
+    /// Merging into nothing is what makes the file the library: it still drops the file's own
+    /// duplicates and takes fresh identities, so nothing can inherit a deleted item's shortcut.
+    private func replaceLibrary(with incoming: [Quicklink]) async {
+        let replacement = QuicklinkArchive.merge(incoming, into: []).additions
+        guard !replacement.isEmpty else {
+            await core.showNotice(
+                title: "Nothing to Import",
+                message: "Every quicklink in this file is missing a name or a link.",
+                symbol: Quicklink.sfSymbol, tone: .neutral)
+            return
+        }
+        // Asked before anything is deleted, and only ever about a file that already decoded.
+        let existing = store.quicklinks.count
+        if existing > 0 {
+            guard
+                await core.confirm(
+                    title: "Replace All Quicklinks?",
+                    message:
+                        "Your \(existing) quicklinks will be deleted and replaced with the "
+                        + "\(replacement.count) in this file. Their shortcuts, favorite slots and "
+                        + "learned ranking go with them.",
+                    symbol: Quicklink.sfSymbol, confirmTitle: "Replace")
+            else { return }
+        }
+        let count = replaceQuicklinks(replacement)
+        // The wipe already happened, so a zero here is a storage failure worth naming as one.
+        guard count > 0 else {
+            await core.showNotice(
+                title: "Replace Failed",
+                message: "The quicklink database couldn’t be written, so nothing was imported.",
+                symbol: Quicklink.sfSymbol, tone: .danger)
+            return
+        }
+        await core.showNotice(
+            title: "Quicklinks Replaced",
+            message: "Your library is now the \(count) quicklinks from this file.",
+            symbol: Quicklink.sfSymbol, tone: .success)
     }
 }
