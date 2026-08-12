@@ -365,6 +365,14 @@ upstream's `Tinycast.entitlements` stays pristine. A first build on a new machin
 without the entitlement, KVS no-ops and the enable-time `synchronize()` probe reports sync
 unavailable — a visible dialog, never a silent stall.
 
+**The profile that authorizes the entitlement also names the Macs it covers, and that collides with the
+DMG-to-iCloud story.** A development profile carries a `ProvisionedDevices` list; on a Mac outside it
+the entitlement fails validation and the app dies at launch as *"may be damaged or incomplete"* — a
+message that reads like a broken download and is nothing of the sort. Registering the Mac and
+re-downloading the profile is the fix that keeps sync. The alternative — `Developer ID` signing, which
+covers any Mac — cannot carry an iCloud entitlement at all, so it costs the feature. `build-dmg.sh`
+prints the covered UDIDs after each build rather than leaving this to be rediscovered from the DMG.
+
 The rename resets everything keyed by bundle id on an installed Mac: prefs, caches, Application
 Support, TCC grants, the login item. `Scripts/migrate-channel.sh` copies the data classes across
 (prefs, caches, App Support) from the `com.tinycast.app` ids; Accessibility and Launch at Login must

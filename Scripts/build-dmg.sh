@@ -27,6 +27,22 @@ APP="$DERIVED/Build/Products/Release/Tinycast.app"
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
 DMG="build/Tinycast-${VERSION}.dmg"
 
+# The KVS entitlement needs an Apple-issued profile (FORK.md divergence 10) and a development one names
+# the Macs it covers. Anywhere else the app dies at launch as "damaged or incomplete", so say it here.
+PROFILE="$APP/Contents/embedded.provisionprofile"
+if [ -f "$PROFILE" ]; then
+    PLIST="$(mktemp)"
+    security cms -D -i "$PROFILE" -o "$PLIST" 2>/dev/null || true
+    DEVICES="$(/usr/libexec/PlistBuddy -c 'Print :ProvisionedDevices' "$PLIST" 2>/dev/null |
+        sed -n 's/^[[:space:]]*\([0-9A-Fa-f]\{8\}-[0-9A-Fa-f]*\)[[:space:]]*$/    \1/p')"
+    rm -f "$PLIST"
+    if [ -n "$DEVICES" ]; then
+        echo "▸ This build runs on these Macs only — 'Provisioning UDID' in About This Mac ▸ Report:"
+        echo "$DEVICES"
+        echo "  Another Mac needs registering, then Xcode ▸ Settings ▸ Accounts ▸ Download Profiles."
+    fi
+fi
+
 echo "▸ Packaging ${DMG}"
 STAGE="$(mktemp -d)"
 cp -R "$APP" "$STAGE/"
