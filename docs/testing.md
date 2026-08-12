@@ -113,7 +113,6 @@ find ~/Library/Developer/Xcode/DerivedData -name "Tinycast*.app" -maxdepth 6 -pr
 - No `@unchecked Sendable`, `nonisolated(unsafe)` or `assumeIsolated` added without a stated reason.
 - The type-checker did not time out. `LauncherList.rows` already carries an explicit annotation for
   this reason; the fix for a timeout is an annotation, not a restructure.
-- Release binary under **4 MB**, and under 2% growth for an ordinary change.
 
 ### Lint
 

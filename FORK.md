@@ -39,6 +39,7 @@ themselves are in [AGENTS.md](AGENTS.md#non-negotiables). This file covers only 
 | 10 | [iCloud settings sync](#10--icloud-settings-sync) | Medium — `project.yml` ids/entitlements, `AppCore`, a `SettingsBackup` split | No — needs provisioning upstream refuses |
 | 11 | [SwiftUI previews](#11--swiftui-previews) | Low — 22 files, every edit an append at EOF | Yes, wholesale |
 | 12 | [Re-homed decision reasoning](#12--re-homed-decision-reasoning) | Medium — fork prose inside sections upstream edits | No — upstream deleted the source |
+| 13 | [No binary-size budget](#13--no-binary-size-budget) | Low — one deleted line in each of two docs | No — upstream ships to strangers |
 
 Keep each divergence as **its own commit**, never squashed together. Rebasing `philip` onto a new
 `origin/main` then replays them one at a time, and a divergence that upstream has since made redundant
@@ -430,6 +431,26 @@ last commit that carries the file.
 rather than whole-file ones — keep upstream's substance and re-append the fork's section. If upstream
 ever restores a decisions file, move the four sections back and drop this divergence.
 
+## 13 — No binary-size budget
+
+**Touches:** one deleted line in `docs/standards.md` ("Release binary under **4 MB**") and one in
+`docs/testing.md` ("Release binary under **4 MB**, and under 2% growth for an ordinary change").
+
+Upstream holds the Release binary under 4 MB. The fork drops the constraint outright rather than
+raising the number, because the number was never the point: upstream ships a download to strangers,
+where size is a real cost paid by every install. This fork ships a DMG into iCloud Drive for one
+person's own Macs ([release.md](docs/release.md)), where it is a cost paid by nobody.
+
+The immediate cause was upstream's own file-search feature pushing the merged binary to 4.18 MB, but
+raising the ceiling to 5 would only defer the same conversation. The budgets that still bind are the
+ones a user can feel — resident memory under 100 MB, and launch — and those stay in
+[standards.md](docs/standards.md#performance-and-memory) untouched. The Release build itself is still
+part of the gate; only the size assertion is gone.
+
+**On merge:** upstream will keep restating the budget in both files. Take upstream's edit to the
+surrounding list and re-delete the one line, unless the fork has meanwhile grown a distribution story
+where size matters again.
+
 ## Merging upstream
 
 ```sh
@@ -438,7 +459,7 @@ git checkout main && git merge --ff-only origin/main   # keep the mirror clean
 git checkout philip && git rebase origin/main           # replay the divergences
 ```
 
-Rebase rather than merge, so the fork stays a readable stack of the twelve commits above rather than a
+Rebase rather than merge, so the fork stays a readable stack of the thirteen commits above rather than a
 braid.
 
 **The 2026-08-12 absorption of upstream `a0cfc60..ef1e1b5` was a merge commit, not a rebase**, and is
