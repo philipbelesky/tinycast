@@ -4,8 +4,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 
-# The Xcode toolchain's swift-format, the same binary sourcekit-lsp formats with — not a brew package,
-# so the editor's ⌘S and this script can never disagree.
+# The Xcode toolchain's swift-format, not a brew package: nothing to install, nothing to version-skew.
 FORMAT=$(xcrun --find swift-format 2>/dev/null)
 [ -x "${FORMAT:-}" ] || {
     echo "✗ swift-format not found in the Xcode toolchain. Check 'xcode-select -p'." >&2

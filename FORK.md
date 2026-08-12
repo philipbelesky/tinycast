@@ -455,8 +455,9 @@ where size matters again.
 ## 14 — Xcode only, no LSP scaffolding
 
 **Touches:** deletes `Scripts/sync-lsp.sh` and all four `.vscode/` files; strips the `--index` mode
-from `Scripts/run-tests.sh`; rewrites the Editor section of `docs/development.md`; drops
-`buildServer.json` and `.compile` from `.gitignore`.
+from `Scripts/run-tests.sh`; rewrites the Editor and Formatting sections of `docs/development.md` and
+the header of `Scripts/format.sh`, both of which justified themselves by ⌘S in VS Code agreeing with
+the script; drops `buildServer.json` and `.compile` from `.gitignore`.
 
 Upstream supports editing in VS Code as well as Xcode. That needs a `buildServer.json`, because
 SourceKit-LSP can derive compile flags from a `Package.swift` and this project has none — so upstream

@@ -91,14 +91,13 @@ The comment policy in [standards.md](standards.md#comments) is deliberately not 
 ./Scripts/format.sh --check    # report what would change, write nothing (exit 1 if any)
 ```
 
-`swift-format` from the Xcode toolchain — the same binary sourcekit-lsp formats with, so ⌘S in VS Code
-and this script cannot disagree. `.swift-format` at the repo root tunes it to this tree; without it the
-stock config defaults to 2-space indent and rewrites all 200 files.
+`swift-format` from the Xcode toolchain, so there is nothing to install. `.swift-format` at the repo
+root tunes it to this tree; without it the stock config defaults to 2-space indent and rewrites all 200
+files.
 
 Both `*.generated.swift` files are excluded: formatting one is hand-editing it, and the next
 `node Scripts/gen-emoji.js` would revert it. swift-format also refuses any file that does not parse, so
-a failure from either command is a syntax error rather than a tooling problem — and it is why ⌘S looks
-like it does nothing while a file is mid-edit with unbalanced braces.
+a failure from either command is a syntax error rather than a tooling problem.
 
 **Think twice before leaning on this.** A formatter was rejected here on measured evidence, and that
 stands: running it over the tree touched 68 files, and 67 of those changed more than whitespace.
