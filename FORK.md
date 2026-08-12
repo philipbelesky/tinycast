@@ -40,6 +40,7 @@ themselves are in [AGENTS.md](AGENTS.md#non-negotiables). This file covers only 
 | 11 | [SwiftUI previews](#11--swiftui-previews) | Low — 22 files, every edit an append at EOF | Yes, wholesale |
 | 12 | [Re-homed decision reasoning](#12--re-homed-decision-reasoning) | Medium — fork prose inside sections upstream edits | No — upstream deleted the source |
 | 13 | [No binary-size budget](#13--no-binary-size-budget) | Low — one deleted line in each of two docs | No — upstream ships to strangers |
+| 14 | [Xcode only, no LSP scaffolding](#14--xcode-only-no-lsp-scaffolding) | Medium — five upstream files deleted | No — upstream supports both editors |
 
 Keep each divergence as **its own commit**, never squashed together. Rebasing `philip` onto a new
 `origin/main` then replays them one at a time, and a divergence that upstream has since made redundant
@@ -451,6 +452,34 @@ part of the gate; only the size assertion is gone.
 surrounding list and re-delete the one line, unless the fork has meanwhile grown a distribution story
 where size matters again.
 
+## 14 — Xcode only, no LSP scaffolding
+
+**Touches:** deletes `Scripts/sync-lsp.sh` and all four `.vscode/` files; strips the `--index` mode
+from `Scripts/run-tests.sh`; rewrites the Editor section of `docs/development.md`; drops
+`buildServer.json` and `.compile` from `.gitignore`.
+
+Upstream supports editing in VS Code as well as Xcode. That needs a `buildServer.json`, because
+SourceKit-LSP can derive compile flags from a `Package.swift` and this project has none — so upstream
+carries `xcode-build-server` as a `brew` prerequisite, `sync-lsp.sh` to write the flag database from
+an `xcodebuild` log, a `--index` mode in the test runner to add the harnesses to it, and a `.vscode/`
+task that re-runs the sync on every build.
+
+**This fork is edited in Xcode, which indexes the project directly and needs none of it.** The whole
+chain came out rather than being left to rot: an editor setup nobody runs is the "compatibility layer
+nobody dares delete" that [AGENTS.md](AGENTS.md#posture-latest-only-always) is written against, and it
+had already rotted here — `xcode-build-server` was not installed, so `sync-lsp.sh` was exiting at its
+`command -v` guard and no `buildServer.json` had ever been written.
+
+The one real loss is symbols in `Tests/`: `xcodebuild` never compiles the harnesses, so no editor
+indexes them and an open harness reports every shipped type as *cannot find in scope*. That was the
+`--index` mode's whole purpose. `development.md` now says so plainly and points at the suite instead,
+which is the thing that actually proves a harness compiles.
+
+**On merge:** upstream will keep editing all six files. Take its changes to `run-tests.sh`'s harness
+list — that part matters — and re-delete the `--index` plumbing around it; delete the rest again. If
+you ever want VS Code back, `git show` any of these paths before this commit brings the whole setup
+back intact.
+
 ## Merging upstream
 
 ```sh
@@ -459,7 +488,7 @@ git checkout main && git merge --ff-only origin/main   # keep the mirror clean
 git checkout philip && git rebase origin/main           # replay the divergences
 ```
 
-Rebase rather than merge, so the fork stays a readable stack of the thirteen commits above rather than a
+Rebase rather than merge, so the fork stays a readable stack of the fourteen commits above rather than a
 braid.
 
 **The 2026-08-12 absorption of upstream `a0cfc60..ef1e1b5` was a merge commit, not a rebase**, and is

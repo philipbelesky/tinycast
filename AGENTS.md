@@ -65,7 +65,7 @@ registers a system-wide chord. Full reasoning in [standards.md](docs/standards.m
 | `Tinycast/Features/` | one folder per feature; larger ones split `Model/` `Service/` `UI/` `Settings/` |
 | `Tinycast/Previews/` | `#if DEBUG` fixtures and chrome for the `#Preview` blocks; ships in no Release |
 | `Tests/` | the standalone harnesses — one Swift file each, no XCTest target |
-| `Scripts/` | every executable script: test runner, data generators, packaging, linting, editor setup |
+| `Scripts/` | every executable script: test runner, data generators, packaging, linting |
 
 | Read it before you | Doc |
 | --- | --- |

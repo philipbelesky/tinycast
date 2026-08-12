@@ -41,7 +41,7 @@ Verify it's there:
 security find-identity -p codesigning | grep "Tinycast Self-Signed"
 ```
 
-Now local builds (Xcode, VS Code F5, `xcodebuild`) sign with it, and you grant Accessibility once.
+Now local builds (Xcode and `xcodebuild`) sign with it, and you grant Accessibility once.
 
 ## 2. Generate the CI secrets
 

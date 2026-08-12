@@ -15,39 +15,12 @@ failed=()
 ran=0
 only="${1:-}"
 
-# `--index` merges each harness's compile command into .compile instead of running anything.
-# xcodebuild never compiles the harnesses, so without this nothing in Tests/ resolves in an editor.
-# The source lists below are the only copy, which is why this lives here rather than in its own script.
-emit_db=0
-DB="${TMPDIR:-/tmp}/tinycast-compile-db.json"
-if [ "$only" = "--index" ]; then
-    emit_db=1
-    only=""
-    printf '[' > "$DB"
-fi
-
 # run <name> <source...> — compile the harness and run it, recording either kind of failure.
 run() {
     local name=$1
     shift
     if [ -n "$only" ] && [ "$name" != "$only" ]; then return 0; fi
     ran=$((ran + 1))
-
-    # Absolute paths throughout: sourcekit-lsp resolves the command itself and does not apply
-    # `directory` to relative arguments, so a relative path there silently yields no index.
-    if [ "$emit_db" -eq 1 ]; then
-        local sources=()
-        for source in "$@" "Tests/$name.swift"; do sources+=("$PWD/$source"); done
-        [ "$ran" -gt 1 ] && printf ',' >> "$DB"
-        printf '{"directory":"%s","command":"swiftc -swift-version 6 -sdk %s' \
-            "$PWD" "$(xcrun --show-sdk-path --sdk macosx)" >> "$DB"
-        printf ' %s' "${sources[@]}" >> "$DB"
-        # Claim only the harness itself. The command still lists every shipped source it compiles, so
-        # symbols resolve inside the harness — but claiming those sources here would hand them this
-        # 3-file command instead of the app's, and `.compile` is last-wins.
-        printf '","files":["%s/Tests/%s.swift"]}' "$PWD" "$name" >> "$DB"
-        return 0
-    fi
 
     if ! swiftc -swift-version 6 "$@" "Tests/$name.swift" -o "$BIN/$name" 2>&1; then
         printf '\033[31mFAIL\033[0m  %-22s did not compile\n' "$name"
@@ -152,22 +125,6 @@ run sync-test              Tinycast/Features/Sync/Model/SyncEnvelope.swift \
                            Tinycast/Features/HotKeys/Service/KeyShortcut.swift
 run settings-history-test  Tinycast/Features/Settings/SettingsTab.swift \
                            Tinycast/Features/Settings/SettingsHistory.swift
-
-if [ "$emit_db" -eq 1 ]; then
-    printf ']\n' >> "$DB"
-    [ -f .compile ] || echo '[]' > .compile
-    python3 - .compile "$DB" <<'PY'
-import json, sys
-
-compile_path, harness_path = sys.argv[1], sys.argv[2]
-existing = json.load(open(compile_path))
-harnesses = json.load(open(harness_path))
-kept = [e for e in existing if not any("/Tests/" in f for f in e.get("files") or [])]
-json.dump(kept + harnesses, open(compile_path, "w"), indent=1)
-print(f"{len(harnesses)} harness entries indexed into .compile")
-PY
-    exit 0
-fi
 
 if [ "$ran" -eq 0 ]; then
     echo "No harness named '$only'." >&2
