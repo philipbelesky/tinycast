@@ -35,21 +35,23 @@ struct ScopeKeywordField: View {
     }
 
     var body: some View {
-        LabeledContent {
+        // `SettingsRow`, not `LabeledContent`: the latter hoists a field's label into the value
+        // column, where "None" wrapped mid-word beside the field it belongs to.
+        SettingsRow(title: title ?? ScopeCatalog.title(id: scopeID)) {
             HStack(spacing: Theme.Spacing.sm) {
                 if let conflict {
                     Text("Used by \(conflict)")
                         .font(.caption)
                         .foregroundStyle(Theme.Colors.destructive)
                 }
-                TextField("None", text: $text)
+                // The empty label is the point; the placeholder rides on `prompt` instead.
+                TextField("", text: $text, prompt: Text("None"))
+                    .labelsHidden()
                     .frame(width: Self.fieldWidth)
                     .multilineTextAlignment(.center)
                     .font(.body.monospaced())
                     .onChange(of: text) { _, typed in commit(typed) }
             }
-        } label: {
-            Text(title ?? ScopeCatalog.title(id: scopeID))
         }
         // The stored keyword can move without this field: a backup import, or a collision resolved
         // in another pane. `onChange` of the resolved value is what keeps the two honest.

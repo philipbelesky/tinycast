@@ -436,8 +436,11 @@ system-drawn and a pane reads exactly as macOS System Settings does.
   with its own padding.
 - **A row with a custom trailing control uses `SettingsRow`, not `LabeledContent`.** `LabeledContent`
   wraps its value in a selectable text field, which swallows the taps a `ShortcutRecorder` needs —
-  the recorder renders but never starts recording. Stock `Toggle`/`Picker`/`Button` trailing content
-  is unaffected.
+  the recorder renders but never starts recording. It also **hoists a labelled control's label into
+  the value column**: a `TextField("None", …)` there renders "None" as text beside the field rather
+  than as its placeholder, wrapping mid-word into the narrow column the field's own frame leaves it.
+  Where a control must keep a label, hide it (`.labelsHidden()`) and put the placeholder on
+  `prompt:`. Stock `Toggle`/`Picker`/`Button` trailing content is unaffected.
 - **`.settingsEnabled(_:)`, never a bare `.disabled(_:)`.** It dims as well as disables, so a
   switched-off row reads as unavailable rather than merely unresponsive.
 - **A group is a `Section`**, with `header:` for its name and `footer:` for the caption that used to
