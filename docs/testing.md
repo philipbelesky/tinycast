@@ -12,7 +12,7 @@ The mechanical bar, in one place so it cannot drift. All five pass before a chan
 | The harnesses | `./Scripts/run-tests.sh` |
 | Lint | `./Scripts/lint.sh` |
 | Pure-layer purity | `grep -rln 'import AppKit\|import SwiftUI\|import Cocoa' Tinycast/Features/*/Model/` |
-| A clean build | `xcodebuild … -configuration Debug CODE_SIGNING_ALLOWED=NO`, zero **new** warnings |
+| A clean build | `xcodebuild … -derivedDataPath` at a **fresh** directory, zero **new** warnings |
 | Docs still true | any doc your change made wrong, fixed in the same commit |
 
 CI runs the first two and does not build the app at all — so the build, the purity grep and the docs
@@ -100,15 +100,23 @@ when touching a pure file:
 
 A clean build is part of the bar; CI does not build the app, so this is on you.
 
+**`-derivedDataPath` at a throwaway directory is the whole point, not a detail.** An incremental build
+re-emits warnings only for the files it recompiles, so "zero warnings" from one means "zero in what I
+just touched" — a claim that sounds like the check and is not it. It also reuses the last good build
+description, which is how a regenerated `project.pbxproj` missing 38 sources built green for two
+commits: only the fresh directory re-reads the project and fails.
+
 ```sh
 xcodegen generate                 # only after editing project.yml
+DD=$(mktemp -d)
 xcodebuild build -project Tinycast.xcodeproj -scheme Tinycast -configuration Debug \
-  CODE_SIGNING_ALLOWED=NO
+  CODE_SIGNING_ALLOWED=NO -derivedDataPath "$DD/debug"
 xcodebuild build -project Tinycast.xcodeproj -scheme Tinycast -configuration Release \
-  CODE_SIGNING_ALLOWED=NO
-find ~/Library/Developer/Xcode/DerivedData -name "Tinycast*.app" -maxdepth 6 -print -quit
+  CODE_SIGNING_ALLOWED=NO -derivedDataPath "$DD/release"
 ```
 
+- Read the log for `error:` and `warning:`, and check the exit status of `xcodebuild` itself. Piping to
+  `tail` reports the exit of the `tail`, and `** BUILD FAILED **` sits far above the last line.
 - Zero **new** warnings. Pre-existing ones are not your problem; new ones are.
 - No `@unchecked Sendable`, `nonisolated(unsafe)` or `assumeIsolated` added without a stated reason.
 - The type-checker did not time out. `LauncherList.rows` already carries an explicit annotation for

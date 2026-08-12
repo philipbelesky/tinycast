@@ -125,14 +125,16 @@ feature's doc, under its own `## Invariants`.
   never shares prefs, caches, TCC grants or the login item with an installed copy. Anything newly
   persisted must stay keyed by `Bundle.main.bundleIdentifier`.
 - **XcodeGen owns the project.** `Tinycast.xcodeproj` is committed but generated from `project.yml`;
-  after editing it, run `xcodegen generate` and commit both. No SwiftPM, and never `Bundle.module`.
+  after editing it, run `xcodegen generate` and commit both. Read the pbxproj diff before committing —
+  a run against a half-checked-out tree silently drops sources. No SwiftPM, and never `Bundle.module`.
 
 ## Before you finish
 
 Each item is explained in [testing.md](docs/testing.md#definition-of-done).
 
 - `./Scripts/run-tests.sh` passes.
-- The Debug build compiles with **no new warnings**.
+- A **clean** Debug build — fresh `-derivedDataPath` — compiles with **no new warnings**. An
+  incremental one only re-warns about files it recompiled, and will not notice a stale `project.pbxproj`.
 - `./Scripts/lint.sh` is clean.
 - `grep -rln 'import AppKit\|import SwiftUI\|import Cocoa' Tinycast/Features/*/Model/` returns nothing.
 - Any doc your change made wrong is fixed in the same commit.
