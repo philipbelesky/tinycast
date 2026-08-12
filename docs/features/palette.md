@@ -245,8 +245,8 @@ scope — and the rows that scope reveals wear the same colour, so a herdr tab a
 leads to it read as one category. See [ui.md](../ui.md#category-tiles).
 
 A scope is only offered when something is actually behind it: `AppCore` drops any filter scope whose
-kinds have no published entries. That is what stops a feature which is off — or merely unconsented,
-which no setting records — from advertising a scope that opens an empty list. Mode scopes are screens
+kinds have no published entries. That is what stops a feature which is off — or, like Linear without
+its CLI, on but unable to publish anything — from advertising a scope that opens an empty list. Mode scopes are screens
 and always qualify.
 
 Those rows are published **first**, so they lead the launcher's empty query ahead of applications:

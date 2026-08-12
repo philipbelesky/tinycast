@@ -15,9 +15,9 @@ Code. Rows also appear in the unscoped root search, like quicklinks.
   given rather than sorting by name; the whole point of the feature is that what you worked on
   yesterday is near the top.
 - **Nothing here writes to VS Code's storage**, and nothing here parses `state.vscdb` — see below.
-- **This feature reads local files and never the network**, which is why it ships on with no consent
-  dialog ([AGENTS.md](../../AGENTS.md#non-negotiables) — consent is structural). Both of its settings are carried in a
-  backup: opening an editor grants no permission class, so neither is a consent flag.
+- **This feature reads local files and never the network**, so nothing here was ever gated
+  ([AGENTS.md](../../AGENTS.md#non-negotiables)). Both of its settings are carried in a
+  backup: opening an editor grants no permission class, so neither is a network switch.
 
 ## Where the list comes from
 

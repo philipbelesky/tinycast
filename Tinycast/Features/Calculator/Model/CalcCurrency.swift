@@ -26,7 +26,7 @@ struct CurrencyRates: Codable, Equatable, Sendable {
     }
 }
 
-/// The consent gate as a type; `.off` ships by default. See docs/features/calculator.md#consent.
+/// The switch as a type, defaulting to `.off`. See docs/features/calculator.md#rates.
 enum CurrencySource: Equatable, Sendable {
     case off
     case on(CurrencyRates?)

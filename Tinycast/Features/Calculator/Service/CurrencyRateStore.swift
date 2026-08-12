@@ -1,6 +1,6 @@
 import Foundation
 
-/// The consented, cacheless exchange-rate fetcher. See docs/features/calculator.md#consent.
+/// The switchable, cacheless exchange-rate fetcher. See docs/features/calculator.md#rates.
 @MainActor
 @Observable
 final class CurrencyRateStore {
@@ -14,7 +14,7 @@ final class CurrencyRateStore {
     /// Shorter retry, so a machine offline at launch picks rates up soon after it reconnects.
     private static let retryInterval: TimeInterval = 15 * 60
 
-    /// Consent. Deliberately not in `AppSettings`, so no import can grant network access.
+    /// On unless turned off. Not in `AppSettings`, so no import can flip it either way.
     private(set) var isEnabled: Bool
 
     /// The newest snapshot, nil when none has landed and always nil without consent.
@@ -26,8 +26,10 @@ final class CurrencyRateStore {
     @ObservationIgnored private var pump: Task<Void, Never>?
 
     init() {
-        // Absent reads as false, which is the only safe default for a network feature.
-        isEnabled = defaults.bool(forKey: Self.consentKey)
+        // Absent reads as on: the feature ships enabled, so only an explicit false turns it off.
+        isEnabled =
+            defaults.object(forKey: Self.consentKey) == nil
+            || defaults.bool(forKey: Self.consentKey)
         fileURL = AppPaths.caches().appendingPathComponent("currency-rates.json")
 
         // Guard 1 — a disabled feature doesn't even read back a snapshot left on disk.

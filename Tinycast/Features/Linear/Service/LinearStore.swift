@@ -1,19 +1,17 @@
 import Foundation
 
-/// The consented Linear view list. Shaped after `CurrencyRateStore` — the same three guards, the
-/// same consent-outside-`AppSettings` rule. See docs/features/linear.md#consent.
+/// The Linear view list. Shaped after `CurrencyRateStore` — the same three guards, the same
+/// flag-outside-`AppSettings` rule. See docs/features/linear.md#the-switch-and-the-cadence.
 @MainActor
 @Observable
 final class LinearStore {
-    static let provider = "Linear"
-    static let providerURL = URL(string: "https://linear.app")!
     /// Views change rarely and each refresh costs one request per workspace, so this is generous.
     static let refreshInterval: TimeInterval = 6 * 3600
 
-    /// Consent. Deliberately not in `AppSettings`, so no settings import can grant network access.
+    /// On unless turned off. Not in `AppSettings`, so no import can flip it either way.
     private(set) var isEnabled: Bool
 
-    /// Always empty without consent, whatever is left in the cache.
+    /// Always empty while switched off, whatever is left in the cache.
     private(set) var targets: [LinearTarget] = []
     private(set) var lastRefreshed: Date?
     /// Why the last refresh came back short, verbatim from the CLI. Nil when it went fine.
@@ -51,13 +49,15 @@ final class LinearStore {
     }
 
     init() {
-        // Absent reads as false, which is the only safe default for a network feature.
-        isEnabled = defaults.bool(forKey: Self.consentKey)
+        // Absent reads as on: the feature ships enabled, so only an explicit false turns it off.
+        isEnabled =
+            defaults.object(forKey: Self.consentKey) == nil
+            || defaults.bool(forKey: Self.consentKey)
         includesBuiltIn = defaults.object(forKey: Self.builtInKey) == nil
             || defaults.bool(forKey: Self.builtInKey)
         fileURL = AppPaths.caches().appendingPathComponent("linear-views.json")
 
-        // Guard 1 — a disabled feature doesn't even read back what a previous consent left on disk.
+        // Guard 1 — a disabled feature doesn't even read back what an earlier run left on disk.
         guard isEnabled, let data = try? Data(contentsOf: fileURL),
             let cache = try? JSONDecoder().decode(Cache.self, from: data)
         else { return }
@@ -69,7 +69,7 @@ final class LinearStore {
     var workspaceCount: Int { LinearClient.workspaces().count }
 
     /// Guard 2 — the palette's trigger, which must be safe to call unconditionally and often.
-    /// Without consent, or inside the interval, this reaches no network at all.
+    /// Switched off, or inside the interval, this reaches no network at all.
     func refreshIfStale() async {
         guard isEnabled else { return }
         let age = lastRefreshed.map { Date().timeIntervalSince($0) } ?? .infinity

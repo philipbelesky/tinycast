@@ -16,9 +16,9 @@ Rows also appear in the unscoped root search, like quicklinks.
   `:`. Only `HerdrTarget.entryIDPrefix` is added and removed.
 - **An unrecognised `agent_status` degrades to `.unknown`, never drops the row.** herdr adds statuses
   faster than this app tracks them, and a missing workspace is worse than a missing badge.
-- **This feature reads a local socket and never the network**, which is why it ships on with no consent
-  dialog ([AGENTS.md](../../AGENTS.md#non-negotiables) — consent is structural). All three of its settings are carried in a
-  backup: focusing a terminal grants no permission class, so none is a consent flag.
+- **This feature reads a local socket and never the network**, so nothing here was ever gated
+  ([AGENTS.md](../../AGENTS.md#non-negotiables)). All three of its settings are carried in a
+  backup: focusing a terminal grants no permission class, so none is a network switch.
 - **`focus` is not `reveal`.** herdr's `focus` moves its own internal focus and raises nothing;
   bringing the host app forward is a separate, independently-failing step.
 

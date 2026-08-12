@@ -13,8 +13,8 @@ feature lives in `Features/Backup/`.
 - **`snippetsEnabled` is excluded, and that is a security control.** It doubles as consent to keystroke
   listening, so an imported file must not be able to grant it. A `Mirror` or a macro is the wrong
   answer: neither can be read to check what is covered.
-- **Consent flags never live in `AppSettings`.** `CurrencyRateStore` owns its own, precisely so a backup
-  cannot carry it. A new networked feature follows that shape.
+- **A networked feature's switch never lives in `AppSettings`.** `CurrencyRateStore` owns its own,
+  precisely so a backup cannot carry it — in either direction. A new one follows that shape.
 - The format is internal and may change freely. The only requirement is that **export → import
   round-trips within one build** — there is no version field and no migration. iCloud sync
   ([sync.md](sync.md)) carries this same payload between Macs; every field being optional is what

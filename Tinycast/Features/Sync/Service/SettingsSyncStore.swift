@@ -13,7 +13,7 @@ final class SettingsSyncStore {
     private static let lastByKey = "settingsSyncLastBy"
     private static let debounce: Duration = .seconds(2)
 
-    /// Consent. Deliberately not in `AppSettings`, so no import or synced payload can grant it.
+    /// On unless turned off. Not in `AppSettings`, so no import or synced payload can flip it.
     private(set) var isEnabled: Bool
     private(set) var lastSyncedAt: Date?
     private(set) var lastSyncedBy: String?
@@ -37,8 +37,10 @@ final class SettingsSyncStore {
 
     init(core: AppCore) {
         self.core = core
-        // Absent reads as false, which is the only safe default for a feature that leaves the Mac.
-        isEnabled = defaults.bool(forKey: Self.consentKey)
+        // Absent reads as on: the feature ships enabled, so only an explicit false turns it off.
+        isEnabled =
+            defaults.object(forKey: Self.consentKey) == nil
+            || defaults.bool(forKey: Self.consentKey)
         if let at = defaults.object(forKey: Self.lastAtKey) as? Double {
             lastSyncedAt = Date(timeIntervalSince1970: at)
         }
@@ -59,7 +61,7 @@ final class SettingsSyncStore {
         defaultsToken = nil
     }
 
-    /// The toggle's on-path. Returns without granting consent when a differing remote needs a choice.
+    /// The toggle's on-path. Stays off when a differing remote needs the user to pick a direction.
     func requestEnable() -> EnableOutcome {
         guard FileManager.default.ubiquityIdentityToken != nil else { return .notSignedIn }
         // The probe: an unauthorized entitlement (an unprovisioned build) fails here, loudly.

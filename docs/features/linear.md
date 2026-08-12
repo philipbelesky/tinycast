@@ -9,10 +9,10 @@ Issues are deliberately absent. This feature opens destinations, not records.
 
 ## Invariants
 
-- **This is a networked feature, so it ships off behind a consent dialog** naming Linear, the cadence
-  and what leaves the machine ([AGENTS.md](../../AGENTS.md#non-negotiables) — consent is structural). The flag lives on
-  `LinearStore`, **never** in `AppSettings`, so no settings import can grant it. `linearShowInLauncher`
-  and `linearDestination` are ordinary settings and are backed up; neither can turn the network on.
+- **This is a networked feature and it ships on** ([FORK.md](../../FORK.md) divergence 15). The flag
+  lives on `LinearStore`, **never** in `AppSettings`, so no settings import can move it either way
+  ([AGENTS.md](../../AGENTS.md#non-negotiables)). `linearShowInLauncher` and `linearDestination` are
+  ordinary settings and are backed up; neither can turn the network on.
 - **Tinycast never sees a Linear token.** Every request goes through the `linear` CLI, which holds the
   credentials in the system keyring. The only file read directly is `~/.config/linear/credentials.toml`,
   and only for its `workspaces` list — `LinearCredentials.parse` reads exactly two keys by name, so a
@@ -35,12 +35,17 @@ Issues are deliberately absent. This feature opens destinations, not records.
   this workspace is dropped rather than opened, so a redirect can never be followed blindly. Saved
   views are the opposite case: `CustomView` exposes no `url`, so their path *is* built, from `slugId`.
 
-## Consent and cadence
+## The switch and the cadence
 
 `LinearStore` is shaped after `CurrencyRateStore` and keeps its three guards: a disabled feature
-does not read its own cache at startup, does not publish rows, and does not fetch. Consent is
+does not read its own cache at startup, does not publish rows, and does not fetch. The flag is
 re-checked on the far side of the fetch too, so a toggle flipped off mid-refresh discards the result
-rather than publishing something it no longer authorises.
+rather than publishing something the user has just declined.
+
+**On with no `linear` CLI installed, or none logged in, is inert rather than broken.** `refresh`
+comes back with a failure string that the pane shows verbatim, `targets` stays empty, and
+`AppCore` drops the scope because no kind has published entries — so a Mac without the tool shows no
+Linear anything, without an error anyone has to dismiss.
 
 The cadence is **at most every six hours, and only when the palette opens** — never on a keystroke and
 never on a timer of its own. Each refresh is one request per workspace. The list is cached in
@@ -80,7 +85,7 @@ same focus-then-reveal split [herdr](herdr.md) needs.
 
 ## Settings
 
-`Settings → Linear`: the consent switch, show-in-launcher, the destination picker, a built-in pages
+`Settings → Linear`: the enable switch, show-in-launcher, the destination picker, a built-in pages
 toggle, a Refresh Now button with the last-read count and time, and the
 [scope keyword](palette.md#choosing-your-own).
 

@@ -217,9 +217,9 @@ search row, and the same code path a typed keyword takes. See
 ## Linear views
 
 `AppEntry.Kind.linearTarget` publishes what is in every logged-in Linear workspace's sidebar — saved
-views, projects, initiatives — plus each one's built-in pages. It is the only launcher slice behind a **consent gate**: the switch lives on
-`LinearStore`, not `AppSettings`, so the slice is empty until the user has said yes to a dialog
-naming the provider. See [linear.md](linear.md).
+views, projects, initiatives — plus each one's built-in pages. Its switch lives on `LinearStore` rather
+than `AppSettings`, so no settings import can move it; the slice is simply empty on a Mac where the
+`linear` CLI is missing or logged out. See [linear.md](linear.md).
 
 ## Web search
 

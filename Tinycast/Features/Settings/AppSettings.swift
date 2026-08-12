@@ -337,7 +337,9 @@ final class AppSettings {
         // Unset reads as 0, which is the intended default anyway — no gap.
         windowGap = defaults.integer(forKey: Key.windowGap.rawValue)
         windowCycleOnRepeat = defaults.bool(forKey: Key.windowCycleOnRepeat.rawValue)
-        quicklinksEnabled = defaults.bool(forKey: Key.quicklinksEnabled.rawValue)
+        quicklinksEnabled =
+            defaults.object(forKey: Key.quicklinksEnabled.rawValue) == nil
+            || defaults.bool(forKey: Key.quicklinksEnabled.rawValue)
         quicklinksShowInLauncher =
             defaults.object(forKey: Key.quicklinksShowInLauncher.rawValue) == nil
             || defaults.bool(forKey: Key.quicklinksShowInLauncher.rawValue)

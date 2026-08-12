@@ -6,12 +6,12 @@ DuckDuckGo, Bing, Kagi — each with its own scope keyword.
 ## Invariants
 
 - **Searching never fetches.** A search is a URL handed to `NSWorkspace.shared.open`; the query leaves
-  the machine only because the *browser* sends it. That is why the feature itself ships **on** and its
-  engines, keywords and default carry no consent dialog.
-- **Suggestions do fetch, and are a separate switch that ships off.** `SearchSuggestionStore` is the
-  only thing in the app that sends what the user is *typing*, so it wears the consent shape
-  ([AGENTS.md](../../AGENTS.md#non-negotiables), and the section at the foot of this file) — flag on the store, dialog naming the provider
-  and the cadence, ephemeral session. Turning web search on does not turn suggestions on.
+  the machine only because the *browser* sends it.
+- **Suggestions do fetch, and are a separate switch.** `SearchSuggestionStore` is the only thing in the
+  app that sends what the user is *typing*. It ships **on** ([FORK.md](../../FORK.md) divergence 15)
+  and keeps the rest of the shape ([AGENTS.md](../../AGENTS.md#non-negotiables), and the section at the
+  foot of this file) — flag on the store, re-checked across every `await`, ephemeral session. Turning
+  web search off takes suggestions with it; the two switches are otherwise independent.
 - **`Model/WebSearchEngine.swift` is Foundation-only and pure**, so `websearch-test` compiles the
   shipped URL builder. It takes its `ExpansionContext` as a parameter rather than reading the clock.
 - **There is one template engine.** A template expands through `SnippetTemplateEngine` with
@@ -62,8 +62,9 @@ parser covers them: `suggestqueries.google.com`, `duckduckgo.com/ac`, `api.bing.
 
 **What holds it in place.**
 
-- **The consent flag lives on the store**, under `searchSuggestionsEnabled`, never in `AppSettings` —
-  so importing a settings backup cannot start a keystroke feed ([AGENTS.md](../../AGENTS.md#non-negotiables)).
+- **The flag lives on the store**, under `searchSuggestionsEnabled`, never in `AppSettings` — so
+  importing a settings backup can neither start nor stop the keystroke feed
+  ([AGENTS.md](../../AGENTS.md#non-negotiables)).
 - **Nothing is persisted, ever.** No disk cache, no cookies (`httpShouldSetCookies = false`), no
   `URLSession.shared`. A query exists in memory for as long as its row is on screen. This is stricter
   than `CurrencyRateStore`, which does keep its snapshot, and deliberately so: a rate table is public
@@ -86,8 +87,8 @@ Activating a suggestion searches for **the suggestion**, not for whatever is sti
 `Settings → Web Search`: enable, show-in-launcher, the default engine, a field per engine for its
 [scope keyword](palette.md#choosing-your-own), and the suggestions switch. Everything but that switch
 is carried in a settings backup: opening a link grants no permission class, so none of those is a
-consent flag ([AGENTS.md](../../AGENTS.md#non-negotiables)). The suggestions flag is not in `AppSettings`
-at all, so there is nothing for a backup to carry.
+network switch ([AGENTS.md](../../AGENTS.md#non-negotiables)). The suggestions flag is not in
+`AppSettings` at all, so there is nothing for a backup to carry.
 
 An engine id that no longer resolves — a renamed or dropped engine, a backup from a later build —
 falls back to Google rather than leaving the scope dead.
@@ -98,17 +99,18 @@ User-authored engines and per-engine hotkeys are deliberately absent; both are a
 has been needed yet. A user-authored *suggest* endpoint would not be additive — it would let a backup
 name where keystrokes go — so if custom engines ever land, their suggest template stays ours.
 
-## Why the suggest feed is consented separately
+## Why the suggest feed is a switch of its own
 
-Web search ships on; `SearchSuggestionStore` ships off behind its own dialog, and its flag lives on
-the store under `searchSuggestionsEnabled` rather than in `AppSettings`. The store has no cache at
-all — no file, no `URLCache`, no cookies.
+Web search and `SearchSuggestionStore` are separate switches, both shipping on, and the suggestions
+flag lives on the store under `searchSuggestionsEnabled` rather than in `AppSettings`. The store has
+no cache at all — no file, no `URLCache`, no cookies.
 
 **Why:** every other networked feature sends something the app chose (a currency pair, a list of
-workspace names). This one sends what the *user is typing*, which is a different class of data and
-deserves a different answer than "the feature is on, so it fetches". Keeping nothing follows from the
-same reasoning: a rate table is public data worth caching, a query is the user's and worth forgetting.
-The one-per-pause debounce is part of the promise the dialog makes, not a performance tweak.
+workspace names). This one sends what the *user is typing*, which is a different class of data. That
+no longer earns it a dialog, but it still earns the second switch and the empty cache: a rate table is
+public data worth keeping, a query is the user's and worth forgetting. The one-per-pause debounce
+belongs to the same promise, not to performance.
 
-**What would change this:** an engine whose suggest endpoint needs a key, which would put a credential
-in the picture and change what the dialog has to say.
+**What would change this:** an engine whose suggest endpoint needs a key. A credential Tinycast itself
+had to hold is the one thing here that would earn a gate back — note that Linear does *not* qualify,
+because the `linear` CLI holds those and this app never sees them.

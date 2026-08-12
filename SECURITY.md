@@ -19,8 +19,9 @@ Of particular interest:
 
 - **Accessibility (TCC)** — anything that widens what the paste grant enables.
 - **Clipboard history** — text and images cached on disk; unintended exposure or capture.
-- **Network** — Tinycast is offline by default and every networked feature is consent-gated. A path
-  that reaches the network without consent, or survives consent being withdrawn, is high severity.
+- **Network** — every networked feature has a switch, and this fork ships them all on (FORK.md
+  divergence 15). A path that reaches the network with its switch off, or survives one being turned
+  off mid-request, is high severity.
 - **Hotkeys** — the in-house hotkey stack and the Input Monitoring grant.
 - **Signing and distribution** — the DMG and Homebrew cask chain.
 

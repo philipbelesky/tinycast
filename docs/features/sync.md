@@ -6,13 +6,13 @@ every Mac signed into the same iCloud account converges on one configuration. Th
 
 ## Invariants
 
-- **The consent flag lives on `SettingsSyncStore`, never in `AppSettings`** — the shape every
+- **The flag lives on `SettingsSyncStore`, never in `AppSettings`** — the shape every
   networked feature copies ([AGENTS.md](../../AGENTS.md#non-negotiables), and the section at the foot of this file). It is not an
   `AppSettingsKey`, so no backup file and no synced envelope can ever carry it.
 - **An absent or unreadable remote never clears local state.** An empty KVS answer means "seed it";
   an undecodable envelope is left in place for the next writer that can read it. Neither applies.
 - **The payload is `SettingsBackup`, unchanged.** Whatever the backup excludes — `snippetsEnabled`,
-  every store-owned consent flag — sync excludes structurally, and `sync-test` pins it.
+  every store-owned network switch — sync excludes structurally, and `sync-test` pins it.
 - **Apply bookkeeping re-gathers.** The local hash after an apply comes from live state, never from
   the remote envelope: apply skips conflicting hotkeys, so equating the two leaves two Macs
   rewriting iCloud at each other forever.
@@ -32,11 +32,13 @@ gather itself, and `UserDefaults.didChangeNotification` for the two inputs obser
 (`showInMenuBar`, hotkey records) — into one 2 s debounce. Every remote apply reports a HUD summary,
 because a background change that quietly rewrites hotkeys is hostile ([backup.md](backup.md)).
 
-Enabling walks the consent sheet: provider, cadence, the payload list, and the explicit sentence
-that other Macs' shortcuts and custom commands apply automatically — the stated replacement for the
-manual import's executable-confirmation gate (see the section at the foot of this file). If iCloud
-already holds a differing envelope, a second sheet stage asks which side wins before any trigger is
-armed.
+Sync ships **on** ([FORK.md](../../FORK.md) divergence 15), so the usual path asks nothing: `start()`
+arms the triggers and reconciles at startup. Turning it back on after a disable still runs the probes —
+no iCloud account, or an unprovisioned build, each says so — and if iCloud already holds a differing
+envelope, a sheet asks which side wins before any trigger is armed. **On a first launch that sheet
+cannot fire**, because nothing calls `requestEnable()`: a fresh Mac with an existing envelope takes the
+remote on the `.startup` trigger. That is what sync-by-default means, and it is the one place a
+direction is chosen for the user rather than by them.
 
 ## Channels
 
@@ -55,14 +57,14 @@ build, never a silent stall.
 | --- | --- |
 | `Model/SyncEnvelope.swift` | The KVS value: canonical codec and the content hash |
 | `Model/SyncPlan.swift` | The pure decision table and the quota guard |
-| `Service/SettingsSyncStore.swift` | Consent, triggers and reconcile — the effectful half |
-| `Settings/SyncSettingsSection.swift` | The Backup pane section and both sheet stages |
+| `Service/SettingsSyncStore.swift` | The switch, triggers and reconcile — the effectful half |
+| `Settings/SyncSettingsSection.swift` | The Backup pane section and the first-contact sheet |
 
 ## Why the backup payload through key-value storage
 
 `SettingsSyncStore` mirrors `SettingsBackup` — wholesale, unchanged — through one
 `NSUbiquitousKeyValueStore` key, as a compact envelope whose `writtenAt`/`writtenBy` are display
-metadata only. Its consent flag is `settingsSyncEnabled` on the store. `SyncPlan.decide` picks a
+metadata only. Its flag is `settingsSyncEnabled` on the store. `SyncPlan.decide` picks a
 direction from content hashes alone; when both sides changed, the trigger breaks the tie. After an
 apply, the local bookkeeping hash is **re-gathered from live state**, never copied from the remote.
 
@@ -73,11 +75,12 @@ apply, the local bookkeeping hash is **re-gathered from live state**, never copi
 control *here*, and clobbering it would visibly flip their toggle back; at startup or on a push the
 remote envelope is the freshest action anywhere. The re-gather closes a loop: apply skips conflicting
 hotkeys, so a Mac that bookmarked the remote hash as its own state would see a phantom local change
-and two Macs would rewrite iCloud at each other forever. Enable-time consent replaces the manual
-import's executable-confirmation gate — that gate defends against a foreign file, while a synced
-envelope is self-authored under the same iCloud account, and a dialog per background apply would be a
-storm — so the consent sheet says plainly that other Macs' shortcuts and commands apply
-automatically, and every apply reports a HUD summary. The envelope is unversioned on purpose: every
+and two Macs would rewrite iCloud at each other forever. The manual import's
+executable-confirmation gate has no counterpart here: that gate defends against a foreign file, while
+a synced envelope is self-authored under the same iCloud account, and a dialog per background apply
+would be a storm. With the consent sheet gone, nothing announces up front that another Mac's shortcuts
+and custom commands apply automatically — the HUD summary after each apply is the only runtime notice
+left, which makes it load-bearing rather than a courtesy. The envelope is unversioned on purpose: every
 payload field is optional, so a mixed-version pair of Macs degrades to a partial apply (entry 21's
 "internal formats change freely" already covers the rest).
 

@@ -60,7 +60,7 @@ because the harnesses compile the shipped sources rather than a copy. A harness 
 the signal that a decision leaked into the effect layer, or an effect into the decision layer.
 
 The boundary is drawn so the *safe* state is the default. `CalcEngine.evaluate`'s `currency:` parameter
-defaults to `.off`, so forgetting to pass a consented source disables the feature rather than enabling
+defaults to `.off`, so forgetting to pass a live source disables the feature rather than enabling
 it. Confirmation gates live in the coordinator, never in the runner — which is why `ShellCommandRunner`
 and `SystemActionRunner` stay harness-compilable while the "are you sure?" step still cannot be bypassed.
 

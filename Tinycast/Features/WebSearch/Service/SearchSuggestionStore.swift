@@ -1,8 +1,7 @@
 import Foundation
 
-/// Query completions from the armed engine's suggest endpoint. The only feature that sends what the
-/// user *types* anywhere, so it wears the consent shape twice over — see
-/// docs/features/web-search.md#suggestions.
+/// Query completions from the armed engine's suggest endpoint — the only feature that sends what
+/// the user *types* anywhere. See docs/features/web-search.md#suggestions.
 @MainActor
 @Observable
 final class SearchSuggestionStore {
@@ -11,7 +10,7 @@ final class SearchSuggestionStore {
     /// A suggestion that lands after the user has read the list is noise, so the wait is short.
     private nonisolated static let timeout: TimeInterval = 4
 
-    /// Consent. Deliberately not in `AppSettings`, so no import can start a keystroke feed.
+    /// On unless turned off. Not in `AppSettings`, so no import can flip it either way.
     private(set) var isEnabled: Bool
 
     /// What the newest reply offered, and the query it answers — a stale reply must not be shown
@@ -23,9 +22,12 @@ final class SearchSuggestionStore {
     private let defaults = UserDefaults.standard
     @ObservationIgnored private var inFlight: Task<Void, Never>?
 
-    /// Absent reads as false, the only safe default for anything that leaves the machine.
-    /// There is no cache to read back: a query is never written to disk, not even once.
-    init() { isEnabled = defaults.bool(forKey: Self.consentKey) }
+    /// Nothing to read back on launch: a query is never written to disk, not even once.
+    init() {
+        isEnabled =
+            defaults.object(forKey: Self.consentKey) == nil
+            || defaults.bool(forKey: Self.consentKey)
+    }
 
     /// The read path: without consent there is nothing to show, whatever a stale field holds.
     func suggestions(for query: String) -> [String] {

@@ -286,7 +286,7 @@ caches, TCC grants and login item, so this cannot disturb an installed copy.
 - `2+2` shows a card; ↵ copies and records to history; unit and date conversions work
 - In Calculator History, ⌃X deletes a row and ⌃⇧X clears the history behind a confirmation
 - With currency conversion **off**, a currency query produces no card and **no network request**
-- Turning it on shows the consent sheet, naming the provider, first
+- On a fresh profile it is already **on**, and rates download without asking anything
 
 ### System actions and window management
 

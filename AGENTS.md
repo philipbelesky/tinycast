@@ -25,9 +25,11 @@ is a future conflict: prefer additive, localized changes, put genuinely new work
 an upstream file in passing. Anything that departs from upstream belongs in [FORK.md](FORK.md), one
 commit per divergence.
 
-**What this does *not* license.** "Only my machines" is not an argument for a weaker consent gate, a
-skipped harness or an undocumented change. The consent shape exists because the data is the author's,
-not because strangers might see it, and the bar below is what keeps a fork this size mergeable at all.
+**What this does *not* license.** "Only my machines" is not an argument for a skipped harness, an
+undocumented change or a quiet departure from upstream. It *was* the argument for defaulting the
+networked features on ([FORK.md](FORK.md) divergence 15) — the owner's call about the owner's own data,
+made once and written down, which is the opposite of a precedent for making the next one silently. The
+bar below is what keeps a fork this size mergeable at all.
 
 ## Posture: latest-only, always
 
@@ -95,11 +97,14 @@ feature's doc, under its own `## Invariants`.
   surface; dark mode is not a switch, it is a second design. ([FORK.md](FORK.md) divergence 2)
 - **Tinycast presents its own dialogs — never `NSAlert`, `NSSlider` or a system popover.** A question
   goes through `DialogController`, a report through a HUD via `HUDPresenter`.
-- **Consent is structural, not a checkbox.** Every networked feature ships off behind a dialog naming
-  the provider, the cadence and what leaves the machine; the owning store re-checks consent on both
-  sides of every `await` and fetches on a private `.ephemeral`, `urlCache = nil` session. Consent flags
-  live on that store, **never** in `AppSettings`, and `snippetsEnabled` is excluded from settings
-  backups so an import cannot grant keystroke listening. `CurrencyRateStore` is the reference — copy it
+- **A networked feature's switch is structural, even though they all now ship on.** Currency rates,
+  iCloud sync, search suggestions and Linear default to enabled and ask nothing
+  ([FORK.md](FORK.md) divergence 15); **snippets is the last gated feature**, and only because
+  enabling it grants keyword expansion over every keystroke. What holds regardless: the flag lives on
+  the owning store and **never** in `AppSettings`, so no import or synced payload can flip it; the
+  store re-checks it on both sides of every `await`, so switching off mid-request still stops the
+  reply landing; every fetch goes out on a private `.ephemeral`, `urlCache = nil` session; and
+  `snippetsEnabled` stays out of settings backups. `CurrencyRateStore` is the reference — copy it
   rather than inventing a second shape.
 - **`AppEntry.Kind` is the only thing that says what an entry is.** One case per launcher section, per
   `VisibilityStore` category and per Settings pane — never re-derive a category by sniffing an entry ID.

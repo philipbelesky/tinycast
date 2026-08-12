@@ -10,8 +10,8 @@ also **pure**: the one input it can't compute, the FX rate table, is passed in (
 - **`Model/` (including `CalcDateTime`) stays Foundation-only *and pure*** — no AppKit or SwiftUI, no
   clock read, no network. `calc-test` compiles the real engine sources. Both externally-sourced inputs
   are injected: the clock via `now`/`calendar`, the FX table via `rates`.
-- **`CalcEngine.evaluate`'s `currency:` parameter defaults to `.off`**, so forgetting to pass a consented
-  source disables the feature rather than enabling it. `CurrencyRateStore` owns the fetch, the consent
+- **`CalcEngine.evaluate`'s `currency:` parameter defaults to `.off`**, so forgetting to pass a live
+  source disables the feature rather than enabling it. `CurrencyRateStore` owns the fetch, the enable
   flag and the cacheless `.ephemeral` session.
 - **`CurrencyData.generated.swift` is emitted by `node Scripts/gen-currencies.js`** and never hand-edited.
   The only hand-maintained currency data is `CalcCurrency.contested`, the nouns several currencies share
@@ -160,35 +160,35 @@ and a unit on the other produces the same friendly category error as any other m
 (`Cannot convert Currency to Weight.`).
 
 The typed quantity path uses the same ordering and injected rate snapshot. Currency arithmetic is
-therefore deterministic and consent-gated: `$10 + €5` converts the left operand into euros when rates
+therefore deterministic and switchable: `$10 + €5` converts the left operand into euros when rates
 are available — the same last-unit-typed rule the measurements follow — while the entire path is
-absent when consent is off. Bare prefix and suffix signs (`$10`, `10$`) are accepted, and a conversion
+absent when the switch is off. Bare prefix and suffix signs (`$10`, `10$`) are accepted, and a conversion
 suffix applies to the whole expression.
 
-### Consent
+### Rates
 
-Currency conversion reaches the network, so it ships **off** and stays off until the user turns it on
-in Settings → Miscellaneous and accepts a sheet naming the provider, the request cadence and what
-leaves the machine. Declining leaves it off; there is no "remind me later" state. Any future feature
-that needs the network should follow the same shape rather than inventing a second one.
+Currency conversion reaches the network and ships **on** ([FORK.md](../../FORK.md) divergence 15):
+rates download from the provider once a day from first launch, and the switch in
+Settings → Miscellaneous turns it off. Upstream's consent sheet — provider, cadence, what leaves the
+machine — is gone along with the other two.
 
-The gate is a type, not a boolean sprinkled around: `CalcEngine.evaluate` takes a `CurrencySource`
+The switch is a type, not a boolean sprinkled around: `CalcEngine.evaluate` takes a `CurrencySource`
 that is either `.off` or `.on(CurrencyRates?)`, and it **defaults to `.off`**, so a caller that
 forgets to pass one gets the feature disabled rather than silently enabled. `.off` makes
 `CalcCurrency.parseConversion` return nil before it parses anything, so a currency query produces no
 card at all — not even the category-mismatch error, which would leak that the feature exists.
-`.on(nil)` is the consented-but-not-yet-downloaded state, and that is what earns the "rates
+`.on(nil)` is the enabled-but-not-yet-downloaded state, and that is what earns the "rates
 unavailable" message.
 
-`CurrencyRateStore` re-checks consent at every entry point rather than trusting a caller: reading the
+`CurrencyRateStore` re-checks the flag at every entry point rather than trusting a caller: reading the
 cache at init, the `source` the engine is handed, `start()`, each turn of the refresh loop, and twice
-around the network call itself — once before the request and once after the `await`, since consent
-can be withdrawn while a response is in flight. Revoking cancels the loop, drops the snapshot and
+around the network call itself — once before the request and once after the `await`, since the switch
+can be flipped while a response is in flight. Turning it off cancels the loop, drops the snapshot and
 deletes the cached file. The flag lives on the store, deliberately _not_ in `AppSettings`:
-`SettingsBackup` mirrors that type field-for-field, and importing a config must never be able to
-grant network access.
+`SettingsBackup` mirrors that type field-for-field, and importing a config must never be able to move
+network access either way.
 
-For "revoking deletes the rates" to be true there has to be exactly one copy, so the fetch runs on a
+For "turning it off deletes the rates" to be true there has to be exactly one copy, so the fetch runs on a
 private **cacheless** `URLSession` (`.ephemeral`, `urlCache = nil`) rather than `URLSession.shared`.
 The provider serves the table `Cache-Control: public, max-age=…`, so the shared session would store a
 second copy in the on-disk `URLCache` that deleting `currency-rates.json` doesn't touch.

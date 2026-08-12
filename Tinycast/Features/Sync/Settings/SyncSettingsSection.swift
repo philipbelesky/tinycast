@@ -1,21 +1,20 @@
 import SwiftUI
 
-/// The Backup pane's sync section; the consent gate copies the currency sheet's shape.
+/// The Backup pane's sync section. Turning it back on still asks which way first contact goes.
 struct SyncSettingsSection: View {
     @Environment(AppCore.self) private var core
     private var sync: SettingsSyncStore { core.settingsSync }
-    @State private var askingConsent = false
     @State private var foundRemote: SyncEnvelope?
 
     var body: some View {
         Section {
-            // Not bound to the flag: flipping on opens the sheet, so it springs back.
+            // Not bound to the flag: a differing remote opens the sheet, so it springs back.
             Toggle(
                 isOn: Binding(
                     get: { sync.isEnabled },
                     set: { wantsOn in
                         if wantsOn {
-                            askingConsent = true
+                            enable()
                         } else {
                             sync.setEnabled(false)
                         }
@@ -24,23 +23,22 @@ struct SyncSettingsSection: View {
                 Text("Sync Settings via iCloud")
                 Text(status)
             }
-            .sheet(isPresented: $askingConsent, onDismiss: { foundRemote = nil }) {
+            .sheet(
+                isPresented: Binding(
+                    get: { foundRemote != nil }, set: { if !$0 { foundRemote = nil } })
+            ) {
                 if let envelope = foundRemote {
                     SyncRemoteChoiceSheet(
                         envelope: envelope,
-                        onCancel: { askingConsent = false },
+                        onCancel: { foundRemote = nil },
                         onKeepLocal: {
-                            askingConsent = false
+                            foundRemote = nil
                             sync.resolveEnable(applyingRemote: false)
                         },
                         onApplyRemote: {
-                            askingConsent = false
+                            foundRemote = nil
                             sync.resolveEnable(applyingRemote: true)
                         })
-                } else {
-                    SyncConsentSheet(
-                        onCancel: { askingConsent = false },
-                        onAccept: acceptConsent)
                 }
             }
         } header: {
@@ -48,10 +46,10 @@ struct SyncSettingsSection: View {
         }
     }
 
-    private func acceptConsent() {
+    /// The probes outlived the consent step: an unprovisioned build has to say so out loud.
+    private func enable() {
         switch sync.requestEnable() {
         case .notSignedIn:
-            askingConsent = false
             Task {
                 await core.showNotice(
                     title: "Sign in to iCloud",
@@ -60,7 +58,6 @@ struct SyncSettingsSection: View {
                     symbol: "icloud.slash", tone: .neutral)
             }
         case .unavailable:
-            askingConsent = false
             Task {
                 _ = await core.reportFailure(
                     title: "iCloud Sync Unavailable",
@@ -68,13 +65,13 @@ struct SyncSettingsSection: View {
                     symbol: "icloud.slash", recovery: nil)
             }
         case .enabledFresh:
-            askingConsent = false
+            break
         case .remoteFound(let envelope):
             foundRemote = envelope
         }
     }
 
-    /// Carries the off-state promise: nothing leaves the Mac until the switch is on.
+    /// Carries the off-state promise: nothing leaves the Mac while the switch is off.
     private var status: String {
         guard sync.isEnabled else {
             return "Off — nothing is sent to iCloud."
@@ -84,45 +81,6 @@ struct SyncSettingsSection: View {
         }
         let stamp = at.formatted(date: .abbreviated, time: .shortened)
         return "\(SettingsSyncStore.provider) · \(by), \(stamp)."
-    }
-}
-
-/// The consent step: where settings go, how often, what travels, and what never does.
-private struct SyncConsentSheet: View {
-    let onCancel: () -> Void
-    let onAccept: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
-            HStack(spacing: Theme.Spacing.lg) {
-                Image(systemName: "icloud")
-                    .font(.system(size: 22, weight: .medium))
-                    .foregroundStyle(.green)
-                Text("Turn on iCloud settings sync?")
-                    .font(.headline)
-            }
-
-            Text(
-                "Tinycast saves your settings, keyboard shortcuts, custom commands, quicklinks, "
-                    + "favorites, and hidden items to \(SettingsSyncStore.provider) on every "
-                    + "change, and automatically applies what your other Macs save — including "
-                    + "shortcuts and custom commands. Consent switches like snippet expansion "
-                    + "never sync. Turning it off removes the iCloud copy."
-            )
-            .font(.callout)
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
-
-            HStack(spacing: Theme.Spacing.lg) {
-                Spacer()
-                Button("Not Now", action: onCancel)
-                    .keyboardShortcut(.cancelAction)
-                Button("Enable", action: onAccept)
-                    .keyboardShortcut(.defaultAction)
-            }
-        }
-        .padding(Theme.Spacing.xxl)
-        .frame(width: 420)
     }
 }
 

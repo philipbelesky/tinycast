@@ -41,6 +41,7 @@ themselves are in [AGENTS.md](AGENTS.md#non-negotiables). This file covers only 
 | 12 | [Re-homed decision reasoning](#12--re-homed-decision-reasoning) | Medium — fork prose inside sections upstream edits | No — upstream deleted the source |
 | 13 | [No binary-size budget](#13--no-binary-size-budget) | Low — one deleted line in each of two docs | No — upstream ships to strangers |
 | 14 | [Xcode only, no LSP scaffolding](#14--xcode-only-no-lsp-scaffolding) | Medium — five upstream files deleted | No — upstream supports both editors |
+| 15 | [Networked features default on](#15--networked-features-default-on) | **High** — deletes all four consent sheets upstream considers structural | No — it inverts a stated invariant |
 
 Keep each divergence as **its own commit**, never squashed together. Rebasing `philip` onto a new
 `origin/main` then replays them one at a time, and a divergence that upstream has since made redundant
@@ -293,7 +294,7 @@ unreadable file from costing a library.
 
 ## 8 — Linear view opener
 
-**Touches:** a new `Features/Linear/` (two pure models with a harness, a client, a consented store, a
+**Touches:** a new `Features/Linear/` (two pure models with a harness, a client, a switchable store, a
 coordinator, a settings pane), plus the same hook set as divergences 5 and 6 —
 `AppEntry.Kind.linearView`, an `AppIndex` slice, a `LauncherCoordinator` branch, `ScopeCatalog`'s `l`,
 `PaletteCoordinator.onShow`, `AppCore` wiring, `SettingsTab` and the settings/backup registries.
@@ -301,10 +302,11 @@ coordinator, a settings pane), plus the same hook set as divergences 5 and 6 —
 `l payments` lists every workspace's Linear sidebar — saved views, projects, initiatives; ↵ opens
 one. It is
 the **second networked feature** in the app and the first the fork added, so it copies
-`CurrencyRateStore` rather than inventing a second consent shape: flag on the store, three guards,
-re-checked across the await, cache deleted on withdrawal.
+`CurrencyRateStore` rather than inventing a second shape: flag on the store, three guards,
+re-checked across the await, cache deleted when it is turned off. **Divergence 15 later deleted this
+feature's consent sheet too and defaulted it on**, leaving the guards and the flag's location intact.
 
-Two things not to lose. The consent flag must stay out of `AppSettings` — `settings-backup-test` will
+Two things not to lose. The flag must stay out of `AppSettings` — `settings-backup-test` will
 not catch it moving, because a new key there is legal; only the invariant forbids it. And the desktop
 app's link handling is a genuine trap: `Linear.app` declares no URL scheme and does not claim
 `https://linear.app`, so the https URL opens it and does nothing. `linear://` works, but only because
@@ -343,15 +345,17 @@ re-apply this, since upstream's shape and this fork's transparent header cannot 
 
 ## 10 — iCloud settings sync
 
-**Touches:** a new `Features/Sync/` (two pure models with a harness, a consented store, a Backup-pane
+**Touches:** a new `Features/Sync/` (two pure models with a harness, a switchable store, a Backup-pane
 section), the fork's bundle ids and `TinycastFork.entitlements` in `project.yml`, `AppCore` wiring,
 and a split of `SettingsBackup.swift` that moved `gather`/`apply` to
 `Backup/Service/SettingsBackupApplying.swift` so the payload struct is harness-compilable.
 
 The backup payload mirrored through `NSUbiquitousKeyValueStore`, last writer wins — the whole design
-is at the foot of [sync.md](docs/features/sync.md), the invariants at its head. The consent flag follows
+is at the foot of [sync.md](docs/features/sync.md), the invariants at its head. The flag follows
 the `CurrencyRateStore` shape and carries the same warning as divergence 8: `settings-backup-test`
-cannot catch it moving into `AppSettings`; only the invariant forbids it.
+cannot catch it moving into `AppSettings`; only the invariant forbids it. **Divergence 15 later
+deleted this feature's consent sheet and defaulted it on**, which is where the first-contact
+consequence is written down.
 
 The signing constraint is the fork-specific part, and it renamed the channels.
 `com.apple.developer.ubiquity-kvstore-identifier` must be authorized by an Apple-issued provisioning
@@ -426,7 +430,7 @@ the deletion rather than keeping the file, so there is no permanent doc divergen
 Four entries were fork-authored, and those could not simply be deleted with it. They moved to the doc
 that owns their subject: **33** (`Theme.scale`, and why point sizes are derived) into
 [ui.md](docs/ui.md#why-a-constant-and-why-derived-point-sizes), **34** (adopt-on-transition) into
-[palette.md](docs/features/palette.md), **35** (the suggest feed's separate consent) into
+[palette.md](docs/features/palette.md), **35** (why the suggest feed is its own switch) into
 [web-search.md](docs/features/web-search.md), and **36** (settings sync) into
 [sync.md](docs/features/sync.md). References to *upstream's* entries — 7, 8, 9, 10, 11, 15, 21, 28 —
 now point at the invariant itself in [AGENTS.md](AGENTS.md#non-negotiables), which is where they were
@@ -489,6 +493,53 @@ list — that part matters — and re-delete the `--index` plumbing around it; d
 you ever want VS Code back, `git show` any of these paths before this commit brings the whole setup
 back intact.
 
+## 15 — Networked features default on
+
+**Touches:** the `isEnabled` initialiser in `CurrencyRateStore`, `SearchSuggestionStore`,
+`SettingsSyncStore` and `LinearStore`, `quicklinksEnabled` in `AppSettings`, and the four settings
+views that lose a consent sheet — `MiscellaneousSettingsView`, `WebSearchSettingsView`,
+`SyncSettingsSection`, `LinearSettingsView`. Plus the non-negotiable in `AGENTS.md`, `SECURITY.md`'s
+network clause, and the feature docs that stated the old shape.
+
+Upstream ships every networked feature **off** behind a sheet naming the provider, the cadence and
+what leaves the machine, and `AGENTS.md` said in terms that "only my machines" was not an argument
+against that. **This fork now defaults currency rates, iCloud settings sync, search suggestions,
+quicklinks and Linear views to on, and deletes all four consent sheets** — an explicit owner's
+decision about the owner's own data on the owner's own Macs, which is the one argument the old rule
+refused and the only one available here. It is written down rather than assumed so the next departure
+has to be argued too.
+
+Absent still reads through `defaults.object(forKey:) == nil || defaults.bool(forKey:)`, the idiom
+`AppSettings` already used for `quicklinksShowInLauncher`, so an explicit `false` survives and only a
+never-set key reads as on.
+
+**What deliberately survived.** The flags stay on their stores and out of `AppSettings`, so no backup
+or synced envelope can move them in either direction — the reason that rule exists never depended on
+the sheet. Each store still re-checks `isEnabled` on both sides of every `await`, which is not
+consent bookkeeping but the thing that stops a reply landing after the switch is off, and each still
+fetches on a private `.ephemeral`, `urlCache = nil` session. `snippetsEnabled` stays out of backups.
+**Snippets is the one gate left**, because enabling it grants keyword expansion over every keystroke
+in every app — a different question from whether a feature may fetch.
+
+Linear was the closest call and went with the rest. The sheet's own text is why: it said Tinycast
+never sees an API token, because the `linear` CLI holds the credentials and this app only reads
+`workspaces` out of `credentials.toml`. A feature that holds no secret and reads no issue contents is
+asking permission to list view *names*, which is not a question worth a modal. On a Mac with no CLI
+installed or none logged in, on is inert — `refresh` returns a failure string the pane shows, nothing
+publishes, and `AppCore` drops the scope.
+
+**Two consequences worth knowing.** Sync's first-contact sheet — which side wins when iCloud already
+holds a differing envelope — can no longer fire on a first launch, because nothing calls
+`requestEnable()`; a fresh Mac takes the remote on the `.startup` trigger. And the sheet was the only
+place that said other Macs' shortcuts and custom commands apply automatically, so the post-apply HUD
+summary is now the sole runtime notice. `SyncSettingsSection` still keeps the sheet and the
+sign-in/entitlement probes for the off → on path.
+
+**On merge:** upstream will keep the sheets and the off-by-default initialisers. Take its changes to
+the stores' fetch logic — that is where the real work happens — and re-apply the four one-line
+initialisers and the three sheet deletions on top. If upstream ever adds a fifth networked feature,
+it arrives off, and whether it joins this list is a fresh decision rather than a default.
+
 ## Merging upstream
 
 ```sh
@@ -497,7 +548,7 @@ git checkout main && git merge --ff-only origin/main   # keep the mirror clean
 git checkout philip && git rebase origin/main           # replay the divergences
 ```
 
-Rebase rather than merge, so the fork stays a readable stack of the fourteen commits above rather than a
+Rebase rather than merge, so the fork stays a readable stack of the fifteen commits above rather than a
 braid.
 
 **The 2026-08-12 absorption of upstream `a0cfc60..ef1e1b5` was a merge commit, not a rebase**, and is
@@ -527,7 +578,14 @@ Then, before calling it done — the standard gate from
       and `hover-arming-test` all needed it (divergences 3, 4).
 - [ ] **`PaletteCoordinator.onShow` still fires** — otherwise herdr, VS Code and Linear list stale
       state (divergences 5, 6, 8).
-- [ ] **Linear's consent flag is still on the store, not in `AppSettings`** (divergence 8).
+- [ ] **Linear's flag is still on the store, not in `AppSettings`** (divergences 8, 15).
+- [ ] **The five default-on initialisers survived** — upstream's are `defaults.bool(forKey:)`, the
+      fork's are `object(forKey:) == nil || bool(forKey:)`, and a merge that takes upstream's line
+      silently ships the feature off again (divergence 15).
+- [ ] **No consent sheet came back** for currency, suggestions, sync or Linear —
+      `grep -rn 'ConsentSheet\|askingConsent' Tinycast/` returns nothing. The two dialogs that
+      *should* exist still do: `SyncRemoteChoiceSheet` and snippets' confirming setter
+      (divergence 15).
 - [ ] **Every `#Preview` still compiles**, and the ones whose view upstream changed still render
       something honest (divergence 11).
 - [ ] **`nm -a <Release binary> | grep -c 11PreviewData` returns zero, and the same query against

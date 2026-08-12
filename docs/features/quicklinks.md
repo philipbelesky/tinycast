@@ -4,8 +4,8 @@ A quicklink turns a URL, search, file, folder or deeplink into a first-class com
 the launcher, bindable to a global shortcut, and openable in a chosen app. Dynamic placeholders let
 one quicklink adapt to typed input, the clipboard, the selection, or the date.
 
-The feature ships **off**. **Settings → Quicklinks** carries the switch and its launcher-visibility
-companion. Off is fully off: no launcher section, no `Create` / `Search` / `Import` / `Export`
+The feature ships **on** ([FORK.md](../../FORK.md) divergence 15). **Settings → Quicklinks** carries
+the switch and its launcher-visibility companion. Off is fully off: no launcher section, no `Create` / `Search` / `Import` / `Export`
 Quicklinks commands, and `QuicklinkCoordinator.openQuicklink` — the single funnel palette activation and global
 shortcuts both reach — refuses to open anything. Bindings stay registered, so re-enabling restores
 every shortcut without re-registering.
