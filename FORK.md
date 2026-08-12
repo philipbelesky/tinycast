@@ -492,8 +492,9 @@ Then, before calling it done — the standard gate from
 - [ ] **Linear's consent flag is still on the store, not in `AppSettings`** (divergence 8).
 - [ ] **Every `#Preview` still compiles**, and the ones whose view upstream changed still render
       something honest (divergence 11).
-- [ ] **`nm` on a Release build returns zero preview symbols** — the `#if DEBUG` guard held
-      (divergence 11).
+- [ ] **`nm -a <Release binary> | grep -c 11PreviewData` returns zero, and the same query against
+      the Debug `.debug.dylib` does not** — the second half is the control, since a Debug build's
+      `MacOS/` executable is a stub and returns zero either way (divergence 11).
 - [ ] The palette, a dialog and both HUDs were opened and *looked at*. No agent here can do this.
 
 ## Adding a divergence

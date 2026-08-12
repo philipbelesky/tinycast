@@ -491,8 +491,16 @@ focus moves. Don't reintroduce `prompt:` on that field. See
 ## Previews
 
 Source: `Tinycast/Previews/`. Every major view carries a `#Preview` at the bottom of its own file,
-wrapped in `#if DEBUG` so nothing reaches a Release binary — `nm` on a Release build must keep
-returning zero preview symbols.
+wrapped in `#if DEBUG` so nothing reaches a Release binary:
+
+```sh
+nm -a "…/Release/Tinycast.app/Contents/MacOS/Tinycast" | grep -c 11PreviewData          # must be 0
+nm -a "…/Debug/Tinycast Dev.app/Contents/MacOS/Tinycast Dev.debug.dylib" | grep -c 11PreviewData
+```
+
+**The second line is the control, and it is not optional.** A Debug build's `MacOS/Tinycast Dev` is a
+40 KB launcher stub — the code lives in the `.debug.dylib` beside it — so running the check against
+the stub returns zero for *both* configurations and proves nothing at all.
 
 Three chrome modifiers, and picking the wrong one is the usual way a preview lies:
 
