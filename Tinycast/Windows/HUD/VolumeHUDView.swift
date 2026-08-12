@@ -47,3 +47,14 @@ struct VolumeHUDView: View {
         state.muted ? 0 : VolumeLevel.clamped(state.level)
     }
 }
+
+#if DEBUG
+    /// Muted prints the word rather than "0%", which is the pair worth seeing together.
+    #Preview("Volume HUD") {
+        HStack(spacing: Theme.Spacing.xxl) {
+            VolumeHUDView(state: VolumeState(level: 0.65))
+            VolumeHUDView(state: VolumeState(level: 0, muted: true))
+        }
+        .previewOnDesktop()
+    }
+#endif

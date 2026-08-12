@@ -127,3 +127,18 @@ enum CalcActionsMenu {
         )
     }
 }
+
+#if DEBUG
+    /// Two columns with badge pills, and the error shape, which shares none of that layout.
+    #Preview("Calculator card") {
+        VStack(spacing: Theme.Spacing.md) {
+            CalculatorCard(result: PreviewData.calcArithmetic, selected: true)
+            CalculatorCard(result: PreviewData.calcConversion, selected: false)
+            CalculatorCard(result: PreviewData.calcError, selected: false)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, Theme.Spacing.md)
+        .padding(.top, Theme.Spacing.xs)
+        .previewInPalette()
+    }
+#endif

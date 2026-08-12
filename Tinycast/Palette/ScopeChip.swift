@@ -32,3 +32,10 @@ struct ScopeChip: View {
         .armedHover($hovered)
     }
 }
+
+#if DEBUG
+    #Preview("Scope chip") {
+        ScopeChip(scope: PreviewData.scope, onClear: {})
+            .previewOnPanel()
+    }
+#endif

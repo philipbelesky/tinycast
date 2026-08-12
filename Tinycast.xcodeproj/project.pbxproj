@@ -30,6 +30,7 @@
 		14D056C9DA105D9D89A9691E /* HealthTicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFB023D167225228757CC4B2 /* HealthTicker.swift */; };
 		15292937738B7CD3AE23EF73 /* VolumeSlider.swift in Sources */ = {isa = PBXBuildFile; fileRef = E27FB790A72ACD75DFCDFDDF /* VolumeSlider.swift */; };
 		156C511B04E360BDF2C5B133 /* LinearStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 683C45433072310B695596E7 /* LinearStore.swift */; };
+		156D6D43E216238597BC6C7C /* PreviewChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19F27F784605601ADB05C3DA /* PreviewChrome.swift */; };
 		16F81066F7B59AD44CE09261 /* ActivationPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2575583134BE03EA9FA719CD /* ActivationPolicy.swift */; };
 		175DAAED3859A54861D8CEBC /* SnippetRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BFFB1471D30C915BBC5DCBA /* SnippetRepository.swift */; };
 		1798DB6FB8F49A15E8555854 /* VSCodeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8558C1E2F355AE45E2CDA9DD /* VSCodeStore.swift */; };
@@ -209,6 +210,7 @@
 		D9113113F828FD6983715D6B /* UninstallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62F2B0F5FDD503E6BB739A47 /* UninstallView.swift */; };
 		DA1EE0A8933EADD357FCE32C /* QuicklinkArgumentSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54E48A8D5E2BC00E9E1CD5BF /* QuicklinkArgumentSession.swift */; };
 		DB6B294B3D15B0AABCE5427E /* PaletteScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 445B0374FD5D74DBE23243CD /* PaletteScreen.swift */; };
+		DC767625F74C7D69F04D8722 /* PreviewData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29796F8A83EAD6234DFED002 /* PreviewData.swift */; };
 		DCE9BC9F1056D6E1FA995CAE /* ProcessTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = C60EA0AC5DE3E4E728649DB9 /* ProcessTable.swift */; };
 		DDFA439EA7942183414375DC /* AppPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6A96350EBE68EC79497FA2D /* AppPaths.swift */; };
 		DEBCF434AB244DAD43DB8A6A /* LaunchAtLogin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA9F5F7226AD5A91835AF5C /* LaunchAtLogin.swift */; };
@@ -272,6 +274,7 @@
 		1868F87E31E20A4775C84E6A /* HyperKeyTap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HyperKeyTap.swift; sourceTree = "<group>"; };
 		188A6D3C5B6BC67716F15F83 /* PaletteState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteState.swift; sourceTree = "<group>"; };
 		197035E213BEBA67DDA3377B /* ClipboardManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardManager.swift; sourceTree = "<group>"; };
+		19F27F784605601ADB05C3DA /* PreviewChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewChrome.swift; sourceTree = "<group>"; };
 		1B865FF16D3C395A8D509B94 /* QuicklinkLauncher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuicklinkLauncher.swift; sourceTree = "<group>"; };
 		1CD8272A7A39A965542E96D2 /* WebSearchCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSearchCoordinator.swift; sourceTree = "<group>"; };
 		201FCD08ACA933378876385B /* ClipboardStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardStore.swift; sourceTree = "<group>"; };
@@ -289,6 +292,7 @@
 		28D150930C930F1FB5E2A31B /* DialogRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DialogRequest.swift; sourceTree = "<group>"; };
 		296F67E23BF91CFBC6D66385 /* SystemActionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemActionCoordinator.swift; sourceTree = "<group>"; };
 		2978240965C1A605A6852C21 /* VSCodeSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VSCodeSettingsView.swift; sourceTree = "<group>"; };
+		29796F8A83EAD6234DFED002 /* PreviewData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewData.swift; sourceTree = "<group>"; };
 		2AEDBB526AB2C0406D8226D5 /* SystemActionRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemActionRunner.swift; sourceTree = "<group>"; };
 		2B0F5891A80B604FBE21897B /* CalcCurrency.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalcCurrency.swift; sourceTree = "<group>"; };
 		2B2CB71671625A1F446316A1 /* MessageHUDController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageHUDController.swift; sourceTree = "<group>"; };
@@ -654,6 +658,15 @@
 				7EBAD0766FF9BFC6A4396474 /* UninstallTarget.swift */,
 			);
 			path = Model;
+			sourceTree = "<group>";
+		};
+		289AAC247743217EA93890A0 /* Previews */ = {
+			isa = PBXGroup;
+			children = (
+				19F27F784605601ADB05C3DA /* PreviewChrome.swift */,
+				29796F8A83EAD6234DFED002 /* PreviewData.swift */,
+			);
+			path = Previews;
 			sourceTree = "<group>";
 		};
 		29CBDB9EE90AB60433ED2A68 /* Service */ = {
@@ -1219,6 +1232,7 @@
 				95CA98985928A88B33F82556 /* Features */,
 				BCE065D58E699AFB41A13CD3 /* Palette */,
 				02ADF9B2610482EE749E5C66 /* Platform */,
+				289AAC247743217EA93890A0 /* Previews */,
 				CACF5EC3FE229BE408F2449F /* Windows */,
 				C45190564C9D9F1722E83943 /* Assets.xcassets */,
 				4DA7B926405DAC632C056418 /* Info.plist */,
@@ -1673,6 +1687,8 @@
 				94887F8E18AB2C08A8273897 /* Permissions.swift in Sources */,
 				22EE4D5AFAAA12E649666019 /* PermissionsSettingsView.swift in Sources */,
 				6C052B83FAE453D1011E3FB4 /* PopoverMenu.swift in Sources */,
+				156D6D43E216238597BC6C7C /* PreviewChrome.swift in Sources */,
+				DC767625F74C7D69F04D8722 /* PreviewData.swift in Sources */,
 				DCE9BC9F1056D6E1FA995CAE /* ProcessTable.swift in Sources */,
 				DF2D251D03CEFD592941C00E /* QueryScope.swift in Sources */,
 				EBCDF88CD59A4B6F21F945C6 /* Quicklink.swift in Sources */,

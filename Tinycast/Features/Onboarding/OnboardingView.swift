@@ -412,3 +412,15 @@ final class OnboardingModel {
         }
     }
 }
+
+#if DEBUG
+    /// Step 0 only: `step` is this view's own state, so the later steps can't be staged.
+    #Preview("Onboarding") {
+        OnboardingView()
+            .frame(
+                width: OnboardingView.windowSize.width, height: OnboardingView.windowSize.height
+            )
+            .previewStores()
+            .preferredColorScheme(.light)
+    }
+#endif

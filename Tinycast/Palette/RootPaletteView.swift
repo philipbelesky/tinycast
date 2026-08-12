@@ -728,3 +728,13 @@ private struct CompactFavoriteButton<Content: View>: View {
         .help(help)
     }
 }
+
+#if DEBUG
+    /// `refresh()` fills the index: `AppCore.init` builds it empty and `start()` never runs here.
+    #Preview("Palette · launcher") {
+        RootPaletteView()
+            .frame(width: Theme.Size.panelWidth, height: Theme.Size.panelHeight)
+            .previewOnDesktop()
+            .task { await AppCore.shared.appIndex.refresh() }
+    }
+#endif

@@ -48,3 +48,16 @@ struct VolumeSlider: View {
         }
     }
 }
+
+#if DEBUG
+    /// The ends matter most: the readout slot must not resize between "0%" and "100%".
+    #Preview("Volume slider") {
+        VStack(spacing: Theme.Spacing.xxl) {
+            VolumeSlider(state: VolumeState(level: 0))
+            VolumeSlider(state: VolumeState(level: 0.35))
+            VolumeSlider(state: VolumeState(level: 1))
+        }
+        .frame(width: Theme.Size.dialogWidth - Theme.Spacing.xxl * 2)
+        .previewOnPanel()
+    }
+#endif

@@ -236,3 +236,33 @@ private struct EmojiCell: View {
             )
     }
 }
+
+#if DEBUG
+    /// Ten entries over eight columns, so the second section starts on a partial trailing row.
+    #Preview("Emoji grid") {
+        EmojiGridView(
+            sections: PreviewData.emojiSections,
+            selection: 3,
+            tone: .none,
+            scroll: ScrollIntent(kind: .top),
+            onSelect: { _ in },
+            onActivate: {},
+            onActions: { _ in }
+        )
+        .previewInPalette()
+    }
+
+    /// Only the tone-capable glyphs change; the rest must be untouched by the modifier.
+    #Preview("Emoji grid · medium-dark tone") {
+        EmojiGridView(
+            sections: PreviewData.emojiSections,
+            selection: 4,
+            tone: .mediumDark,
+            scroll: ScrollIntent(kind: .top),
+            onSelect: { _ in },
+            onActivate: {},
+            onActions: { _ in }
+        )
+        .previewInPalette()
+    }
+#endif

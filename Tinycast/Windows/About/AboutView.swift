@@ -190,3 +190,15 @@ private struct AboutLinkRow: View {
         }
     }
 }
+
+#if DEBUG
+    /// Sized as the Settings detail column, which is the only place this pane is ever shown.
+    #Preview("About") {
+        AboutView()
+            .frame(
+                width: Theme.Size.settingsWindow.width - Theme.Size.settingsSidebar,
+                height: Theme.Size.settingsWindow.height
+            )
+            .preferredColorScheme(.light)
+    }
+#endif

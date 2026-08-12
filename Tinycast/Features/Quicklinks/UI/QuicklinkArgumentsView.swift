@@ -117,3 +117,28 @@ private struct OptionRow: View {
         .armedHover($hovered)
     }
 }
+
+#if DEBUG
+    /// The summary comes from the live session, so a canvas shows only the choices beneath it.
+    #Preview("Quicklink arguments") {
+        QuicklinkArgumentsView(
+            options: PreviewData.quicklinkOptions,
+            selection: 1,
+            scroll: ScrollIntent(kind: .top),
+            onSelect: { _ in },
+            onActivate: {}
+        )
+        .previewInPalette()
+    }
+
+    #Preview("Quicklink arguments · free text") {
+        QuicklinkArgumentsView(
+            options: [],
+            selection: 0,
+            scroll: ScrollIntent(kind: .top),
+            onSelect: { _ in },
+            onActivate: {}
+        )
+        .previewInPalette()
+    }
+#endif

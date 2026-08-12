@@ -153,3 +153,19 @@ private struct FileIconView: View {
         }
     }
 }
+
+#if DEBUG
+    /// Boxes read unchecked — the session owns the checked set; the last row is the locked state.
+    #Preview("Uninstall") {
+        UninstallList(
+            results: PreviewData.uninstallCandidates,
+            selectedID: PreviewData.uninstallCandidates.first?.id,
+            summary: PreviewData.uninstallSummary,
+            scroll: ScrollIntent(kind: .top),
+            onSelect: { _ in },
+            onToggle: { _ in },
+            onActions: { _ in }
+        )
+        .previewInPalette()
+    }
+#endif

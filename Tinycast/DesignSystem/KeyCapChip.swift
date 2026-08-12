@@ -53,3 +53,28 @@ struct KeyCapChip: View {
             }
     }
 }
+
+#if DEBUG
+    #Preview("Key caps") {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
+            HStack(spacing: Theme.Spacing.xxs) {
+                KeyCapChip(text: "⌘", style: .outline)
+                KeyCapChip(text: "K", style: .outline)
+                KeyCapChip(text: "↵", style: .outline)
+                KeyCapChip(text: "esc", style: .outline)
+            }
+            HStack(spacing: Theme.Spacing.xxs) {
+                KeyCapChip(text: "⌘", style: .filled)
+                KeyCapChip(text: "K", style: .filled)
+                KeyCapChip(text: "↵", style: .filled)
+            }
+            // The three sanctioned scales side by side, since only relative size tells them apart.
+            HStack(alignment: .bottom, spacing: Theme.Spacing.sm) {
+                KeyCapChip(text: "⌥", scale: .compact)
+                KeyCapChip(text: "⌥", scale: .standard)
+                KeyCapChip(text: "⌥", scale: .hero)
+            }
+        }
+        .previewOnPanel()
+    }
+#endif

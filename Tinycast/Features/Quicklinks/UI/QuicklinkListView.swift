@@ -147,3 +147,18 @@ private struct QuicklinkRow: View {
             ?? Quicklink.sfSymbol
     }
 }
+
+#if DEBUG
+    /// One pinned entry above the rest, and a hidden one carrying the `eye.slash` hint.
+    #Preview("Quicklinks") {
+        QuicklinkList(
+            results: PreviewData.quicklinks,
+            selectedID: PreviewData.quicklinks.first?.id,
+            scroll: ScrollIntent(kind: .top),
+            onSelect: { _ in },
+            onActivate: {},
+            onActions: { _ in }
+        )
+        .previewInPalette()
+    }
+#endif

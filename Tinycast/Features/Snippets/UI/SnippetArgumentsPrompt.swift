@@ -91,3 +91,19 @@ private struct SnippetArgumentsForm: View {
         .onAppear { focusedArgument = values.arguments.first { $0.options.isEmpty }?.name }
     }
 }
+
+#if DEBUG
+    /// The accessory view only; the `NSAlert` around it can't be staged in a canvas.
+    #Preview("Snippet arguments") {
+        SnippetArgumentsForm(
+            values: ArgumentValues(arguments: [
+                SnippetTemplateEngine.MissingArgument(name: "recipient", options: []),
+                SnippetTemplateEngine.MissingArgument(name: "greeting", options: []),
+                SnippetTemplateEngine.MissingArgument(
+                    name: "tone", options: ["formal", "friendly", "terse"])
+            ])
+        )
+        .padding(Theme.Spacing.xxl)
+        .preferredColorScheme(.light)
+    }
+#endif

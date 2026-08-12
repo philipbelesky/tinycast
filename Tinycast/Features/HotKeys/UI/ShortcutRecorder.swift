@@ -91,3 +91,28 @@ struct ShortcutRecorder: View {
         }
     }
 }
+
+#if DEBUG
+    /// Unbound is all a canvas can show honestly: binding one would write to the real defaults.
+    #Preview("Shortcut recorder") {
+        Form {
+            Section {
+                SettingsRow(title: "Toggle Tinycast") {
+                    ShortcutRecorder(action: .togglePalette)
+                }
+                SettingsRow(title: "Clipboard History", subtitle: "Opens straight to the history") {
+                    ShortcutRecorder(action: .toggleClipboard)
+                }
+                SettingsRow(title: "Emoji Picker") {
+                    ShortcutRecorder(action: .toggleEmoji)
+                }
+            } header: {
+                Text("Shortcuts")
+            }
+        }
+        .formStyle(.grouped)
+        .frame(width: Theme.Size.settingsDetailMinimum, height: Theme.Size.panelHeight / 2)
+        .previewStores()
+        .preferredColorScheme(.light)
+    }
+#endif

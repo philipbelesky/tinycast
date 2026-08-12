@@ -292,3 +292,65 @@ private struct AppRow: View {
         .armedHover($hovered)
     }
 }
+
+#if DEBUG
+    /// The empty query: favorites, then a section per kind, including two coloured scope tiles.
+    #Preview("Launcher · sections") {
+        LauncherList(
+            results: PreviewData.launcherResults,
+            selectedID: PreviewData.notes.id,
+            favoriteCount: PreviewData.launcherFavoriteCount,
+            showSections: true,
+            scroll: ScrollIntent(kind: .top),
+            onActivate: { _ in },
+            onActions: { _ in }
+        )
+        .previewInPalette()
+    }
+
+    #Preview("Launcher · results with a calc card") {
+        LauncherList(
+            results: PreviewData.launcherResults,
+            selectedID: nil,
+            favoriteCount: 0,
+            showSections: false,
+            scroll: ScrollIntent(kind: .top),
+            calc: PreviewData.calcArithmetic,
+            calcSelected: true,
+            onActivate: { _ in },
+            onActions: { _ in }
+        )
+        .previewInPalette()
+    }
+
+    /// A web scope owns the query outright: one search row, then whatever the engine suggests.
+    #Preview("Launcher · web scope") {
+        LauncherList(
+            results: [],
+            selectedID: "web-search:google",
+            favoriteCount: 0,
+            showSections: false,
+            scroll: ScrollIntent(kind: .top),
+            webSearch: LauncherList.WebSearchPrompt(
+                id: "web-search:google", title: "Search Google for “liquid glass”",
+                symbol: "magnifyingglass", sectionTitle: "Google"),
+            suggestions: ["liquid glass swiftui", "liquid glass macos 26", "liquid glass tahoe"],
+            onActivate: { _ in },
+            onActions: { _ in }
+        )
+        .previewInPalette()
+    }
+
+    #Preview("Launcher · empty") {
+        LauncherList(
+            results: [],
+            selectedID: nil,
+            favoriteCount: 0,
+            showSections: true,
+            scroll: ScrollIntent(kind: .top),
+            onActivate: { _ in },
+            onActions: { _ in }
+        )
+        .previewInPalette()
+    }
+#endif

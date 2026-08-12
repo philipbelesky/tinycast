@@ -151,3 +151,32 @@ private struct CalcHistoryRow: View {
         .armedHover($hovered)
     }
 }
+
+#if DEBUG
+    #Preview("Calculator history") {
+        CalculatorHistoryList(
+            results: PreviewData.calcHistory,
+            selectedID: PreviewData.calcHistory.first?.id,
+            scroll: ScrollIntent(kind: .top),
+            onSelect: { _ in },
+            onActivate: {},
+            onActions: { _ in }
+        )
+        .previewInPalette()
+    }
+
+    /// A live answer typed into the history search sits at flat index 0, above the buckets.
+    #Preview("Calculator history · with a live answer") {
+        CalculatorHistoryList(
+            results: PreviewData.calcHistory,
+            selectedID: nil,
+            scroll: ScrollIntent(kind: .top),
+            calc: PreviewData.calcConversion,
+            calcSelected: true,
+            onSelect: { _ in },
+            onActivate: {},
+            onActions: { _ in }
+        )
+        .previewInPalette()
+    }
+#endif

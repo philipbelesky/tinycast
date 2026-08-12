@@ -105,3 +105,26 @@ private struct DialogButton: View {
         }
     }
 }
+
+#if DEBUG
+    #Preview("Dialog · confirm") {
+        DialogView(request: PreviewData.confirmDialog) { _ in }
+            .previewOnDesktop()
+    }
+
+    #Preview("Dialog · destructive") {
+        DialogView(request: PreviewData.destructiveDialog) { _ in }
+            .previewOnDesktop()
+    }
+
+    /// The case the three-axis rule exists for: a red glyph over an ordinary primary button.
+    #Preview("Dialog · danger tone, plain button") {
+        DialogView(request: PreviewData.importDialog) { _ in }
+            .previewOnDesktop()
+    }
+
+    #Preview("Dialog · volume") {
+        DialogView(request: PreviewData.volumeDialog) { _ in }
+            .previewOnDesktop()
+    }
+#endif

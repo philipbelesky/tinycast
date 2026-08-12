@@ -33,6 +33,7 @@ covers where the fork **departs** from those.
 | 8 | [Linear view opener](#8--linear-view-opener) | Medium — the same `AppEntry.Kind` surface as 4 | Unlikely — niche, and networked |
 | 9 | [Header-clearing edge dissolve](#9--header-clearing-edge-dissolve) | **High** — rewrites the top half of a file upstream calls off-limits | Yes — it fixes a real artifact |
 | 10 | [iCloud settings sync](#10--icloud-settings-sync) | Medium — `project.yml` ids/entitlements, `AppCore`, a `SettingsBackup` split | No — needs provisioning upstream refuses |
+| 11 | [SwiftUI previews](#11--swiftui-previews) | Low — 22 files, every edit an append at EOF | Yes, wholesale |
 
 Keep each divergence as **its own commit**, never squashed together. Rebasing `philip` onto a new
 `origin/main` then replays them one at a time, and a divergence that upstream has since made redundant
@@ -366,6 +367,35 @@ builds under upstream's ids — its builds simply report sync unavailable.
 real signing and its own sync, prefer its transport but keep this fork's decision table and the
 re-gather bookkeeping rule (entry 36), which are transport-independent.
 
+## 11 — SwiftUI previews
+
+**Touches:** a new `Tinycast/Previews/` (`PreviewData.swift`, `PreviewChrome.swift`), plus a trailing
+`#if DEBUG` / `#Preview` block appended to 22 view files across `DesignSystem/`, `Palette/`,
+`Windows/` and `Features/*/UI/`. 34 previews in total.
+
+Upstream has no previews at all — the canvas has never been part of how this app is built, and
+[ui.md](docs/ui.md) says to verify AppKit rendering with a `swiftc` harness and leave visual sign-off
+to a human. That stays true: a preview asserts nothing and is on no gate. It is a faster loop for the
+hand-drawn surfaces, nothing more.
+
+The previews live **in the view's own file** rather than in `Previews/`, because the Xcode canvas only
+renders what is in the open editor — a preview a folder away is one you never look at. The cost is 22
+upstream files carrying a fork-local tail, which is why every one of them is a pure append after the
+last `}`: git resolves an append cleanly unless upstream appends there too, and upstream has nothing
+there to append. `Previews/` itself holds only the shared fixtures and the three chrome modifiers, so
+the per-file tail stays a handful of lines.
+
+Everything is inside `#if DEBUG`, so a Release binary is byte-identical. That guard is the whole
+reason this divergence is cheap, and it is checkable: `nm` on the Release binary must return zero
+`PreviewData` / `previewOnDesktop` symbols. The rest of the design — the three modifiers, taking the
+store graph from `AppCore.shared`, and the list of states a canvas must not fake — is in
+[ui.md#previews](docs/ui.md#previews).
+
+**On merge:** take upstream's version of any conflicting view file whole, then re-append the preview
+tail — it depends on nothing but the view's own initialiser and `PreviewData`. If a view's parameters
+changed upstream, fix the fixture rather than the view. This is the one divergence that would be
+upstreamed as-is, so if upstream ever adds previews of its own, drop the fork's for that file.
+
 ## Merging upstream
 
 ```sh
@@ -374,7 +404,7 @@ git checkout main && git merge --ff-only origin/main   # keep the mirror clean
 git checkout philip && git rebase origin/main           # replay the divergences
 ```
 
-Rebase rather than merge, so the fork stays a readable stack of the eight commits above rather than a
+Rebase rather than merge, so the fork stays a readable stack of the eleven commits above rather than a
 braid. Then, before calling it done — the standard gate from
 [testing.md](docs/testing.md#definition-of-done) plus the fork-specific checks:
 

@@ -407,3 +407,42 @@ private struct ClipboardInfoSection: View {
         return count
     }
 }
+
+#if DEBUG
+    /// Composed as `ClipboardScreen` does: the hairline only reads with both panes beside it.
+    #Preview("Clipboard") {
+        HStack(spacing: 0) {
+            ClipboardList(
+                results: PreviewData.clipboardItems,
+                selectedID: PreviewData.clipboardItems.first?.id,
+                scroll: ScrollIntent(kind: .top),
+                onSelect: { _ in },
+                onActivate: {},
+                onActions: { _ in }
+            )
+            .frame(width: Theme.Size.clipboardListWidth)
+            Rectangle()
+                .fill(Theme.Colors.separator)
+                .frame(width: 1)
+            ClipboardPreview(item: PreviewData.clipboardItems.first)
+        }
+        .previewInPalette()
+    }
+
+    #Preview("Clipboard · list only") {
+        ClipboardList(
+            results: PreviewData.clipboardItems,
+            selectedID: PreviewData.clipboardItems[1].id,
+            scroll: ScrollIntent(kind: .top),
+            onSelect: { _ in },
+            onActivate: {},
+            onActions: { _ in }
+        )
+        .previewInPalette(width: Theme.Size.clipboardListWidth)
+    }
+
+    #Preview("Clipboard · empty") {
+        EmptyResults(text: "Clipboard history is empty")
+            .previewInPalette()
+    }
+#endif

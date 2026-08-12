@@ -37,3 +37,15 @@ extension DialogTone {
         }
     }
 }
+
+#if DEBUG
+    /// All three tones at once: here the trailing glyph *is* the tone, unlike a dialog.
+    #Preview("Message pill") {
+        VStack(spacing: Theme.Spacing.xl) {
+            MessageHUDView(message: "Trash Emptied", tone: .success)
+            MessageHUDView(message: "Trash Is Already Empty", tone: .neutral)
+            MessageHUDView(message: "Couldn't Reach herdr", tone: .danger)
+        }
+        .previewOnDesktop()
+    }
+#endif

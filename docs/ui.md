@@ -450,6 +450,39 @@ through either its cell or its (one point taller) field editor, so a real prompt
 focus moves. Don't reintroduce `prompt:` on that field. See
 [features/palette.md](features/palette.md#the-placeholder-is-tinycasts-not-the-fields).
 
+## Previews
+
+Source: `Tinycast/Previews/`. Every major view carries a `#Preview` at the bottom of its own file,
+wrapped in `#if DEBUG` so nothing reaches a Release binary — the guard is load-bearing against the
+4 MB budget, and `nm` on a Release build must keep returning zero preview symbols.
+
+Three chrome modifiers, and picking the wrong one is the usual way a preview lies:
+
+- **`.previewOnDesktop()`** — for a view that already draws its own surface: `RootPaletteView`, a
+  dialog, either HUD. It adds only the dark desktop and the light appearance.
+- **`.previewInPalette(width:height:)`** — for content that normally lives *inside* the panel, so a
+  list gets the real `panelTint` → `VisualEffectView` → `clipShape` recipe at panel size.
+- **`.previewOnPanel()`** — the same recipe hugging its content, for a leaf control. Use it for
+  anything glass: `glassEffect` with no `VisualEffectView` behind it falls back to an opaque backing.
+
+All three inject the live store graph via `.previewStores()` and force light, since the `.aqua` lock
+lives in `AppCore.start()`, which a canvas never runs. Taking the stores from `AppCore.shared` is
+safe because `init` only constructs — registration, polling and the app scan all wait for `start()`.
+`PreviewData` holds the fixtures; keep them literal, so no canvas depends on a scan or a fetch.
+
+**What a canvas cannot stage, and must not pretend to.** Some state is owned by a store with a
+`private(set)` or a persisting setter, so a preview that faked it would either lie or write to the
+real dev-channel defaults. Leave these alone and say so in one line above the preview: a bound
+`ShortcutRecorder` (writes a hotkey to defaults), the recorder callout's held-modifier and conflict
+states (`ShortcutCaptureSession` owns them), a checked `UninstallList` (`UninstallSession` owns the
+plan), the quicklink argument summary, and the compact palette bar — `paletteIsCollapsed` derives
+from `settings.compactMode`, whose setter persists. `RootPaletteView`'s preview is the exception
+that pays for itself: it calls `appIndex.refresh()` in a `.task`, which is a real scan and the only
+way to see the floating bars over actual rows.
+
+A preview is not a test. It renders; it asserts nothing, and nothing in
+[testing.md](testing.md#definition-of-done) checks it. The compile is the only guarantee.
+
 ## Rules for agents working on the UI
 
 - **Restyle from screenshots, not extracted CSS.** Pixel-matching Raycast from its bundle led to wrong results before; compare rendered screenshots over a dark desktop instead. There's no screen-recording from the shell here — verify AppKit rendering with a `swiftc` harness that prints layer state, and let the user do visual sign-off.

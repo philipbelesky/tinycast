@@ -107,3 +107,25 @@ extension View {
         modifier(ShortcutRecorderPopoverHost())
     }
 }
+
+#if DEBUG
+    /// Both caret edges and a clamped tip — the whole of what `CalloutPlacement` decides.
+    #Preview("Recorder callout") {
+        HStack(spacing: Theme.Spacing.xxl) {
+            ForEach(previewPlacements, id: \.caretX) { placement in
+                ShortcutRecorderPopover(placement: placement)
+            }
+        }
+        .previewOnPanel()
+    }
+
+    private var previewPlacements: [CalloutPlacement] {
+        let width = Theme.Size.shortcutPopover.width
+        let corner = Theme.Radius.menuPanel + Theme.Size.calloutCaretWidth / 2
+        return [
+            CalloutPlacement(center: .zero, caretEdge: .bottom, caretX: width / 2),
+            CalloutPlacement(center: .zero, caretEdge: .top, caretX: width / 2),
+            CalloutPlacement(center: .zero, caretEdge: .bottom, caretX: corner)
+        ]
+    }
+#endif

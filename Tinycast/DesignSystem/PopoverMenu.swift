@@ -160,3 +160,23 @@ private struct MenuFileIcon: View {
         }
     }
 }
+
+#if DEBUG
+    #Preview("Popover menu") {
+        @Previewable @State var selection = 0
+        PopoverMenu(
+            header: "Notes", items: PreviewData.menuItems, selection: $selection,
+            onActivate: { _ in }
+        )
+        // On a panel, not a bare desktop: glass with nothing to lens falls back to opaque.
+        .previewOnPanel()
+    }
+
+    #Preview("Popover menu · no header") {
+        @Previewable @State var selection = 1
+        PopoverMenu(
+            header: nil, items: PreviewData.menuItems, selection: $selection, onActivate: { _ in }
+        )
+        .previewOnPanel()
+    }
+#endif
