@@ -17,9 +17,7 @@ enum ProcessTable {
         }
     }
 
-    /// Every process, with the bundle ids AppKit knows folded in by pid.
-    // `libproc` would be tidier but returns EPERM for processes we do not own, and a terminal's
-    // ancestry runs through root-owned `login`, so the chain to the host app breaks without this.
+    /// `libproc` is tidier but EPERMs on processes we do not own; a terminal's ancestry is root's.
     nonisolated static func entries(bundleIDs: [Int32: String]) -> [Entry] {
         var name: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0]
         var byteCount = 0

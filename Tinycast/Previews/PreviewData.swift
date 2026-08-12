@@ -141,38 +141,53 @@
         // MARK: - Emoji
 
         private static let smileys: [EmojiEntry] = [
-            EmojiEntry(glyph: "😀", name: "grinning face", category: .smileysAndPeople,
+            EmojiEntry(
+                glyph: "😀", name: "grinning face", category: .smileysAndPeople,
                 supportsSkinTone: false, keywords: "smile happy"),
-            EmojiEntry(glyph: "😅", name: "grinning face with sweat", category: .smileysAndPeople,
+            EmojiEntry(
+                glyph: "😅", name: "grinning face with sweat", category: .smileysAndPeople,
                 supportsSkinTone: false, keywords: "relief"),
-            EmojiEntry(glyph: "🤔", name: "thinking face", category: .smileysAndPeople,
+            EmojiEntry(
+                glyph: "🤔", name: "thinking face", category: .smileysAndPeople,
                 supportsSkinTone: false, keywords: "hmm"),
-            EmojiEntry(glyph: "👋", name: "waving hand", category: .smileysAndPeople,
+            EmojiEntry(
+                glyph: "👋", name: "waving hand", category: .smileysAndPeople,
                 supportsSkinTone: true, keywords: "wave hello"),
-            EmojiEntry(glyph: "👍", name: "thumbs up", category: .smileysAndPeople,
+            EmojiEntry(
+                glyph: "👍", name: "thumbs up", category: .smileysAndPeople,
                 supportsSkinTone: true, keywords: "yes approve"),
-            EmojiEntry(glyph: "🙌", name: "raising hands", category: .smileysAndPeople,
+            EmojiEntry(
+                glyph: "🙌", name: "raising hands", category: .smileysAndPeople,
                 supportsSkinTone: true, keywords: "celebrate"),
-            EmojiEntry(glyph: "🎉", name: "party popper", category: .activity,
+            EmojiEntry(
+                glyph: "🎉", name: "party popper", category: .activity,
                 supportsSkinTone: false, keywords: "celebration"),
-            EmojiEntry(glyph: "🚀", name: "rocket", category: .travelAndPlaces,
+            EmojiEntry(
+                glyph: "🚀", name: "rocket", category: .travelAndPlaces,
                 supportsSkinTone: false, keywords: "ship launch"),
-            EmojiEntry(glyph: "🔥", name: "fire", category: .travelAndPlaces,
+            EmojiEntry(
+                glyph: "🔥", name: "fire", category: .travelAndPlaces,
                 supportsSkinTone: false, keywords: "hot lit"),
-            EmojiEntry(glyph: "✨", name: "sparkles", category: .activity,
+            EmojiEntry(
+                glyph: "✨", name: "sparkles", category: .activity,
                 supportsSkinTone: false, keywords: "shiny")
         ]
 
         private static let objects: [EmojiEntry] = [
-            EmojiEntry(glyph: "💻", name: "laptop", category: .objects, supportsSkinTone: false,
+            EmojiEntry(
+                glyph: "💻", name: "laptop", category: .objects, supportsSkinTone: false,
                 keywords: "computer"),
-            EmojiEntry(glyph: "⌨️", name: "keyboard", category: .objects, supportsSkinTone: false,
+            EmojiEntry(
+                glyph: "⌨️", name: "keyboard", category: .objects, supportsSkinTone: false,
                 keywords: "type"),
-            EmojiEntry(glyph: "🖱️", name: "computer mouse", category: .objects,
+            EmojiEntry(
+                glyph: "🖱️", name: "computer mouse", category: .objects,
                 supportsSkinTone: false, keywords: "pointer"),
-            EmojiEntry(glyph: "📦", name: "package", category: .objects, supportsSkinTone: false,
+            EmojiEntry(
+                glyph: "📦", name: "package", category: .objects, supportsSkinTone: false,
                 keywords: "box ship"),
-            EmojiEntry(glyph: "🔑", name: "key", category: .objects, supportsSkinTone: false,
+            EmojiEntry(
+                glyph: "🔑", name: "key", category: .objects, supportsSkinTone: false,
                 keywords: "lock secret")
         ]
 
@@ -189,8 +204,10 @@
             tint: .indigo)
 
         static let menuItems: [PopoverMenuItem] = [
-            PopoverMenuItem(title: "Open Application", systemImage: "arrow.up.forward.app",
-                shortcut: "↵") {},
+            PopoverMenuItem(
+                title: "Open Application", systemImage: "arrow.up.forward.app",
+                shortcut: "↵"
+            ) {},
             PopoverMenuItem(title: "Show in Finder", systemImage: "folder", shortcut: "⌘↵") {},
             PopoverMenuItem(title: "Add to Favorites", systemImage: "star") {},
             PopoverMenuItem(title: "Uninstall", systemImage: "trash", isDestructive: true) {}
