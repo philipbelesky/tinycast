@@ -488,8 +488,8 @@ focus moves. Don't reintroduce `prompt:` on that field. See
 ## Previews
 
 Source: `Tinycast/Previews/`. Every major view carries a `#Preview` at the bottom of its own file,
-wrapped in `#if DEBUG` so nothing reaches a Release binary — the guard is load-bearing against the
-4 MB budget, and `nm` on a Release build must keep returning zero preview symbols.
+wrapped in `#if DEBUG` so nothing reaches a Release binary — `nm` on a Release build must keep
+returning zero preview symbols.
 
 Three chrome modifiers, and picking the wrong one is the usual way a preview lies:
 
