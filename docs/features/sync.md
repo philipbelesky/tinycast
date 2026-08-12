@@ -7,7 +7,7 @@ every Mac signed into the same iCloud account converges on one configuration. Th
 ## Invariants
 
 - **The consent flag lives on `SettingsSyncStore`, never in `AppSettings`** — the shape every
-  networked feature copies ([decisions.md](../decisions.md) entries 8, 36). It is not an
+  networked feature copies ([AGENTS.md](../../AGENTS.md#non-negotiables), and the section at the foot of this file). It is not an
   `AppSettingsKey`, so no backup file and no synced envelope can ever carry it.
 - **An absent or unreadable remote never clears local state.** An empty KVS answer means "seed it";
   an undecodable envelope is left in place for the next writer that can read it. Neither applies.
@@ -34,7 +34,7 @@ because a background change that quietly rewrites hotkeys is hostile ([backup.md
 
 Enabling walks the consent sheet: provider, cadence, the payload list, and the explicit sentence
 that other Macs' shortcuts and custom commands apply automatically — the stated replacement for the
-manual import's executable-confirmation gate ([decisions.md](../decisions.md) entry 36). If iCloud
+manual import's executable-confirmation gate (see the section at the foot of this file). If iCloud
 already holds a differing envelope, a second sheet stage asks which side wins before any trigger is
 armed.
 
@@ -57,3 +57,30 @@ build, never a silent stall.
 | `Model/SyncPlan.swift` | The pure decision table and the quota guard |
 | `Service/SettingsSyncStore.swift` | Consent, triggers and reconcile — the effectful half |
 | `Settings/SyncSettingsSection.swift` | The Backup pane section and both sheet stages |
+
+## Why the backup payload through key-value storage
+
+`SettingsSyncStore` mirrors `SettingsBackup` — wholesale, unchanged — through one
+`NSUbiquitousKeyValueStore` key, as a compact envelope whose `writtenAt`/`writtenBy` are display
+metadata only. Its consent flag is `settingsSyncEnabled` on the store. `SyncPlan.decide` picks a
+direction from content hashes alone; when both sides changed, the trigger breaks the tie. After an
+apply, the local bookkeeping hash is **re-gathered from live state**, never copied from the remote.
+
+**Why:** KVS is zero-infrastructure and offline-tolerant, and the payload is a few KB against its
+1 MB cap. Reusing `SettingsBackup` means the coverage harness and the `snippetsEnabled` exclusion
+(entries 7, 9) guard the synced payload structurally rather than by convention. The tie-break rule is
+"the winner is whoever the user touched last": on the local-change trigger the user just touched a
+control *here*, and clobbering it would visibly flip their toggle back; at startup or on a push the
+remote envelope is the freshest action anywhere. The re-gather closes a loop: apply skips conflicting
+hotkeys, so a Mac that bookmarked the remote hash as its own state would see a phantom local change
+and two Macs would rewrite iCloud at each other forever. Enable-time consent replaces the manual
+import's executable-confirmation gate — that gate defends against a foreign file, while a synced
+envelope is self-authored under the same iCloud account, and a dialog per background apply would be a
+storm — so the consent sheet says plainly that other Macs' shortcuts and commands apply
+automatically, and every apply reports a HUD summary. The envelope is unversioned on purpose: every
+payload field is optional, so a mixed-version pair of Macs degrades to a partial apply (entry 21's
+"internal formats change freely" already covers the rest).
+
+**What would change this:** a payload approaching the 1 MB cap (snippet bodies, clipboard history),
+which is CloudKit or file-sync territory, or a real need for per-field merge, which hash-based
+last-writer-wins cannot express.

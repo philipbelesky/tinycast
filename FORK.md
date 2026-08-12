@@ -14,8 +14,12 @@ half-reverting the local changes.** Every divergence is listed below with what i
 exists, and what to do when upstream moves the same code. Anything not listed here is not intentional —
 treat it as drift and take upstream's side.
 
-Read [decisions.md](docs/decisions.md) first for the choices *upstream* made deliberately. This file only
-covers where the fork **departs** from those.
+Upstream deleted `docs/decisions.md` in #222 without re-homing it, and this fork took that deletion
+(divergence 12). The reasoning that was fork-authored now lives with its subject —
+[ui.md](docs/ui.md), [palette.md](docs/features/palette.md),
+[web-search.md](docs/features/web-search.md), [sync.md](docs/features/sync.md) — and the invariants
+themselves are in [AGENTS.md](AGENTS.md#non-negotiables). This file covers only where the fork
+**departs** from upstream.
 
 ---
 
@@ -34,6 +38,7 @@ covers where the fork **departs** from those.
 | 9 | [Header-clearing edge dissolve](#9--header-clearing-edge-dissolve) | **High** — rewrites the top half of a file upstream calls off-limits | Yes — it fixes a real artifact |
 | 10 | [iCloud settings sync](#10--icloud-settings-sync) | Medium — `project.yml` ids/entitlements, `AppCore`, a `SettingsBackup` split | No — needs provisioning upstream refuses |
 | 11 | [SwiftUI previews](#11--swiftui-previews) | Low — 22 files, every edit an append at EOF | Yes, wholesale |
+| 12 | [Re-homed decision reasoning](#12--re-homed-decision-reasoning) | Medium — fork prose inside sections upstream edits | No — upstream deleted the source |
 
 Keep each divergence as **its own commit**, never squashed together. Rebasing `philip` onto a new
 `origin/main` then replays them one at a time, and a divergence that upstream has since made redundant
@@ -95,7 +100,7 @@ black-alpha over a bright frosted surface. The rest of this section is the secon
 said would be required — so expect to re-do it, not merely re-apply it, whenever upstream restyles.
 
 The fork-local docs have been rewritten to describe light as the invariant, which means **AGENTS.md,
-docs/ui.md, docs/decisions.md, docs/architecture.md and docs/features/launcher.md all conflict with any
+docs/ui.md, docs/architecture.md and docs/features/launcher.md all conflict with any
 upstream edit to the same passages.** When they do, take upstream's *substance* and re-invert only the
 appearance claim; do not take upstream's paragraph wholesale, or the docs will start lying about the
 code again.
@@ -142,15 +147,15 @@ from screenshots" note says as much — so the alpha values are reasoned, not ey
 ## 3 — `Theme.scale` and derived typography
 
 **Touches:** `Theme.swift` (rewritten), `IconCache.swift`, `RootPaletteView.swift`, eight further view
-files, `docs/ui.md`, `docs/decisions.md` (new entry 33).
+files and `docs/ui.md`.
 
 One compile-time constant multiplies every length and font size in `Theme`, so the whole UI — panel
 frame, row icons, keycaps, glyph point sizes, rasterized bitmaps — grows together from a one-line edit.
 `Theme.Typography` consequently stopped naming semantic text styles and now derives point sizes from
 `NSFont.preferredFont(forTextStyle:)` times the scale, because `Font.body` cannot be scaled and a point
 size can. Full reasoning, including the two tokens that are not pixel-identical at `scale 1.0`, is in
-decision 33 — which lives in `docs/decisions.md` and is **fork-local**, so it will collide with any
-upstream entry that claims the same number.
+[ui.md](docs/ui.md#why-a-constant-and-why-derived-point-sizes), which is fork-local prose inside a
+section upstream also edits.
 
 This one is a **conflict magnet**: it rewrites most of `Theme.swift` and de-magic-numbers views across
 the app, which is exactly the code upstream also churns. It is also the divergence most worth offering
@@ -176,7 +181,7 @@ with a harness each, `Launcher/Service/ScopeCatalog.swift`, `WebSearch/Service/`
 A keyword plus a space narrows the root search (`q github`) or routes the rest of the query to a search
 engine (`g swift actors`). Upstream has neither; both are documented as if they were native, in
 [palette.md](docs/features/palette.md#scope-keywords) and [web-search.md](docs/features/web-search.md),
-with [decisions.md](docs/decisions.md) entry 34 for the adopt-on-transition rule.
+the latter carrying the adopt-on-transition rule.
 
 Keywords are **user-editable**, which is the part with the widest settings surface: every scope-owning
 pane carries a `ScopeKeywordSection`, so nine upstream panes gain a section they did not have, and
@@ -187,7 +192,8 @@ Launcher, so `SettingsSection.tabs` conflicts with any upstream reshuffle of the
 Web search also grew **query suggestions** (`WebSearch/Model/SearchSuggestions.swift`,
 `Service/SearchSuggestionStore.swift`), which is the fork's third networked feature and the only one
 anywhere that sends what the user *types*. It ships off behind its own dialog, keeps no cache and no
-cookies, and its flag is not in `AppSettings` — [decisions.md](docs/decisions.md) entry 35. The hooks
+cookies, and its flag is not in `AppSettings`; the reasoning is at the foot of
+[web-search.md](docs/features/web-search.md). The hooks
 are a `.suggestion` case in both row models and a `refreshSuggestions()` call in `RootPaletteView`'s
 query and scope `onChange`; `LauncherList.WebSearchPrompt` gained an `id` so the selection can move off
 the search row onto a suggestion.
@@ -327,8 +333,8 @@ header's bottom edge, over a 20pt overshoot: opaque at rest, gone once a sliver 
 The asymmetry is the point. The footer is floating glass and hides what ghosts into it, so its band
 keeps upstream's shape and floor; the header carries no material at all, so nothing may survive it.
 
-This is the one upstream file marked off-limits (decisions entry 28), which is why the amendment is
-recorded there as well as here.
+This is the one upstream file [AGENTS.md](AGENTS.md#non-negotiables) marks off-limits, which is why
+the amendment is recorded there as well as here.
 
 **On merge:** take upstream's file only if it has grown a material behind the header; otherwise
 re-apply this, since upstream's shape and this fork's transparent header cannot both be right.
@@ -341,7 +347,7 @@ and a split of `SettingsBackup.swift` that moved `gather`/`apply` to
 `Backup/Service/SettingsBackupApplying.swift` so the payload struct is harness-compilable.
 
 The backup payload mirrored through `NSUbiquitousKeyValueStore`, last writer wins — the whole design
-is decisions entry 36, the invariants in [sync.md](docs/features/sync.md). The consent flag follows
+is at the foot of [sync.md](docs/features/sync.md), the invariants at its head. The consent flag follows
 the `CurrencyRateStore` shape and carries the same warning as divergence 8: `settings-backup-test`
 cannot catch it moving into `AppSettings`; only the invariant forbids it.
 
@@ -396,6 +402,34 @@ tail — it depends on nothing but the view's own initialiser and `PreviewData`.
 changed upstream, fix the fixture rather than the view. This is the one divergence that would be
 upstreamed as-is, so if upstream ever adds previews of its own, drop the fork's for that file.
 
+## 12 — Re-homed decision reasoning
+
+**Touches:** `docs/ui.md`, `docs/features/palette.md`, `docs/features/web-search.md` and
+`docs/features/sync.md`, each of which gained a fork-authored section; and the cross-references in
+`AGENTS.md`, `FORK.md` and every fork-local feature doc.
+
+Upstream deleted `docs/decisions.md` in [#222](https://github.com/abue-ammar/tinycast/pull/222) — a
+file of 37 numbered entries, dropped inside a feature PR by an outside contributor, with **no content
+re-homed** and every cross-reference in upstream's own docs stripped in the same commit. This fork took
+the deletion rather than keeping the file, so there is no permanent doc divergence to carry.
+
+Four entries were fork-authored, and those could not simply be deleted with it. They moved to the doc
+that owns their subject: **33** (`Theme.scale`, and why point sizes are derived) into
+[ui.md](docs/ui.md#why-a-constant-and-why-derived-point-sizes), **34** (adopt-on-transition) into
+[palette.md](docs/features/palette.md), **35** (the suggest feed's separate consent) into
+[web-search.md](docs/features/web-search.md), and **36** (settings sync) into
+[sync.md](docs/features/sync.md). References to *upstream's* entries — 7, 8, 9, 10, 11, 15, 21, 28 —
+now point at the invariant itself in [AGENTS.md](AGENTS.md#non-negotiables), which is where they were
+enforced all along; the entries only ever held the reasoning behind them.
+
+The reasoning upstream discarded for its own 30-odd entries is not reconstructed here. It is in git
+history at `docs/decisions.md` before this merge, and the tag `pre-upstream-merge-2026-08-12` is the
+last commit that carries the file.
+
+**On merge:** these are additive sections in files upstream also edits, so expect hunk-level conflicts
+rather than whole-file ones — keep upstream's substance and re-append the fork's section. If upstream
+ever restores a decisions file, move the four sections back and drop this divergence.
+
 ## Merging upstream
 
 ```sh
@@ -404,12 +438,22 @@ git checkout main && git merge --ff-only origin/main   # keep the mirror clean
 git checkout philip && git rebase origin/main           # replay the divergences
 ```
 
-Rebase rather than merge, so the fork stays a readable stack of the eleven commits above rather than a
-braid. Then, before calling it done — the standard gate from
+Rebase rather than merge, so the fork stays a readable stack of the twelve commits above rather than a
+braid.
+
+**The 2026-08-12 absorption of upstream `a0cfc60..ef1e1b5` was a merge commit, not a rebase**, and is
+the one braid in this history. That drop rewrote the palette's hover and scroll model (`HoverArming`,
+`scrollFollowsSelection`, `SelectionReveal`) and deleted `docs/decisions.md`, which collided with the
+high-risk divergences 2, 3, 4 and 9; replaying twenty-four commits through it meant resolving the same
+collision repeatedly, with a silent half-revert the likely outcome. One resolution pass was the safer
+trade. Prefer a rebase again next time — the stack is still readable through the merge — and treat
+this as the precedent for when not to.
+
+Then, before calling it done — the standard gate from
 [testing.md](docs/testing.md#definition-of-done) plus the fork-specific checks:
 
-- [ ] `./Scripts/run-tests.sh` passes (24 harnesses; `scope-test`, `websearch-test`, `herdr-test`,
-      `vscode-test` and `linear-test` are fork-local).
+- [ ] `./Scripts/run-tests.sh` passes (`scope-test`, `websearch-test`, `herdr-test`, `vscode-test`
+      and `linear-test` are fork-local).
 - [ ] Debug build compiles with no new warnings.
 - [ ] `./Scripts/lint.sh` is clean.
 - [ ] `grep -rln 'import AppKit\|import SwiftUI\|import Cocoa' Tinycast/Features/*/Model/` returns nothing.
@@ -417,9 +461,18 @@ braid. Then, before calling it done — the standard gate from
       (divergences 2, 4).
 - [ ] **New or merged views carry no magic numbers** — every length and font size comes from `Theme` (divergence 3).
 - [ ] **Signing survived** — if `xcodegen` ran, re-apply divergence 1.
+- [ ] **New upstream harnesses compile against the fork's types.** `ScopeTint` and `ScopeDefinition`
+      are fork-local but reach into `Theme.swift`, `IconCache.swift` and `PaletteState.swift`, so any
+      upstream harness compiling those needs `$L/ScopeTint.swift` (and sometimes `$L/QueryScope.swift`)
+      added to its source list in `Scripts/run-tests.sh` — `palette-placement-test`, `icon-cache-test`
+      and `hover-arming-test` all needed it (divergences 3, 4).
 - [ ] **`PaletteCoordinator.onShow` still fires** — otherwise herdr, VS Code and Linear list stale
       state (divergences 5, 6, 8).
 - [ ] **Linear's consent flag is still on the store, not in `AppSettings`** (divergence 8).
+- [ ] **Every `#Preview` still compiles**, and the ones whose view upstream changed still render
+      something honest (divergence 11).
+- [ ] **`nm` on a Release build returns zero preview symbols** — the `#if DEBUG` guard held
+      (divergence 11).
 - [ ] The palette, a dialog and both HUDs were opened and *looked at*. No agent here can do this.
 
 ## Adding a divergence

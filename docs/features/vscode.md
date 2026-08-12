@@ -16,7 +16,7 @@ Code. Rows also appear in the unscoped root search, like quicklinks.
   yesterday is near the top.
 - **Nothing here writes to VS Code's storage**, and nothing here parses `state.vscdb` — see below.
 - **This feature reads local files and never the network**, which is why it ships on with no consent
-  dialog ([decisions.md](../decisions.md) entries 10, 11). Both of its settings are carried in a
+  dialog ([AGENTS.md](../../AGENTS.md#non-negotiables) — consent is structural). Both of its settings are carried in a
   backup: opening an editor grants no permission class, so neither is a consent flag.
 
 ## Where the list comes from

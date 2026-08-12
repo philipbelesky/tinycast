@@ -10,7 +10,7 @@ Issues are deliberately absent. This feature opens destinations, not records.
 ## Invariants
 
 - **This is a networked feature, so it ships off behind a consent dialog** naming Linear, the cadence
-  and what leaves the machine ([decisions.md](../decisions.md) entries 10, 11). The flag lives on
+  and what leaves the machine ([AGENTS.md](../../AGENTS.md#non-negotiables) — consent is structural). The flag lives on
   `LinearStore`, **never** in `AppSettings`, so no settings import can grant it. `linearShowInLauncher`
   and `linearDestination` are ordinary settings and are backed up; neither can turn the network on.
 - **Tinycast never sees a Linear token.** Every request goes through the `linear` CLI, which holds the

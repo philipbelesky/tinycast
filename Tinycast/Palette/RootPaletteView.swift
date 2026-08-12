@@ -12,6 +12,7 @@ struct RootPaletteView: View {
     @Environment(CurrencyRateStore.self) private var currencyRates
     @Environment(EmojiIndex.self) private var emojiIndex
     @Environment(FrequentEmojiStore.self) private var frequentEmoji
+    @Environment(FileSearchSession.self) private var fileSearch
     @Environment(UninstallSession.self) private var uninstall
     @Environment(QuicklinkStore.self) private var quicklinks
     @Environment(QuicklinkArgumentSession.self) private var quicklinkArguments
@@ -51,6 +52,9 @@ struct RootPaletteView: View {
             return EmojiScreen(
                 index: emojiIndex, frequent: frequentEmoji, core: core, vm: vm,
                 tone: settings.emojiSkinTone, openActions: openActions)
+        case .fileSearch:
+            return FileSearchScreen(
+                session: fileSearch, core: core, vm: vm, openActions: openActions)
         case .clipboard:
             return ClipboardScreen(
                 store: store, core: core, vm: vm, openActions: openActions,
@@ -125,6 +129,8 @@ struct RootPaletteView: View {
                     pillLabel: screen.primaryActionTitle, showActionGroup: showActionGroup)
             }
         }
+        // The panel has no title bar, so this thin top margin is the only place left to grab it.
+        .overlay(alignment: .top) { topDragStrip }
         // In-window overlays, so a menu stays clipped inside the panel.
         .overlay {
             if showAppMenu || showActions {
@@ -170,6 +176,7 @@ struct RootPaletteView: View {
             vm.selection = 0
             scroll = ScrollIntent(kind: .top)
             refreshSuggestions()
+            if vm.mode == .fileSearch { fileSearch.search(vm.query) }
         }
         .onChange(of: vm.scope) { refreshSuggestions() }
         .onChange(of: vm.mode) {
@@ -178,6 +185,7 @@ struct RootPaletteView: View {
             scroll = ScrollIntent(kind: .top)
             // Every way out of the Uninstall screen: back chevron, bare backspace, a fresh summon.
             if vm.mode != .uninstall { uninstall.cancel() }
+            if vm.mode != .fileSearch { fileSearch.cancel() }
             // Same for a half-filled argument form: leaving the screen abandons the pending open.
             if vm.mode != .quicklinkArguments { core.quicklinkCoordinator.cancelQuicklinkArguments() }
         }
@@ -265,8 +273,7 @@ struct RootPaletteView: View {
             let screen = screen
             let selection = selection(in: screen)
             if command { return screen.secondary(at: selection) ? .handled : .ignored }
-            guard let emoji = screen as? EmojiScreen else { return .ignored }
-            return emoji.pasteKeepingWindowOpen(at: selection) ? .handled : .ignored
+            return screen.pasteKeepingWindowOpen(at: selection) ? .handled : .ignored
         }
         .onKeyPress(.escape) {
             if showActions || showAppMenu {
@@ -312,6 +319,23 @@ struct RootPaletteView: View {
             }
             return .ignored
         }
+        // ⌃X / ⌃⇧X mirror the delete rows — both cases, Shift uppercasing — and close an open menu.
+        .onKeyPress(keys: ["x", "X"], phases: .down) { press in
+            guard press.modifiers.contains(.control) else { return .ignored }
+            let screen = screen
+            let selection = selection(in: screen)
+            let all = press.modifiers.contains(.shift)
+            switch screen {
+            case let clipboard as ClipboardScreen:
+                if all { clipboard.deleteAll() } else { clipboard.delete(at: selection) }
+            case let history as CalculatorHistoryScreen:
+                if all { history.deleteAll() } else { history.delete(at: selection) }
+            default:
+                return .ignored
+            }
+            if menuOpen { closeMenus() }
+            return .handled
+        }
         // ⌘P mirrors the Actions row, and works while that menu is open like the rest.
         .onKeyPress(keys: ["p"], phases: .down) { press in
             guard press.modifiers.contains(.command) else { return .ignored }
@@ -334,8 +358,27 @@ struct RootPaletteView: View {
         }
     }
 
+    /// A thin strip along the top edge for grabbing the window; the Appearance setting gates it.
+    private var topDragStrip: some View {
+        Color.clear
+            .frame(height: Theme.Size.headerPadding)
+            .windowDraggable(settings.paletteDraggable, onBegan: beginDrag, onEnded: endDrag)
+    }
+
+    /// A header sliver nothing occupies — safe to drag; the search field handles its own.
+    private func headerGutter(width: CGFloat) -> some View {
+        Color.clear
+            .frame(width: width)
+            .windowDraggable(settings.paletteDraggable, onBegan: beginDrag, onEnded: endDrag)
+    }
+
+    private func beginDrag() { core.paletteCoordinator.beginPaletteDrag() }
+    private func endDrag() { core.paletteCoordinator.endPaletteDrag() }
+
     private var header: some View {
-        HStack(alignment: .center, spacing: Theme.Spacing.md) {
+        HStack(alignment: .center, spacing: 0) {
+            // Matches the list rows and section headers' own indent below.
+            headerGutter(width: Theme.Spacing.md * 2)
             // Sub-screens of the root search, so their header icon is a back chevron.
             if vm.mode != .launcher {
                 Button(action: exitToLauncher) {
@@ -354,7 +397,11 @@ struct RootPaletteView: View {
                     .foregroundStyle(.secondary)
                     .frame(width: Theme.Size.headerIconSlot)
             }
-            if let scope = vm.scope { ScopeChip(scope: scope, onClear: clearScope) }
+            headerGutter(width: Theme.Spacing.md)
+            if let scope = vm.scope {
+                ScopeChip(scope: scope, onClear: clearScope)
+                headerGutter(width: Theme.Spacing.md)
+            }
             searchField
             // Compact pins favorites beside the field; expanded shows them as rows.
             if isCollapsed, settings.showFavoritesInCompactMode,
@@ -362,6 +409,7 @@ struct RootPaletteView: View {
             {
                 let slots = launcher.compactFavoriteSlots
                 if !slots.isEmpty {
+                    headerGutter(width: Theme.Spacing.md)
                     CompactFavoritesRow(
                         slots: slots,
                         onLaunch: { core.launcherCoordinator.launch($0) },
@@ -369,9 +417,8 @@ struct RootPaletteView: View {
                     )
                 }
             }
+            headerGutter(width: Theme.Spacing.md * 2)
         }
-        // Align the search icon with the list rows and section headers below.
-        .padding(.horizontal, Theme.Spacing.md * 2)
         // Identical metrics in both states, so typing can't move the search bar.
         .frame(height: Theme.Size.headerHeight)
         .padding(.top, Theme.Size.headerPadding)
@@ -383,7 +430,7 @@ struct RootPaletteView: View {
         vm.mode == .quicklinkArguments ? quicklinkArguments.prompt : vm.mode.placeholder
     }
 
-    /// The one search field, drawing its own placeholder. docs/features/palette.md#the-placeholder
+    /// The one search field — past its text it's a drag handle, matching Spotlight.
     private var searchField: some View {
         @Bindable var vm = vm
         return TextField("", text: $vm.query)
@@ -392,6 +439,8 @@ struct RootPaletteView: View {
             .tint(.primary)
             .focused($searchFocused)
             .onSubmit(activateSelection)
+            // Fills the row's height, so there's no gap above it for topDragStrip to meet.
+            .frame(maxHeight: .infinity)
             .background(alignment: .leading) {
                 if vm.query.isEmpty {
                     Text(searchPrompt)
@@ -404,6 +453,18 @@ struct RootPaletteView: View {
             }
             // The prompt used to carry this; without it the field would be unlabelled.
             .accessibilityLabel(Text(searchPrompt))
+            // Never branches on query — that tore down the field editor mid-keystroke once.
+            .overlay {
+                if settings.paletteDraggable {
+                    TextTrailingDragHandle(
+                        text: vm.query, font: Theme.Typography.searchFieldNSFont,
+                        onBegan: beginDrag, onEnded: endDrag)
+                }
+            }
+            // The panel resolves the pointer against this rather than hit-testing for the field.
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: {
+                vm.searchFieldFrame = $0
+            }
     }
 
     /// The Uninstall screen's primary action is destructive, so its pill isn't the label tint.
@@ -634,12 +695,15 @@ private struct ArmedHover: ViewModifier {
     @Binding var hovered: Bool
 
     func body(content: Content) -> some View {
-        content.onContinuousHover(coordinateSpace: .local) { phase in
-            switch phase {
-            case .active: hovered = palette.hoverHighlightArmed
-            case .ended: hovered = false
+        content
+            .onContinuousHover(coordinateSpace: .local) { phase in
+                switch phase {
+                case .active: hovered = palette.hoverHighlightArmed
+                case .ended: hovered = false
+                }
             }
-        }
+            // Disarming under a still pointer fires no hover phase, so the drop clears the row.
+            .onChange(of: palette.hoverDisarmToken) { hovered = false }
     }
 }
 

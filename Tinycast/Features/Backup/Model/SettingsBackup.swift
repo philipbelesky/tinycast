@@ -27,6 +27,11 @@ struct SettingsBackup: Codable {
         var showFavoritesInCompactMode: Bool?
         var searchScopes: [String]?
         var openOnCursorScreen: Bool?
+        // Safe to carry: it grants no permission class, just repositions the window.
+        var paletteDraggable: Bool?
+        var fileSearchEnabled: Bool?
+        var fileSearchScopes: [String]?
+        var fileSearchIgnorePatterns: [String]?
         // `snippetsEnabled` is absent: an import must not enable keystroke listening.
         var customCommandsEnabled: Bool?
         var customCommandsShowInLauncher: Bool?
@@ -64,6 +69,7 @@ struct SettingsBackup: Codable {
         var togglePalette: HotKeyBinding?
         var toggleClipboard: HotKeyBinding?
         var toggleEmoji: HotKeyBinding?
+        var searchFiles: HotKeyBinding?
         var apps: [String: HotKeyBinding]?
         var panes: [String: HotKeyBinding]?
         var customCommands: [String: HotKeyBinding]?

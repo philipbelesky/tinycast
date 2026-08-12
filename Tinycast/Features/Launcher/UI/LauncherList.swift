@@ -115,10 +115,12 @@ struct LauncherList: View {
                                         .onTapGesture(perform: onActivateCalc)
                                         .onRightClick(perform: onCalcActions)
                                         .padding(.bottom, Theme.Spacing.xs)
+                                        .selectionFrame(calcSelected)
                                 case .webSearch(let prompt):
                                     WebSearchRow(prompt: prompt, selected: selectedID == prompt.id)
                                         .contentShape(Rectangle())
                                         .onTapGesture(perform: onActivateWebSearch)
+                                        .selectionFrame(selectedID == prompt.id)
                                 case .suggestion(let text):
                                     SuggestionRow(
                                         text: text, symbol: webSearch?.symbol ?? "magnifyingglass",
@@ -126,6 +128,7 @@ struct LauncherList: View {
                                     )
                                     .contentShape(Rectangle())
                                     .onTapGesture { onActivateSuggestion(text) }
+                                    .selectionFrame(selectedID == SearchSuggestions.rowID(text))
                                 case .app(let app):
                                     AppRow(
                                         app: app,
@@ -135,6 +138,7 @@ struct LauncherList: View {
                                     .contentShape(Rectangle())
                                     .onTapGesture { onActivate(app) }
                                     .onRightClick { onActions(app) }
+                                    .selectionFrame(app.id == selectedID)
                                 }
                             }
                         }
@@ -146,19 +150,9 @@ struct LauncherList: View {
                     }
                     .edgeDissolve()
                     .thinScrollbar()
-                    .onChange(of: scroll) { _, scroll in
-                        switch scroll.kind {
-                        case .top:
-                            proxy.scrollToOrigin()
-                        case .follow:
-                            // Snap to the origin on the first row so its header shows too.
-                            if firstRowSelected {
-                                proxy.scrollToOrigin()
-                            } else if let selectedRowID {
-                                proxy.reveal(selectedRowID)
-                            }
-                        }
-                    }
+                    // Snap to the origin on the first row so its header shows too.
+                    .scrollFollowsSelection(
+                        scroll, row: selectedRowID, atOrigin: firstRowSelected, proxy: proxy)
                 }
             }
         }

@@ -50,6 +50,13 @@ enum Theme {
         static let headerPadding: CGFloat = 10 * scale
         /// Collapsed compact bar: the search row centered in symmetric `headerPadding` slack.
         static let compactHeight: CGFloat = headerHeight + headerPadding * 2
+        /// How near the default placement a drag has to land before it snaps home.
+        static let paletteSnapDistance: CGFloat = 24 * scale
+        /// A restored position needs this much of the compact bar on a display to still be grabbable.
+        static let paletteMinimumVisible: CGFloat = 44 * scale
+        /// Dash and gap of the drop guides, equal so the line reads evenly. Chrome, so unscaled.
+        static let dropGuideDash: CGFloat = 4
+        static let dropGuideWidth: CGFloat = 2
         static let bottomBarHeight: CGFloat = 52 * scale
         /// A footer button's hover capsule, shorter than the bar it sits in.
         static let barButtonHeight: CGFloat = 28 * scale
@@ -133,7 +140,12 @@ enum Theme {
 
     /// Point sizes are the platform's own text-style metrics, so `scale` is the only departure.
     enum Typography {
-        static let searchField = scaled(20)
+        /// One size, two frameworks: `TextTrailingDragHandle` measures what the field renders.
+        static let searchFieldSize: CGFloat = 20 * scale
+        static let searchField = Font.system(size: searchFieldSize, weight: .regular)
+        /// `NSFont` is not `Sendable`, hence the isolation; every reader is a view anyway.
+        @MainActor static let searchFieldNSFont = NSFont.systemFont(
+            ofSize: searchFieldSize, weight: .regular)
         static let headerIcon = scaled(18, .medium)
         static let rowTitle = scaled(.body)
         static let rowTrailing = scaled(.callout)
@@ -207,6 +219,10 @@ enum Theme {
         static let glassFrost = Color.white.opacity(0.30)
         /// The violet of the app mark, used only to tint the About support callout.
         static let brand = Color(red: 0.525, green: 0.231, blue: 1.0)
+        /// The palette's drop guides while dragging, and once a release would snap it home.
+        static let dropGuide = Color.white.opacity(0.35)
+        static let dropGuideArmed = Color.blue
+
         /// A category tile's fill. Saturated on purpose: these carry a white glyph, and are the
         /// one place this otherwise monochrome surface uses colour to tell things apart.
         static func tile(_ tint: ScopeTint) -> NSColor {

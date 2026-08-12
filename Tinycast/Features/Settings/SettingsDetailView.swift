@@ -14,6 +14,7 @@ struct SettingsDetailView: View {
             case .systemActions: SystemActionsSettingsView()
             case .commands: CommandsSettingsView()
             case .quicklinks: QuicklinksSettingsView()
+            case .fileSearch: FileSearchSettingsView()
             case .webSearch: WebSearchSettingsView()
             case .herdr: HerdrSettingsView()
             case .vsCode: VSCodeSettingsView()
