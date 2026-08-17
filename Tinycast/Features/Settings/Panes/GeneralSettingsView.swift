@@ -30,10 +30,13 @@ struct GeneralSettingsView: View {
                 SettingsRow(title: "App Launcher") {
                     ShortcutRecorder(action: .togglePalette)
                 }
+                SettingsRow(title: "App Launcher (second shortcut)") {
+                    ShortcutRecorder(action: .togglePaletteAlternate)
+                }
             } header: {
                 Text("Global Shortcuts")
             } footer: {
-                Text("Summon the fuzzy app launcher.")
+                Text("Summon the fuzzy app launcher. Either shortcut opens it, so two keyboards can each have one that fits.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

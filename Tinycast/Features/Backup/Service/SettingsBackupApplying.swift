@@ -53,6 +53,7 @@ extension SettingsBackup {
         let hk = core.hotKeys
         var hotkeys = HotkeyBackup()
         hotkeys.togglePalette = hk.binding(for: .togglePalette)
+        hotkeys.togglePaletteAlternate = hk.binding(for: .togglePaletteAlternate)
         hotkeys.toggleClipboard = hk.binding(for: .toggleClipboard)
         hotkeys.toggleEmoji = hk.binding(for: .toggleEmoji)
         hotkeys.searchFiles = hk.binding(for: .searchFiles)
@@ -296,6 +297,7 @@ extension SettingsBackup {
             count += 1
         }
         if let b = hotkeys.togglePalette { apply(b, .togglePalette) }
+        if let b = hotkeys.togglePaletteAlternate { apply(b, .togglePaletteAlternate) }
         if let b = hotkeys.toggleClipboard { apply(b, .toggleClipboard) }
         if let b = hotkeys.toggleEmoji { apply(b, .toggleEmoji) }
         if let b = hotkeys.searchFiles { apply(b, .searchFiles) }

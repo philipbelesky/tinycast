@@ -42,6 +42,7 @@ themselves are in [AGENTS.md](AGENTS.md#non-negotiables). This file covers only 
 | 13 | [No binary-size budget](#13--no-binary-size-budget) | Low — one deleted line in each of two docs | No — upstream ships to strangers |
 | 14 | [Xcode only, no LSP scaffolding](#14--xcode-only-no-lsp-scaffolding) | Medium — five upstream files deleted | No — upstream supports both editors |
 | 15 | [Networked features default on](#15--networked-features-default-on) | **High** — deletes all four consent sheets upstream considers structural | No — it inverts a stated invariant |
+| 16 | [A second palette shortcut](#16--a-second-palette-shortcut) | Medium — a new `HotKeyAction` case, so every exhaustive switch over it | Yes, small — but it only pays off with sync |
 
 Keep each divergence as **its own commit**, never squashed together. Rebasing `philip` onto a new
 `origin/main` then replays them one at a time, and a divergence that upstream has since made redundant
@@ -229,7 +230,7 @@ a settings pane), a new `Platform/ProcessTable.swift`, plus the same hook set as
 `AppEntry.Kind.herdrTarget`, an `AppIndex` slice, a `LauncherCoordinator` branch, `ScopeCatalog`'s `h`,
 `PaletteCoordinator.onShow`, `AppCore` wiring, `SettingsTab` and the settings/backup registries.
 
-`h payments` lists the running [herdr](docs/features/herdr.md) session's workspaces and tabs; ↵ focuses
+`h payments` lists the tabs of the running [herdr](docs/features/herdr.md) session; ↵ focuses
 one and raises the terminal hosting it. Upstream has no notion of a third-party tool's live state in the
 launcher, and this is the fork's least upstreamable feature: it is useful to exactly the people who run
 herdr. **It is also the cleanest thing here to delete** — the whole feature is one folder plus a handful
@@ -539,6 +540,40 @@ sign-in/entitlement probes for the off → on path.
 the stores' fetch logic — that is where the real work happens — and re-apply the four one-line
 initialisers and the three sheet deletions on top. If upstream ever adds a fifth networked feature,
 it arrives off, and whether it joins this list is a fresh decision rather than a default.
+
+## 16 — A second palette shortcut
+
+**Touches:** `HotKeyAction` (the case and its `defaultsKey`), the four exhaustive switches over it —
+`HotKeyManager.setBinding`, `displayName`, `perform`, and `AppCore.hotKeyDisplayName` — plus
+`LegacyHotKeyRecords.legacyKey`, `candidateActions`, `SettingsBackup.HotkeyBackup`, both halves of
+`SettingsBackupApplying`, and one row in `GeneralSettingsView`.
+
+Upstream gives the palette exactly one global shortcut. This fork adds a second recorder bound to
+**`HotKeyAction.togglePaletteAlternate`**, persisting under `hotkey.togglePalette.alternate`; both
+cases call `onTogglePalette` in `perform`, so either chord opens the launcher.
+
+The reason is divergence 10. iCloud sync carries **one** settings envelope to every Mac, and the
+author's Macs have different keyboards — a chord that is comfortable on one is awkward or already
+taken on the other. Without a second binding the only fixes are a per-device override, which would
+mean a second notion of "settings that don't sync", or rebinding by hand after every sync. Two chords
+that both work is the cheaper answer, and it is additive: a Mac where only the primary is set behaves
+exactly as before.
+
+**Why a new action rather than a plural binding.** `HotKeyAction.defaultsKey` is both the UserDefaults
+key and the `HotKeyCenter` registration id, and one action holds one `HotKeyBinding` — an invariant in
+[hotkeys.md](docs/features/hotkeys.md#invariants). Making bindings plural would have changed the
+on-disk format and rewritten `conflictOwner`, `syncDoubleTaps`, `retargetHyperBindings` and
+`HotkeyBackup`, all of which assume a scalar. A second *action* needs none of that and inherits
+conflict detection, Hyper re-pointing and the backup field by appearing in `candidateActions`. It also
+sidesteps a UI trap: `ShortcutRecorder.isRecording` compares `recordingAction == action`, so two rows
+carrying the same action value would both light up and the callout would anchor to whichever rendered
+first. Its `displayName` is "App Launcher (second shortcut)" for a related reason — identical names
+would make a conflict between the two rows read as a self-conflict.
+
+**On merge:** a new `HotKeyAction` case upstream adds is a mechanical conflict in the same four
+switches — take upstream's case and re-add this one beside it. If upstream ever ships its own second
+binding, drop this divergence whole rather than reconciling it. Nothing here touches the Carbon layer:
+`HotKeyCenter` already keys registrations by arbitrary string id and has always supported N.
 
 ## Merging upstream
 

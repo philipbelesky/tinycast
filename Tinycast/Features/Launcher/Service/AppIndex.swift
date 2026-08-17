@@ -350,7 +350,7 @@ final class AppIndex {
         let entries = targets.map { target in
             AppEntry(
                 id: target.entryID, name: target.displayName,
-                url: URL(string: "tinycast://herdr/" + target.kind.rawValue)!,
+                url: URL(string: "tinycast://herdr/tab")!,
                 bundleID: nil, kind: .herdrTarget,
                 // So "working" or "focused" finds the row that is, without touching the name.
                 matchAliases: [
@@ -358,7 +358,7 @@ final class AppIndex {
                     target.focused ? "focused" : nil,
                     target.workspaceLabel
                 ].compactMap { $0 },
-                symbolName: target.kind == .workspace ? "square.grid.2x2" : "macwindow")
+                symbolName: "macwindow")
         }
         guard entries != herdrEntries else { return }
         herdrEntries = entries

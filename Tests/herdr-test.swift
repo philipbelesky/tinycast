@@ -43,67 +43,57 @@ struct HerdrTest {
         let targets = HerdrTarget.parse(
             workspaces: Data(workspacesJSON.utf8), tabs: Data(tabsJSON.utf8))
 
-        // MARK: - Workspaces
+        // MARK: - What becomes a row
 
-        let workspaces = targets.filter { $0.kind == .workspace }
-        check("every workspace becomes a target", workspaces.count == 4)
+        check("only tabs become rows", targets.count == 4)
         check(
-            "workspaces keep their listed order",
-            workspaces.map(\.label) == ["meta", "payments1", "tvtunes", "tinycast"])
+            "no workspace earns a row of its own",
+            !targets.contains { $0.id == "w2" })
         check(
-            "a workspace target carries its own id",
-            workspaces.first?.id == "w2")
+            "tabs keep their listed order",
+            targets.map(\.id) == ["w2:tS", "w2:tX", "wT:t1", "wW:t1"])
+        // Nothing stands in for it now, so suppressing it would strand the workspace.
         check(
-            "the focused workspace is marked",
-            workspaces.first { $0.label == "tinycast" }?.focused == true)
-        check(
-            "agent status is carried",
-            workspaces.first { $0.label == "tvtunes" }?.status == .done)
-
-        // MARK: - Tabs
-
-        let tabs = targets.filter { $0.kind == .tab }
-        check(
-            "a multi-tab workspace contributes its tabs",
-            tabs.contains { $0.id == "w2:tS" && $0.label == "raycast-spoon" })
+            "a workspace's only tab is listed like any other",
+            targets.contains { $0.id == "wW:t1" && $0.displayName == "tinycast › 1" })
         check(
             "a tab id containing a colon survives intact",
-            tabs.first { $0.label == "raycast-spoon" }?.id == "w2:tS")
+            targets.first { $0.label == "raycast-spoon" }?.id == "w2:tS")
         check(
-            "a tab names its workspace, for the row's prefix",
-            tabs.first { $0.label == "raycast-spoon" }?.workspaceLabel == "meta")
-        // The workspace row already focuses it; two rows for one destination is noise.
-        check(
-            "a lone tab is suppressed — its workspace row is the same destination",
-            !tabs.contains { $0.id == "wT:t1" || $0.id == "wW:t1" })
+            "a row reads as its workspace, then itself",
+            targets.first { $0.id == "w2:tS" }?.displayName == "meta › raycast-spoon")
         check(
             "a tab whose workspace is unknown is dropped rather than shown unlabelled",
-            !tabs.contains { $0.id == "wZ:t9" })
-        check("only the multi-tab workspace's tabs remain", tabs.count == 2)
+            !targets.contains { $0.id == "wZ:t9" })
+        check(
+            "the focused tab is marked",
+            targets.first { $0.id == "wW:t1" }?.focused == true)
+        check(
+            "agent status is carried",
+            targets.first { $0.id == "wW:t1" }?.status == .working)
 
         // MARK: - Degrading rather than dropping
 
+        let oneTab = #"{"result":{"tabs":[{"tab_id":"w1:t1","label":"1","workspace_id":"w1"}]}}"#
         check(
             "an unrecognised status reads as unknown",
-            tabs.first { $0.id == "w2:tX" }?.status == .unknown)
+            targets.first { $0.id == "w2:tX" }?.status == .unknown)
         check(
             "a status absent from the payload reads as unknown",
             HerdrTarget.parse(
                 workspaces: Data(
-                    """
-                    {"result":{"workspaces":[{"workspace_id":"w1","label":"a","tab_count":1}]}}
-                    """.utf8),
-                tabs: Data("{}".utf8)
+                    #"{"result":{"workspaces":[{"workspace_id":"w1","label":"a"}]}}"#.utf8),
+                tabs: Data(oneTab.utf8)
             ).first?.status == .unknown)
         check(
-            "a workspace with no label is dropped: an unnamed row is unusable",
+            "a workspace with no label takes its tabs with it: an unnamed row is unusable",
             HerdrTarget.parse(
                 workspaces: Data(#"{"result":{"workspaces":[{"workspace_id":"w1"}]}}"#.utf8),
-                tabs: Data("{}".utf8)
+                tabs: Data(oneTab.utf8)
             ).isEmpty)
         check(
             "malformed JSON yields no targets rather than throwing",
-            HerdrTarget.parse(workspaces: Data("not json".utf8), tabs: Data("{}".utf8)).isEmpty)
+            HerdrTarget.parse(workspaces: Data("not json".utf8), tabs: Data(oneTab.utf8)).isEmpty)
         check(
             "empty input yields no targets",
             HerdrTarget.parse(workspaces: Data(), tabs: Data()).isEmpty)
@@ -112,7 +102,7 @@ struct HerdrTest {
 
         check(
             "an entry id carries the target id",
-            workspaces.first?.entryID == "herdr:w2")
+            targets.first?.entryID == "herdr:w2:tS")
         check(
             "a tab entry id survives its colon",
             HerdrTarget.id(fromEntryID: "herdr:w2:tS") == "w2:tS")

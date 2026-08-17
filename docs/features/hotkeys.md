@@ -63,6 +63,16 @@ what puts a recorder on its row in both Settings ▸ File Search and Settings �
 its launcher row. Like a window command, the chord registers regardless and the coordinator re-checks
 the feature switch before it opens anything (see [file-search.md](file-search.md#invocation)).
 
+`hotkey.togglePalette.alternate` is a **second chord for the palette**, and the shape a second binding
+has to take here: `HotKeyAction.togglePaletteAlternate` is its own action, because one action holds
+exactly one `HotKeyBinding` and `defaultsKey` is simultaneously the registration id — a plural
+`[HotKeyBinding]` would break both. Being a real action is also what earns it conflict detection, Hyper
+re-pointing and a `HotkeyBackup` field for free; `perform` is the only place the two converge, where
+both cases call `onTogglePalette`. Its `displayName` is deliberately *not* "App Launcher", or a chord
+recorded on both rows would report a conflict against a name identical to its own row's. It exists
+because iCloud sync carries one envelope to Macs with different keyboards — see
+[sync.md](sync.md) — so the fix is two chords that both work rather than a per-device override.
+
 System actions and window commands are the fixed-catalog case: they persist under
 `hotkey.systemAction.<raw-id>` and `hotkey.windowCommand.<raw-id>`
 and need **no** bound-ID index, because `start()` and `conflictOwner` can just iterate `allCases` and

@@ -1,7 +1,8 @@
 # herdr
 
 herdr is a "terminal workspace manager for AI coding agents", driven by a CLI over a local unix socket.
-`h payments` lists its workspaces and tabs; ↵ focuses one and brings the terminal hosting it forward.
+`h payments` lists the tabs of its workspaces; ↵ focuses one and brings the terminal hosting it
+forward.
 Rows also appear in the unscoped root search, like quicklinks.
 
 ## Invariants
@@ -15,7 +16,7 @@ Rows also appear in the unscoped root search, like quicklinks.
 - **A herdr id is opaque.** A tab's is `w2:tS` — it contains the separator, so it is never split on
   `:`. Only `HerdrTarget.entryIDPrefix` is added and removed.
 - **An unrecognised `agent_status` degrades to `.unknown`, never drops the row.** herdr adds statuses
-  faster than this app tracks them, and a missing workspace is worse than a missing badge.
+  faster than this app tracks them, and a missing tab is worse than a missing badge.
 - **This feature reads a local socket and never the network**, so nothing here was ever gated
   ([AGENTS.md](../../AGENTS.md#non-negotiables)). All three of its settings are carried in a
   backup: focusing a terminal grants no permission class, so none is a network switch.
@@ -31,7 +32,7 @@ palette opens → PaletteCoordinator.onShow → HerdrCoordinator.refresh
                                                    ↓
                     HerdrTarget.parse → HerdrStore.targets → AppIndex.setHerdrTargets
                                                    ↓
-   ↵ → HerdrCoordinator.focus → `workspace focus` / `tab focus` → revealHost → AppLauncher.launch
+   ↵ → HerdrCoordinator.focus → `tab focus` → revealHost → AppLauncher.launch
 ```
 
 The refresh rides the palette's existing re-scan trigger in `PaletteCoordinator.showPalette` — a herdr
@@ -61,13 +62,18 @@ authority.
 
 ## What is listed
 
-Workspaces always. A tab only when its workspace has more than one — a lone tab is the same
-destination as its workspace row, so it earns no row of its own. A tab reads `meta › mic-fix`; its
-trailing label is its kind, and `focused` plus any non-idle agent status ride in `matchAliases` so
-"working" finds them.
+Tabs, and only tabs. A workspace earns no row of its own: with one tab it is the same destination as
+that tab, and with several it is the destination of whichever tab it last focused, which is not a
+thing worth a row. So a two-tab workspace is two rows, never three, and a one-tab workspace is the
+one row its tab already gives it.
+
+A row reads `meta › mic-fix` — the workspace's label, then the tab's. `focused` plus any non-idle
+agent status ride in `matchAliases`, so "working" finds them. A tab whose workspace has no label is
+dropped rather than shown unprefixed; both payloads are fetched for exactly that reason, since only
+`workspace list` names a workspace.
 
 ## Not here
 
 Panes, agents, prompting or starting an agent, creating workspaces and worktrees, named or remote
 sessions (`herdr --session`), and a `HotKeyAction` bound to a target. The last one needs the pruning
-story quicklinks have, since a persisted workspace id can vanish between launches.
+story quicklinks have, since a persisted tab id can vanish between launches.

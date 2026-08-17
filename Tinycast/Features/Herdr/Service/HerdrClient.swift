@@ -31,6 +31,7 @@ enum HerdrClient {
             guard let herdr = executablePath else { return [] }
             let workspaces = run(herdr, ["workspace", "list"]) ?? Data()
             let tabs = run(herdr, ["tab", "list"]) ?? Data()
+            // Both lists: only tabs become rows, but a tab needs its workspace's label.
             return HerdrTarget.parse(workspaces: workspaces, tabs: tabs)
         }.value
     }
@@ -39,8 +40,7 @@ enum HerdrClient {
     nonisolated static func focus(_ target: HerdrTarget) async -> Bool {
         await Task.detached(priority: .userInitiated) {
             guard let herdr = executablePath else { return false }
-            let noun = target.kind == .workspace ? "workspace" : "tab"
-            return run(herdr, [noun, "focus", target.id]) != nil
+            return run(herdr, ["tab", "focus", target.id]) != nil
         }.value
     }
 

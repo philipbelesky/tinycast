@@ -46,6 +46,7 @@ enum LegacyHotKeyRecords {
     private static func legacyKey(for action: HotKeyAction) -> String? {
         switch action {
         case .togglePalette: "KeyboardShortcuts_togglePalette"
+        case .togglePaletteAlternate: nil
         case .toggleClipboard: "KeyboardShortcuts_toggleClipboard"
         case .toggleEmoji: "KeyboardShortcuts_toggleEmoji"
         case .searchFiles: nil

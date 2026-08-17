@@ -122,8 +122,8 @@ final class HotKeyManager {
             index(id, bound: binding != nil, key: boundCustomCommandKey)
         case .quicklink(let id):
             index(id, bound: binding != nil, key: boundQuicklinkKey)
-        case .togglePalette, .toggleClipboard, .toggleEmoji, .searchFiles, .systemAction,
-            .windowCommand:
+        case .togglePalette, .togglePaletteAlternate, .toggleClipboard, .toggleEmoji, .searchFiles,
+            .systemAction, .windowCommand:
             break
         }
         candidateActionsCache = nil
@@ -159,7 +159,7 @@ final class HotKeyManager {
     private var candidateActions: [HotKeyAction] {
         if let candidateActionsCache { return candidateActionsCache }
         var actions: [HotKeyAction] = [
-            .togglePalette, .toggleClipboard, .toggleEmoji, .searchFiles
+            .togglePalette, .togglePaletteAlternate, .toggleClipboard, .toggleEmoji, .searchFiles
         ]
         actions += boundBundleIDs.map { .app(bundleID: $0) }
         actions += boundPaneBundleIDs.map { .settingsPane(bundleID: $0) }
@@ -175,6 +175,9 @@ final class HotKeyManager {
         switch action {
         case .togglePalette:
             return "App Launcher"
+        // Distinct from the primary's name, or a conflict between the two reads as self-conflict.
+        case .togglePaletteAlternate:
+            return "App Launcher (second shortcut)"
         case .toggleClipboard:
             return "Clipboard History"
         case .toggleEmoji:
@@ -214,7 +217,7 @@ final class HotKeyManager {
 
     private func perform(_ action: HotKeyAction) {
         switch action {
-        case .togglePalette: onTogglePalette?()
+        case .togglePalette, .togglePaletteAlternate: onTogglePalette?()
         case .toggleClipboard: onToggleClipboard?()
         case .toggleEmoji: onToggleEmoji?()
         case .searchFiles: onSearchFiles?()

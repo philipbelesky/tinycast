@@ -3,6 +3,8 @@ import Foundation
 /// Everything in Tinycast a global shortcut can be bound to.
 enum HotKeyAction: Hashable, Sendable {
     case togglePalette
+    /// A second chord for the palette, so one synced settings envelope can suit two keyboards.
+    case togglePaletteAlternate
     case toggleClipboard
     case toggleEmoji
     case searchFiles
@@ -17,6 +19,7 @@ enum HotKeyAction: Hashable, Sendable {
     var defaultsKey: String {
         switch self {
         case .togglePalette: "hotkey.togglePalette"
+        case .togglePaletteAlternate: "hotkey.togglePalette.alternate"
         case .toggleClipboard: "hotkey.toggleClipboard"
         case .toggleEmoji: "hotkey.toggleEmoji"
         case .searchFiles: "hotkey.searchFiles"

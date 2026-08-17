@@ -67,6 +67,7 @@ struct SettingsBackup: Codable {
     /// Combos keep the legacy shape, so older files import. docs/features/hotkeys.md#persistence
     struct HotkeyBackup: Codable {
         var togglePalette: HotKeyBinding?
+        var togglePaletteAlternate: HotKeyBinding?
         var toggleClipboard: HotKeyBinding?
         var toggleEmoji: HotKeyBinding?
         var searchFiles: HotKeyBinding?

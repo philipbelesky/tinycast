@@ -17,14 +17,14 @@ struct HerdrSettingsView: View {
                 header: "herdr",
                 enableTitle: "Enable herdr",
                 enableSubtitle:
-                    "Lists the workspaces and tabs of the running herdr session, read over its "
-                    + "local socket. ↵ focuses one and brings its terminal forward.",
-                launcherSubtitle: "Find workspaces and tabs in launcher search.",
+                    "Lists the tabs of the running herdr session, read over its local socket. "
+                    + "↵ focuses one and brings its terminal forward.",
+                launcherSubtitle: "Find herdr tabs in launcher search.",
                 isEnabled: $settings.herdrEnabled,
                 showsInLauncher: $settings.herdrShowInLauncher)
 
             Section {
-                LabeledContent("Targets", value: "\(store.targets.count)")
+                LabeledContent("Tabs", value: "\(store.targets.count)")
                 LabeledContent("Command line") {
                     Text(store.isAvailable ? "Found" : "Not found")
                         .foregroundStyle(store.isAvailable ? .secondary : Theme.Colors.destructive)
@@ -60,7 +60,7 @@ struct HerdrSettingsView: View {
             ScopeKeywordSection(
                 scopeID: ScopeCatalog.herdr,
                 explanation:
-                    "Type it, then a space, to search herdr workspaces and tabs only.")
+                    "Type it, then a space, to search herdr tabs only.")
         }
         .formStyle(.grouped)
         .task { await store.refresh() }
