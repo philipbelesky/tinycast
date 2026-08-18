@@ -122,8 +122,8 @@ final class HotKeyManager {
             index(id, bound: binding != nil, key: boundCustomCommandKey)
         case .quicklink(let id):
             index(id, bound: binding != nil, key: boundQuicklinkKey)
-        case .togglePalette, .togglePaletteAlternate, .toggleClipboard, .toggleEmoji, .searchFiles,
-            .systemAction, .windowCommand:
+        case .togglePalette, .togglePaletteAlternate, .toggleClipboard, .toggleClipboardAlternate,
+            .toggleEmoji, .searchFiles, .systemAction, .windowCommand:
             break
         }
         candidateActionsCache = nil
@@ -159,7 +159,8 @@ final class HotKeyManager {
     private var candidateActions: [HotKeyAction] {
         if let candidateActionsCache { return candidateActionsCache }
         var actions: [HotKeyAction] = [
-            .togglePalette, .togglePaletteAlternate, .toggleClipboard, .toggleEmoji, .searchFiles
+            .togglePalette, .togglePaletteAlternate, .toggleClipboard, .toggleClipboardAlternate,
+            .toggleEmoji, .searchFiles
         ]
         actions += boundBundleIDs.map { .app(bundleID: $0) }
         actions += boundPaneBundleIDs.map { .settingsPane(bundleID: $0) }
@@ -180,6 +181,8 @@ final class HotKeyManager {
             return "App Launcher (second shortcut)"
         case .toggleClipboard:
             return "Clipboard History"
+        case .toggleClipboardAlternate:
+            return "Clipboard History (second shortcut)"
         case .toggleEmoji:
             return "Emoji & Symbols"
         case .searchFiles:
@@ -218,7 +221,7 @@ final class HotKeyManager {
     private func perform(_ action: HotKeyAction) {
         switch action {
         case .togglePalette, .togglePaletteAlternate: onTogglePalette?()
-        case .toggleClipboard: onToggleClipboard?()
+        case .toggleClipboard, .toggleClipboardAlternate: onToggleClipboard?()
         case .toggleEmoji: onToggleEmoji?()
         case .searchFiles: onSearchFiles?()
         case .app(let bundleID): AppLauncher.toggle(bundleID: bundleID)

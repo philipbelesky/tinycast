@@ -55,6 +55,7 @@ extension SettingsBackup {
         hotkeys.togglePalette = hk.binding(for: .togglePalette)
         hotkeys.togglePaletteAlternate = hk.binding(for: .togglePaletteAlternate)
         hotkeys.toggleClipboard = hk.binding(for: .toggleClipboard)
+        hotkeys.toggleClipboardAlternate = hk.binding(for: .toggleClipboardAlternate)
         hotkeys.toggleEmoji = hk.binding(for: .toggleEmoji)
         hotkeys.searchFiles = hk.binding(for: .searchFiles)
         hotkeys.apps = Dictionary(
@@ -299,6 +300,7 @@ extension SettingsBackup {
         if let b = hotkeys.togglePalette { apply(b, .togglePalette) }
         if let b = hotkeys.togglePaletteAlternate { apply(b, .togglePaletteAlternate) }
         if let b = hotkeys.toggleClipboard { apply(b, .toggleClipboard) }
+        if let b = hotkeys.toggleClipboardAlternate { apply(b, .toggleClipboardAlternate) }
         if let b = hotkeys.toggleEmoji { apply(b, .toggleEmoji) }
         if let b = hotkeys.searchFiles { apply(b, .searchFiles) }
         for (id, b) in hotkeys.apps ?? [:] { apply(b, .app(bundleID: id)) }

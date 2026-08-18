@@ -6,6 +6,7 @@ enum HotKeyAction: Hashable, Sendable {
     /// A second chord for the palette, so one synced settings envelope can suit two keyboards.
     case togglePaletteAlternate
     case toggleClipboard
+    case toggleClipboardAlternate
     case toggleEmoji
     case searchFiles
     case app(bundleID: String)
@@ -21,6 +22,7 @@ enum HotKeyAction: Hashable, Sendable {
         case .togglePalette: "hotkey.togglePalette"
         case .togglePaletteAlternate: "hotkey.togglePalette.alternate"
         case .toggleClipboard: "hotkey.toggleClipboard"
+        case .toggleClipboardAlternate: "hotkey.toggleClipboard.alternate"
         case .toggleEmoji: "hotkey.toggleEmoji"
         case .searchFiles: "hotkey.searchFiles"
         case .app(let bundleID): "hotkey.app." + bundleID

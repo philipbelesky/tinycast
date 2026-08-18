@@ -258,8 +258,8 @@ final class AppCore {
             return customCommands.command(id: id)?.name
         case .quicklink(let id):
             return quicklinks.quicklink(id: id)?.name
-        case .togglePalette, .togglePaletteAlternate, .toggleClipboard, .toggleEmoji, .searchFiles,
-            .systemAction, .windowCommand:
+        case .togglePalette, .togglePaletteAlternate, .toggleClipboard, .toggleClipboardAlternate,
+            .toggleEmoji, .searchFiles, .systemAction, .windowCommand:
             return nil
         }
     }

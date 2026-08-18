@@ -55,6 +55,7 @@ struct DoubleTapDetectorTests {
 
     static func main() {
         modifierGlyphs()
+        defaultsKeys()
         hyperChord()
         hyperRetargeting()
         firing()
@@ -82,6 +83,38 @@ struct DoubleTapDetectorTests {
             DoubleTapModifier.allCases.map(\.rawValue)
                 == ["control", "option", "shift", "command"],
             "raw values are the persisted spelling and stay in canonical ⌃⌥⇧⌘ order")
+    }
+
+    // MARK: - Persistence keys
+
+    /// Every kind of action that can hold a binding, so the sweep below sees the whole key space.
+    private static var everyAction: [HotKeyAction] {
+        var actions: [HotKeyAction] = [
+            .togglePalette, .togglePaletteAlternate, .toggleClipboard, .toggleClipboardAlternate,
+            .toggleEmoji, .searchFiles,
+            .app(bundleID: "com.example.app"), .settingsPane(bundleID: "com.example.pane"),
+            .customCommand(id: UUID(uuidString: "00000000-0000-0000-0000-0000000000c0")!),
+            .quicklink(id: UUID(uuidString: "00000000-0000-0000-0000-0000000000c1")!)
+        ]
+        actions += SystemAction.ID.allCases.map { .systemAction(id: $0) }
+        actions += WindowCommand.ID.allCases.map { .windowCommand(id: $0) }
+        return actions
+    }
+
+    static func defaultsKeys() {
+        let keys = everyAction.map(\.defaultsKey)
+        expect(Set(keys).count == keys.count, "no two actions share a UserDefaults key")
+        expect(
+            HotKeyAction.toggleClipboard.defaultsKey == "hotkey.toggleClipboard",
+            "the primary clipboard key is untouched, so an existing binding survives the addition")
+        expect(
+            HotKeyAction.toggleClipboardAlternate.defaultsKey
+                != HotKeyAction.toggleClipboard.defaultsKey,
+            "the alternate clipboard chord persists under a key of its own")
+        expect(
+            HotKeyAction.togglePaletteAlternate.defaultsKey
+                != HotKeyAction.togglePalette.defaultsKey,
+            "so does the alternate palette chord")
     }
 
     // MARK: - The Hyper chord

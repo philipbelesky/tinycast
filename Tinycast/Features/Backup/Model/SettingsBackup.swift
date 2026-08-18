@@ -69,6 +69,7 @@ struct SettingsBackup: Codable {
         var togglePalette: HotKeyBinding?
         var togglePaletteAlternate: HotKeyBinding?
         var toggleClipboard: HotKeyBinding?
+        var toggleClipboardAlternate: HotKeyBinding?
         var toggleEmoji: HotKeyBinding?
         var searchFiles: HotKeyBinding?
         var apps: [String: HotKeyBinding]?

@@ -42,7 +42,7 @@ themselves are in [AGENTS.md](AGENTS.md#non-negotiables). This file covers only 
 | 13 | [No binary-size budget](#13--no-binary-size-budget) | Low — one deleted line in each of two docs | No — upstream ships to strangers |
 | 14 | [Xcode only, no LSP scaffolding](#14--xcode-only-no-lsp-scaffolding) | Medium — five upstream files deleted | No — upstream supports both editors |
 | 15 | [Networked features default on](#15--networked-features-default-on) | **High** — deletes all four consent sheets upstream considers structural | No — it inverts a stated invariant |
-| 16 | [A second palette shortcut](#16--a-second-palette-shortcut) | Medium — a new `HotKeyAction` case, so every exhaustive switch over it | Yes, small — but it only pays off with sync |
+| 16 | [Second chords for the palette and the clipboard history](#16--second-chords-for-the-palette-and-the-clipboard-history) | Medium — two new `HotKeyAction` cases, so every exhaustive switch over them | Yes, small — but it only pays off with sync |
 
 Keep each divergence as **its own commit**, never squashed together. Rebasing `philip` onto a new
 `origin/main` then replays them one at a time, and a divergence that upstream has since made redundant
@@ -541,16 +541,18 @@ the stores' fetch logic — that is where the real work happens — and re-apply
 initialisers and the three sheet deletions on top. If upstream ever adds a fifth networked feature,
 it arrives off, and whether it joins this list is a fresh decision rather than a default.
 
-## 16 — A second palette shortcut
+## 16 — Second chords for the palette and the clipboard history
 
-**Touches:** `HotKeyAction` (the case and its `defaultsKey`), the four exhaustive switches over it —
+**Touches:** two `HotKeyAction` cases and their `defaultsKey`s, the four exhaustive switches over it —
 `HotKeyManager.setBinding`, `displayName`, `perform`, and `AppCore.hotKeyDisplayName` — plus
 `LegacyHotKeyRecords.legacyKey`, `candidateActions`, `SettingsBackup.HotkeyBackup`, both halves of
-`SettingsBackupApplying`, and one row in `GeneralSettingsView`.
+`SettingsBackupApplying`, one row each in `GeneralSettingsView` and `ClipboardSettingsView`, and the
+`hotkey-test` harness line in `run-tests.sh`.
 
-Upstream gives the palette exactly one global shortcut. This fork adds a second recorder bound to
-**`HotKeyAction.togglePaletteAlternate`**, persisting under `hotkey.togglePalette.alternate`; both
-cases call `onTogglePalette` in `perform`, so either chord opens the launcher.
+Upstream gives every action exactly one global shortcut. This fork adds a second recorder to two of
+them: **`HotKeyAction.togglePaletteAlternate`** under `hotkey.togglePalette.alternate`, and
+**`.toggleClipboardAlternate`** under `hotkey.toggleClipboard.alternate`. Each alternate joins its
+primary in `perform`, so either chord opens the launcher and either opens the clipboard history.
 
 The reason is divergence 10. iCloud sync carries **one** settings envelope to every Mac, and the
 author's Macs have different keyboards — a chord that is comfortable on one is awkward or already
@@ -567,13 +569,23 @@ on-disk format and rewritten `conflictOwner`, `syncDoubleTaps`, `retargetHyperBi
 conflict detection, Hyper re-pointing and the backup field by appearing in `candidateActions`. It also
 sidesteps a UI trap: `ShortcutRecorder.isRecording` compares `recordingAction == action`, so two rows
 carrying the same action value would both light up and the callout would anchor to whichever rendered
-first. Its `displayName` is "App Launcher (second shortcut)" for a related reason — identical names
+first. Each `displayName` carries a "(second shortcut)" suffix for a related reason — identical names
 would make a conflict between the two rows read as a self-conflict.
 
+**The cost, which is real.** Both chords sync and both register on every Mac, so the one a given
+machine doesn't want is still claimed there, taken from whatever app would otherwise hold it. This
+buys a spare chord per machine rather than a per-machine binding; the per-machine version would have
+to sit outside the synced payload, which is a different and heavier feature. Pick alternates no
+machine needs for something else.
+
+**Two cases, not a pattern.** A third would be: the case-per-slot shape is cheap twice and tedious at
+four, and the plural-binding rewrite above is what it turns into. Nothing else has an alternate, and
+adding one is a decision rather than a default.
+
 **On merge:** a new `HotKeyAction` case upstream adds is a mechanical conflict in the same four
-switches — take upstream's case and re-add this one beside it. If upstream ever ships its own second
-binding, drop this divergence whole rather than reconciling it. Nothing here touches the Carbon layer:
-`HotKeyCenter` already keys registrations by arbitrary string id and has always supported N.
+switches — take upstream's cases and re-add these two beside them. If upstream ever ships its own
+second binding, drop this divergence whole rather than reconciling it. Nothing here touches the Carbon
+layer: `HotKeyCenter` already keys registrations by arbitrary string id and has always supported N.
 
 ## Merging upstream
 
@@ -621,6 +633,10 @@ Then, before calling it done — the standard gate from
       `grep -rn 'ConsentSheet\|askingConsent' Tinycast/` returns nothing. The two dialogs that
       *should* exist still do: `SyncRemoteChoiceSheet` and snippets' confirming setter
       (divergence 15).
+- [ ] **Both alternate chords survived** — `togglePaletteAlternate` and `toggleClipboardAlternate`
+      still exist, `perform` still routes each to its primary's callback, and
+      `SettingsBackup.HotkeyBackup` still carries both, or one Mac silently loses a shortcut
+      (divergence 16).
 - [ ] **Every `#Preview` still compiles**, and the ones whose view upstream changed still render
       something honest (divergence 11).
 - [ ] **`nm -a <Release binary> | grep -c 11PreviewData` returns zero, and the same query against

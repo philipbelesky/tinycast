@@ -6,8 +6,25 @@
   If the writer and the poller ever disagree, the app re-captures its own pastes in a loop.
 - **`Model/ClipboardStore.swift` keeps to Foundation plus SQLite3 and no other app source**, so
   `clipboard-test` can compile it standalone. It uses `isolated deinit` for its SQLite teardown.
+- **The two clipboard chords are one action with two keys, never two behaviours.** `.toggleClipboard`
+  and `.toggleClipboardAlternate` both dispatch to `onToggleClipboard`; anything that makes them
+  differ has invented a second feature.
 - A database that cannot be opened is deleted and recreated. That is only sound because history is
   regenerable — `QuicklinkStore` deliberately does the opposite.
+
+## Two chords for one action
+
+Settings ▸ Clipboard records two shortcuts and both open the history browser, the same arrangement
+the palette has in Settings ▸ General ([hotkeys.md](hotkeys.md#persistence)). iCloud sync mirrors one
+configuration to every Mac, so a single field forces one chord everywhere — and a chord that is free
+on one Mac may already belong to another app on the next. Both chords sync, both register on every
+Mac, and each machine is driven by whichever one is free there. The cost is that the unused chord is
+still registered locally, claimed from whatever else holds it, so pick alternates no machine needs.
+
+Persistence and conflicts are unchanged — the alternate is its own `HotKeyAction` case under
+`hotkey.toggleClipboard.alternate`, so it conflicts with other actions like any binding and rides
+`SettingsBackup.HotkeyBackup` like any other. An envelope written by a Mac still on an older build
+simply carries no alternate, which `sync-test` pins.
 
 ## Poll-based capture
 

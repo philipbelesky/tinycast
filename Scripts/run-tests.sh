@@ -67,8 +67,11 @@ run hover-arming-test      Tinycast/Palette/HoverArming.swift \
                            Tinycast/Features/Quicklinks/Model/Quicklink.swift
 run hotkey-test            Tinycast/Features/HotKeys/Model/DoubleTapModifier.swift \
                            Tinycast/Features/HotKeys/Model/DoubleTapDetector.swift \
+                           Tinycast/Features/HotKeys/Model/HotKeyAction.swift \
                            Tinycast/Features/HotKeys/Model/HyperKey.swift \
-                           Tinycast/Features/HotKeys/Service/KeyShortcut.swift
+                           Tinycast/Features/HotKeys/Service/KeyShortcut.swift \
+                           Tinycast/Features/SystemActions/Model/SystemAction.swift \
+                           Tinycast/Features/WindowManagement/WindowCommand.swift
 run callout-test           Tinycast/DesignSystem/Theme.swift \
                            $L/ScopeTint.swift \
                            Tinycast/Features/HotKeys/UI/CalloutPlacement.swift

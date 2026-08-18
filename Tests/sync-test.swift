@@ -190,6 +190,35 @@ struct SyncTest {
             "snippetsEnabled stays deliberately excluded from the shared payload",
             SettingsBackupCoverage.deliberatelyExcluded[AppSettingsKey.snippetsEnabled.rawValue] != nil)
 
+        // MARK: Hotkeys — both clipboard slots ride the synced payload
+
+        var hotkeys = SettingsBackup.HotkeyBackup()
+        hotkeys.toggleClipboard = .combo(KeyShortcut(carbonKeyCode: 9, carbonModifiers: 0))
+        hotkeys.toggleClipboardAlternate = .doubleTap(.command)
+        var bound = SettingsBackup()
+        bound.hotkeys = hotkeys
+        let boundEnvelope = SyncEnvelope(
+            writtenAt: Date(timeIntervalSince1970: 0), writtenBy: "A", backup: bound)
+        let roundTripped = (try? boundEnvelope.encoded()).flatMap { try? SyncEnvelope(json: $0) }
+        check(
+            "the primary clipboard chord survives the envelope round trip",
+            roundTripped?.backup.hotkeys?.toggleClipboard == hotkeys.toggleClipboard)
+        check(
+            "the alternate clipboard chord rides alongside it",
+            roundTripped?.backup.hotkeys?.toggleClipboardAlternate == .doubleTap(.command))
+
+        // A Mac still on the older build writes an envelope with no alternate at all.
+        let priorJSON = Data(
+            (#"{"backup":{"hotkeys":{"toggleClipboard":{"doubleTap":{"_0":"command"}}},"#
+                + #""version":4},"writtenAt":"1970-01-01T00:00:00Z","writtenBy":"B"}"#).utf8)
+        let prior = try? SyncEnvelope(json: priorJSON)
+        check(
+            "an envelope written before the alternate existed still decodes",
+            prior?.backup.hotkeys?.toggleClipboard == .doubleTap(.command))
+        check(
+            "and reads as no alternate rather than failing outright",
+            prior != nil && prior?.backup.hotkeys?.toggleClipboardAlternate == nil)
+
         print(failures == 0 ? "\nALL PASSED" : "\n\(failures) FAILED")
         exit(failures == 0 ? 0 : 1)
     }

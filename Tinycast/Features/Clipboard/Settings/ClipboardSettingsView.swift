@@ -14,10 +14,15 @@ struct ClipboardSettingsView: View {
                 SettingsRow(title: "Clipboard History") {
                     ShortcutRecorder(action: .toggleClipboard)
                 }
+                SettingsRow(title: "Clipboard History (second shortcut)") {
+                    ShortcutRecorder(action: .toggleClipboardAlternate)
+                }
             } header: {
                 Text("Global Shortcuts")
             } footer: {
-                Text("Open the clipboard history browser.")
+                Text(
+                    "Open the clipboard history browser. Either shortcut opens it, so two keyboards "
+                        + "can each have one that fits.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
