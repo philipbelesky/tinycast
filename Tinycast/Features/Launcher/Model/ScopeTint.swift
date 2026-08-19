@@ -4,5 +4,5 @@ import Foundation
 /// `Theme` stays the only place a colour is chosen. See docs/ui.md#category-tiles.
 /// Red is deliberately absent: on this surface it means destructive, and a tile means nothing at all.
 enum ScopeTint: String, Sendable, CaseIterable {
-    case blue, green, orange, purple, teal, indigo, pink, mint, brown, slate
+    case teal, cyan, orange, purple, brown, black, indigo, yellow, slate
 }

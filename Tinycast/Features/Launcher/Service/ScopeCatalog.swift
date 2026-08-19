@@ -33,11 +33,11 @@ enum ScopeCatalog {
     private static let filters: [Entry] = [
         Entry(
             definition: ScopeDefinition(
-                keyword: "a", id: applications, title: "Applications", symbol: "square.grid.2x2", tint: .blue),
+                keyword: "a", id: applications, title: "Applications", symbol: "square.grid.2x2", tint: .teal),
             target: .kinds([.application, .systemSettings])),
         Entry(
             definition: ScopeDefinition(
-                keyword: "q", id: quicklinks, title: "Quicklinks", symbol: Quicklink.sfSymbol, tint: .green),
+                keyword: "q", id: quicklinks, title: "Quicklinks", symbol: Quicklink.sfSymbol, tint: .cyan),
             target: .kinds([.quicklink])),
         Entry(
             definition: ScopeDefinition(
@@ -59,19 +59,19 @@ enum ScopeCatalog {
         Entry(
             definition: ScopeDefinition(
                 keyword: "p", id: vsCode, title: "VS Code",
-                symbol: "chevron.left.forwardslash.chevron.right", tint: .indigo),
+                symbol: "chevron.left.forwardslash.chevron.right", tint: .black),
             target: .kinds([.vsCodeProject])),
         Entry(
             definition: ScopeDefinition(
                 keyword: "l", id: linear, title: "Linear", symbol: "line.3.horizontal.decrease.circle",
-                tint: .pink),
+                tint: .indigo),
             target: .kinds([.linearTarget]))
     ]
 
     private static let modes: [Entry] = [
         Entry(
             definition: ScopeDefinition(
-                keyword: "e", id: emoji, title: "Emoji & Symbols", symbol: "face.smiling", tint: .mint),
+                keyword: "e", id: emoji, title: "Emoji & Symbols", symbol: "face.smiling", tint: .yellow),
             target: .mode(.emoji)),
         Entry(
             definition: ScopeDefinition(

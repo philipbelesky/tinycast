@@ -81,8 +81,7 @@ enum IconCache {
         ("symbol:" + name + ":" + (tint?.rawValue ?? "")) as NSString
     }
 
-    /// Command icons: a symbol on a tile, in the same shape as a real app icon. A tint reverses the
-    /// glyph out of a saturated fill instead — see docs/ui.md#category-tiles.
+    /// Command icons: a symbol on a tile; a tint reverses the glyph out of its category fill.
     static func symbolIcon(named name: String, tint: ScopeTint? = nil) -> NSImage {
         let key = symbolKey(name, tint: tint)
         if let cached = cache.object(forKey: key) { return cached }

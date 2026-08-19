@@ -223,19 +223,17 @@ enum Theme {
         static let dropGuide = Color.white.opacity(0.35)
         static let dropGuideArmed = Color.blue
 
-        /// A category tile's fill. Saturated on purpose: these carry a white glyph, and are the
-        /// one place this otherwise monochrome surface uses colour to tell things apart.
+        /// Category tiles carry a white glyph and are the surface's only category-coded colour.
         static func tile(_ tint: ScopeTint) -> NSColor {
             switch tint {
-            case .blue: return .systemBlue
-            case .green: return .systemGreen
+            case .teal: return .systemTeal
+            case .cyan: return .systemCyan
             case .orange: return .systemOrange
             case .purple: return .systemPurple
-            case .teal: return .systemTeal
-            case .indigo: return .systemIndigo
-            case .pink: return .systemPink
-            case .mint: return .systemMint
             case .brown: return .systemBrown
+            case .black: return .black
+            case .indigo: return .systemIndigo
+            case .yellow: return .systemYellow
             case .slate: return .systemGray
             }
         }
