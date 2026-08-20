@@ -48,8 +48,10 @@ run scopes-test            $L/SearchScopes.swift
 run scope-test             $L/QueryScope.swift \
                            $L/ScopeTint.swift \
                            $L/ScopeKeywords.swift
+run favorites-test         $L/FavoriteSlots.swift
 run calc-test              Tinycast/Features/Calculator/Model/*.swift
-run clipboard-test         Tinycast/Features/Clipboard/Model/ClipboardStore.swift
+run clipboard-test         Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
+                           Tinycast/Features/Clipboard/Model/ClipboardFilter.swift
 run emoji-test             Tinycast/Features/Emoji/Model/EmojiCatalog.swift \
                            Tinycast/Features/Emoji/Model/EmojiGridGeometry.swift \
                            Tinycast/Features/Emoji/Model/EmojiData.generated.swift
@@ -64,20 +66,34 @@ run hover-arming-test      Tinycast/Palette/HoverArming.swift \
                            Tinycast/Palette/PaletteMode.swift \
                            $L/QueryScope.swift \
                            $L/ScopeTint.swift \
+                           Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
+                           Tinycast/Features/Clipboard/Model/ClipboardFilter.swift \
                            Tinycast/Features/Quicklinks/Model/Quicklink.swift
 run hotkey-test            Tinycast/Features/HotKeys/Model/DoubleTapModifier.swift \
                            Tinycast/Features/HotKeys/Model/DoubleTapDetector.swift \
                            Tinycast/Features/HotKeys/Model/HotKeyAction.swift \
                            Tinycast/Features/HotKeys/Model/HyperKey.swift \
                            Tinycast/Features/HotKeys/Service/KeyShortcut.swift \
+                           Tinycast/Features/Launcher/Model/CommandID.swift \
+                           Tinycast/Features/Quicklinks/Model/Quicklink.swift \
                            Tinycast/Features/SystemActions/Model/SystemAction.swift \
                            Tinycast/Features/WindowManagement/WindowCommand.swift
 run callout-test           Tinycast/DesignSystem/Theme.swift \
                            $L/ScopeTint.swift \
                            Tinycast/Features/HotKeys/UI/CalloutPlacement.swift
-run icon-cache-test        Tinycast/DesignSystem/Theme.swift \
+run icon-cache-test        Tinycast/Platform/Appearance.swift \
+                           Tinycast/DesignSystem/Theme.swift \
                            $L/ScopeTint.swift \
                            Tinycast/Platform/Images/IconCache.swift
+run entry-icon-test        Tinycast/Platform/Appearance.swift \
+                           Tinycast/DesignSystem/Theme.swift \
+                           $L/ScopeTint.swift \
+                           Tinycast/Platform/Images/IconCache.swift
+run ext-icon-test          Tinycast/Platform/Appearance.swift \
+                           Tinycast/DesignSystem/Theme.swift \
+                           $L/ScopeTint.swift \
+                           Tinycast/Platform/Images/IconCache.swift \
+                           Tinycast/Features/Extensions/Service/ExtensionIconCache.swift
 run system-action-test     Tinycast/Features/SystemActions/Model/SystemAction.swift
 run volume-test            Tinycast/Features/SystemActions/Model/VolumeLevel.swift
 run window-command-test    Tinycast/Features/WindowManagement/WindowCommand.swift \
@@ -96,6 +112,7 @@ run quicklink-test         Tinycast/Features/Quicklinks/Model/Quicklink.swift \
                            Tinycast/Features/Quicklinks/Model/QuicklinkArchive.swift
 run snippets-test          Tinycast/Platform/NotificationToken.swift \
                            Tinycast/Platform/HealthTicker.swift \
+                           Tinycast/Platform/AccessibilityText.swift \
                            Tinycast/Features/Snippets/Model/*.swift \
                            Tinycast/Features/Snippets/Service/*.swift
 run herdr-test             Tinycast/Features/Herdr/Model/HerdrTarget.swift \
@@ -108,10 +125,22 @@ run websearch-test         Tinycast/Features/WebSearch/Model/WebSearchEngine.swi
                            Tinycast/Features/WebSearch/Model/SearchSuggestions.swift \
                            Tinycast/Features/Snippets/Model/SnippetTemplateEngine.swift \
                            Tinycast/Features/Snippets/Model/Snippet.swift
+run notes-test             Tinycast/Platform/Signposts.swift \
+                           $L/SearchRelevance.swift \
+                           Tinycast/Features/Notes/Model/*.swift \
+                           Tinycast/Features/Notes/Service/*.swift
+run notes-editor-test      Tinycast/Platform/Signposts.swift \
+                           Tinycast/Platform/Appearance.swift \
+                           Tinycast/DesignSystem/Theme.swift \
+                           $L/ScopeTint.swift \
+                           Tinycast/Features/Notes/Model/NoteDocument.swift \
+                           Tinycast/Features/Notes/UI/NoteTextView.swift \
+                           Tinycast/Features/Notes/UI/NoteEditorView.swift
 run raycast-test           Tinycast/Features/Backup/Model/RaycastFormat.swift \
                            Tinycast/Features/Backup/Model/RaycastV1Decoder.swift \
-                           Tinycast/Features/Backup/Service/Gunzip.swift \
-                           Tinycast/Features/Clipboard/Model/ClipboardStore.swift
+                           Tinycast/Platform/Compression/Zlib.swift \
+                           Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
+                           Tinycast/Features/Clipboard/Model/ClipboardFilter.swift
 run settings-backup-test   Tinycast/Features/Settings/AppSettingsKey.swift \
                            Tinycast/Features/Backup/Model/SettingsBackupCoverage.swift
 run sync-test              Tinycast/Features/Sync/Model/SyncEnvelope.swift \
@@ -126,6 +155,25 @@ run sync-test              Tinycast/Features/Sync/Model/SyncEnvelope.swift \
                            Tinycast/Features/HotKeys/Model/DoubleTapModifier.swift \
                            Tinycast/Features/HotKeys/Model/HyperKey.swift \
                            Tinycast/Features/HotKeys/Service/KeyShortcut.swift
+E=Tinycast/Features/Extensions
+run symbols-test           $E/Service/SymbolCatalog.swift
+run ext-cleanup-test       $E/Service/ExtensionCleanup.swift \
+                           $E/Service/ExtensionCatalog.swift \
+                           $E/Model/ExtensionManifest.swift
+run ext-store-test         $E/Model/ExtensionRegistry.swift \
+                           $E/Model/ExtensionPackageManager.swift \
+                           $E/Model/ExtensionStoreResponse.swift
+run ext-test               -parse-as-library \
+                           $E/Model/ExtensionBootConfig.swift \
+                           $E/Model/ExtensionManifest.swift \
+                           $E/Model/RenderNode.swift \
+                           $E/Service/ExtensionCatalog.swift \
+                           $E/Service/ExtensionFetcher.swift \
+                           $E/Service/ExtensionNodeShims.swift \
+                           $E/Service/ExtensionRuntime.swift \
+                           $E/UI/ExtensionScreen.swift \
+                           $L/SearchRelevance.swift \
+                           Tinycast/Platform/Compression/Zlib.swift
 run settings-history-test  Tinycast/Features/Settings/SettingsTab.swift \
                            Tinycast/Features/Settings/SettingsHistory.swift
 

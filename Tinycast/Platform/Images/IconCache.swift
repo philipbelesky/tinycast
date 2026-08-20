@@ -14,6 +14,42 @@ struct IconCacheGeneration {
     }
 }
 
+/// SwiftUI tracks any `@Observable` read in `body`, so carrying this in an id is the subscription.
+@MainActor
+@Observable
+final class IconStyleSignal {
+    private(set) var generation = 0
+
+    fileprivate func bump() { generation &+= 1 }
+}
+
+/// A view's own icon key plus the generation. Building one in `body` is what subscribes the view.
+struct IconRequest<Key: Hashable>: Hashable {
+    let key: Key
+    let generation: Int
+
+    @MainActor
+    init(_ key: Key) {
+        self.key = key
+        self.generation = IconCache.style.generation
+    }
+}
+
+/// A tile's fill and the key naming it, so `IconCache` needn't know who chose the colour.
+struct SymbolTint: Hashable, Sendable {
+    let key: String
+    let color: NSColor
+}
+
+/// What a row draws. A feature sets one rather than adding a branch to `AppEntry`, and `artwork`
+/// carries its extent because the size is the caller's decision, judged against `appIconExtent`.
+enum EntryIcon: Hashable, Sendable {
+    case file
+    case symbol(String)
+    case tintedSymbol(name: String, tint: SymbolTint)
+    case artwork(path: String, extent: CGFloat)
+}
+
 /// App icons by path, downsampled and byte-bounded, so rows don't re-hit `NSWorkspace`.
 enum IconCache {
     /// `NSCache` is thread-safe but not `Sendable`, so assert the guarantee once here.
@@ -37,9 +73,56 @@ enum IconCache {
     private static let fittedGeneration = Mutex(IconCacheGeneration())
 
     /// Cache-only lookups (never decode) so a row can paint an already-warm icon on the same frame.
-    static func cached(forFile path: String) -> NSImage? { cache.object(forKey: path as NSString) }
-    static func cachedSymbol(named name: String, tint: ScopeTint? = nil) -> NSImage? {
-        cache.object(forKey: symbolKey(name, tint: tint))
+    static func cached(forFile path: String) -> NSImage? { cache.object(forKey: fileKey(path)) }
+    static func cachedSymbol(named name: String, tint: SymbolTint? = nil) -> NSImage? {
+        cache.object(forKey: symbolKey(name, tint))
+    }
+
+    /// Global rather than injected: a missed injection in a menu or list would be silent staleness.
+    @MainActor static let style = IconStyleSignal()
+
+    /// The same count, readable off-main because every cache key carries it.
+    private static let styleGeneration = Mutex(0)
+
+    /// For icons resolved synchronously in `body`: the read *is* the subscription, so not a no-op.
+    @MainActor static func observeStyle() { _ = style.generation }
+
+    /// A system icon-style move stales every bitmap; the generation in each key fixes it.
+    @MainActor static func invalidateStyled() {
+        styleGeneration.withLock { $0 &+= 1 }
+        cache.removeAllObjects()
+        purgeFitted()
+        style.bump()
+    }
+
+    /// macOS restyles `NSWorkspace`'s images in place, so these bytes are the only proof it landed.
+    static func styleFingerprint() -> Data? {
+        let side = 32
+        guard
+            let rep = NSBitmapImageRep(
+                bitmapDataPlanes: nil, pixelsWide: side, pixelsHigh: side, bitsPerSample: 8,
+                samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
+                bytesPerRow: 0, bitsPerPixel: 0),
+            let ctx = NSGraphicsContext(bitmapImageRep: rep)
+        else { return nil }
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = ctx
+        NSWorkspace.shared.icon(forFile: styleProbePath)
+            .draw(in: NSRect(x: 0, y: 0, width: side, height: side))
+        NSGraphicsContext.restoreGraphicsState()
+        guard let bytes = rep.bitmapData else { return nil }
+        return Data(bytes: bytes, count: rep.bytesPerRow * rep.pixelsHigh)
+    }
+
+    private static let styleProbePath = "/System/Library/CoreServices/Finder.app"
+
+    /// In every key, so an in-flight decode writes somewhere unreachable instead of repopulating.
+    private static func key(_ body: String) -> NSString {
+        "\(styleGeneration.withLock { $0 }):\(body)" as NSString
+    }
+
+    private static func symbolKey(_ name: String, _ tint: SymbolTint?) -> NSString {
+        key("symbol:\(tint?.key ?? "plain"):\(name)")
     }
 
     /// A freshly-decoded, thereafter-immutable `NSImage` is safe to move across the actor boundary.
@@ -61,7 +144,7 @@ enum IconCache {
             return Decoded(image: icon(forFile: path))
         }.value.image
     }
-    static func loadSymbolAsync(named name: String, tint: ScopeTint? = nil) async -> NSImage? {
+    static func loadSymbolAsync(named name: String, tint: SymbolTint? = nil) async -> NSImage? {
         if let cached = cachedSymbol(named: name, tint: tint) { return cached }
         return await Task.detached(priority: .userInitiated) {
             Decoded(image: symbolIcon(named: name, tint: tint))
@@ -69,24 +152,17 @@ enum IconCache {
     }
 
     static func icon(forFile path: String) -> NSImage {
-        let key = path as NSString
+        let key = fileKey(path)
         if let cached = cache.object(forKey: key) { return cached }
         let (icon, cost) = downsampled(NSWorkspace.shared.icon(forFile: path))
         cache.setObject(icon, forKey: key, cost: cost)
         return icon
     }
 
-    /// The variant is part of the key, so one symbol can be both an inked tile and a tinted one.
-    private static func symbolKey(_ name: String, tint: ScopeTint?) -> NSString {
-        ("symbol:" + name + ":" + (tint?.rawValue ?? "")) as NSString
-    }
-
-    /// Command icons: a symbol on a tile; a tint reverses the glyph out of its category fill.
-    static func symbolIcon(named name: String, tint: ScopeTint? = nil) -> NSImage {
-        let key = symbolKey(name, tint: tint)
+    /// A symbol on an app-icon-shaped tile; a tint fills it and brightens the glyph to white.
+    static func symbolIcon(named name: String, tint: SymbolTint? = nil) -> NSImage {
+        let key = symbolKey(name, tint)
         if let cached = cache.object(forKey: key) { return cached }
-        let fill = tint.map(Theme.Colors.tile) ?? .black.withAlphaComponent(0.08)
-        let ink: NSColor = tint == nil ? .black.withAlphaComponent(0.80) : .white
 
         let side = displayPixel
         let image = NSImage(size: NSSize(width: side, height: side), flipped: false) { _ in
@@ -95,10 +171,13 @@ enum IconCache {
             let corner = 9 * Theme.scale
             let tile = NSRect(x: 0, y: 0, width: side, height: side)
                 .insetBy(dx: margin, dy: margin)
-            fill.setFill()
+            (tint?.color ?? .srgbInk(0, alpha: 0.08)).setFill()
             NSBezierPath(roundedRect: tile, xRadius: corner, yRadius: corner).fill()
 
-            guard let symbol = glyph(named: name, tint: ink) else { return true }
+            // A tinted tile keeps white ink because the saturated fill carries its own contrast.
+            let ink = tint == nil ? NSColor.srgbInk(0, alpha: 0.80) : .white
+            guard let symbol = glyph(named: name, tint: ink)
+            else { return true }
             let size = symbol.size
             symbol.draw(
                 in: NSRect(
@@ -131,8 +210,74 @@ enum IconCache {
         }
     }
 
-    /// The share of its canvas an app icon paints; folders and documents differ, so scale.
-    private static let artworkExtent: CGFloat = 0.83
+    /// What an app icon paints: the reference for every other artwork, and the guess when unmeasurable.
+    static let appIconExtent: CGFloat = 0.83
+
+    /// The caller chooses the extent; this only measures and rasterizes, so `Platform` learns no why.
+    static func fitted(_ source: NSImage, to extent: CGFloat) -> (NSImage, Int) {
+        let painted = paintedExtent(source) ?? appIconExtent
+        let side = displayPixel * extent / painted
+        let inset = (displayPixel - side) / 2
+        return rasterized(source, into: NSRect(x: inset, y: inset, width: side, height: side))
+    }
+
+    /// Keyed by path and extent, so two features wanting different sizes never serve each other's.
+    static func artwork(atPath path: String, extent: CGFloat) -> NSImage {
+        let key = artworkKey(path, extent)
+        if let cached = cache.object(forKey: key) { return cached }
+        guard let source = NSImage(contentsOfFile: path) else {
+            return symbolIcon(named: "questionmark.square.dashed")
+        }
+        let (icon, cost) = fitted(source, to: extent)
+        cache.setObject(icon, forKey: key, cost: cost)
+        return icon
+    }
+
+    static func cachedArtwork(atPath path: String, extent: CGFloat) -> NSImage? {
+        cache.object(forKey: artworkKey(path, extent))
+    }
+
+    static func loadArtworkAsync(atPath path: String, extent: CGFloat) async -> NSImage? {
+        if let cached = cachedArtwork(atPath: path, extent: extent) { return cached }
+        return await Task.detached(priority: .userInitiated) {
+            Decoded(image: artwork(atPath: path, extent: extent))
+        }.value.image
+    }
+
+    private static func artworkKey(_ path: String, _ extent: CGFloat) -> NSString {
+        key("artwork:\(extent):\(path)")
+    }
+
+    // MARK: - Drawing an `EntryIcon`
+
+    /// One switch, so a row never has to know which of these paths its entry wants.
+    static func icon(for source: EntryIcon, fileURL: URL) -> NSImage {
+        switch source {
+        case .file: return icon(forFile: fileURL.path)
+        case .symbol(let name): return symbolIcon(named: name)
+        case .tintedSymbol(let name, let tint): return symbolIcon(named: name, tint: tint)
+        case .artwork(let path, let extent): return artwork(atPath: path, extent: extent)
+        }
+    }
+
+    static func cached(_ source: EntryIcon, fileURL: URL) -> NSImage? {
+        switch source {
+        case .file: return cached(forFile: fileURL.path)
+        case .symbol(let name): return cachedSymbol(named: name)
+        case .tintedSymbol(let name, let tint): return cachedSymbol(named: name, tint: tint)
+        case .artwork(let path, let extent): return cachedArtwork(atPath: path, extent: extent)
+        }
+    }
+
+    static func loadAsync(_ source: EntryIcon, fileURL: URL) async -> NSImage? {
+        switch source {
+        case .file: return await loadAsync(forFile: fileURL.path)
+        case .symbol(let name): return await loadSymbolAsync(named: name)
+        case .tintedSymbol(let name, let tint): return await loadSymbolAsync(named: name, tint: tint)
+        case .artwork(let path, let extent):
+            return await loadArtworkAsync(atPath: path, extent: extent)
+        }
+    }
 
     /// Cache-only lookup for `loadFittedAsync`.
     static func cachedFitted(forFile path: String) -> NSImage? {
@@ -167,17 +312,17 @@ enum IconCache {
         }
     }
 
-    private static func fittedKey(_ path: String) -> NSString { ("fit:" + path) as NSString }
+    private static func fileKey(_ path: String) -> NSString { key("file:" + path) }
+    private static func fittedKey(_ path: String) -> NSString { key("fit:" + path) }
 
     private static func fittedIcon(forFile path: String) -> Decoded {
-        let source = NSWorkspace.shared.icon(forFile: path)
-        // Solving `side * extent == displayPixel * artworkExtent` leaves an app icon as-is.
-        let extent = paintedExtent(source) ?? artworkExtent
-        let side = displayPixel * artworkExtent / extent
-        let inset = (displayPixel - side) / 2
-        let (icon, cost) = rasterized(
-            source, into: NSRect(x: inset, y: inset, width: side, height: side))
+        let (icon, cost) = fittedToArtwork(NSWorkspace.shared.icon(forFile: path))
         return Decoded(image: icon, cost: cost)
+    }
+
+    /// Paints the share an app icon does, leaving a real app icon untouched.
+    private static func fittedToArtwork(_ source: NSImage) -> (NSImage, Int) {
+        fitted(source, to: appIconExtent)
     }
 
     /// The artwork's larger dimension, measured at 2×: a 1× grid over-reads the extent.

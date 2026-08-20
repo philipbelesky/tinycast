@@ -51,6 +51,7 @@ struct CommandsSettingsView: View {
                     "Type it, then a space, to search commands and custom commands only.")
         }
         .formStyle(.grouped)
+        .releasesFocusOnOutsideClick()
         .sheet(item: $editor) { target in
             CustomCommandEditorSheet(command: target.command)
         }

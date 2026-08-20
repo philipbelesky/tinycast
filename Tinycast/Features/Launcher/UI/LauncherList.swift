@@ -39,14 +39,15 @@ struct LauncherList: View {
         case calc(CalcResult)
         case webSearch(WebSearchPrompt)
         case suggestion(String)
-        case app(AppEntry)
+        /// `slot` is the row's ⌘-digit, carried from the section build so no row has to search for it.
+        case app(AppEntry, slot: Character?)
         var id: String {
             switch self {
             case .header(let title): return "header-" + title
             case .calc: return LauncherList.calcRowID
-            case .webSearch(let prompt): return prompt.id
-            case .suggestion(let text): return SearchSuggestions.rowID(text)
-            case .app(let app): return app.id
+        case .webSearch(let prompt): return prompt.id
+        case .suggestion(let text): return SearchSuggestions.rowID(text)
+        case .app(let app, _): return app.id
             }
         }
     }
@@ -70,7 +71,7 @@ struct LauncherList: View {
         if let calc { calcRows = [.header("Calculator"), .calc(calc)] }
         guard showSections else {
             guard !results.isEmpty else { return calcRows }
-            return calcRows + [.header("Results")] + results.map(Row.app)
+            return calcRows + [.header("Results")] + results.map { .app($0, slot: nil) }
         }
         var rows: [Row] = calcRows
         let favorites = results.prefix(favoriteCount)
@@ -79,20 +80,29 @@ struct LauncherList: View {
         for app in rest { grouped[app.kind, default: []].append(app) }
         if !favorites.isEmpty {
             rows.append(.header("Favorites"))
-            rows.append(contentsOf: favorites.map(Row.app))
+            rows.append(
+                contentsOf: favorites.enumerated().map {
+                    .app($1, slot: FavoriteSlots.digit(at: $0))
+                })
         }
         // Publication order, so rows match the flat index.
         let kinds: [AppEntry.Kind] = [
             .scope,
-            .application, .systemSettings, .quicklink, .vsCodeProject, .herdrTarget, .linearTarget,
-            .webSearch, .snippet,
+            .application, .systemSettings, .extensionCommand, .quicklink, .vsCodeProject,
+            .herdrTarget, .linearTarget, .webSearch, .snippet,
             .systemAction, .windowCommand, .customCommand, .command
         ]
         for kind in kinds {
             guard let group = grouped[kind], !group.isEmpty else { continue }
             rows.append(.header(kind.descriptor.sectionTitle))
-            rows.append(contentsOf: group.map(Row.app))
+            rows.append(contentsOf: group.map { .app($0, slot: nil) })
         }
+        // A kind missing from `kinds` doesn't just hide its rows — every row after it in the flat
+        // index would then activate its neighbour. Cheap to assert, silent and confusing to debug.
+        assert(
+            grouped.keys.allSatisfy(kinds.contains),
+            "kind missing from the launcher's section order: "
+                + grouped.keys.filter { !kinds.contains($0) }.map(\.rawValue).joined(separator: ", "))
         return rows
     }
 
@@ -129,11 +139,12 @@ struct LauncherList: View {
                                     .contentShape(Rectangle())
                                     .onTapGesture { onActivateSuggestion(text) }
                                     .selectionFrame(selectedID == SearchSuggestions.rowID(text))
-                                case .app(let app):
+                                case .app(let app, let slot):
                                     AppRow(
                                         app: app,
                                         selected: app.id == selectedID,
-                                        running: runningApps.isRunning(app)
+                                        running: runningApps.isRunning(app),
+                                        slot: slot
                                     )
                                     .contentShape(Rectangle())
                                     .onTapGesture { onActivate(app) }
@@ -227,9 +238,15 @@ private struct AppRow: View {
     let app: AppEntry
     let selected: Bool
     let running: Bool
+    /// This row's ⌘-digit, or nil for a row no chord launches.
+    let slot: Character?
     /// Observed so a hotkey set/cleared in Settings re-renders the row's keycaps immediately.
     @Environment(HotKeyManager.self) private var hotKeys
     @Environment(AppSettings.self) private var settings
+    /// Observed for the same reason: an alias edit re-renders the row's badge at once.
+    @Environment(AliasStore.self) private var aliases
+    /// Observed here rather than up in the list, so a ⌘ press re-renders rows and not the palette.
+    @Environment(PaletteState.self) private var palette
     @State private var hovered = false
 
     /// Selection wins over hover when a row is both; otherwise hover shows its fainter layer.
@@ -265,6 +282,17 @@ private struct AppRow: View {
             Text(app.name)
                 .font(Theme.Typography.rowTitle)
                 .lineLimit(1)
+            if let alias = aliases.alias(for: app.preferenceKey) {
+                Text(alias)
+                    .font(Theme.Typography.rowTrailing)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .padding(.horizontal, Theme.Spacing.sm)
+                    .padding(.vertical, Theme.Spacing.xxs)
+                    .background(
+                        RoundedRectangle(cornerRadius: Theme.Radius.menu, style: .continuous)
+                            .fill(Theme.Colors.controlSurface))
+            }
             if let caps = shortcutCaps {
                 HStack(spacing: Theme.Spacing.xxs) {
                     ForEach(Array(caps.enumerated()), id: \.offset) { _, cap in
@@ -273,9 +301,17 @@ private struct AppRow: View {
                 }
             }
             Spacer()
-            Text(app.kindLabel)
-                .font(Theme.Typography.rowTrailing)
-                .foregroundStyle(.secondary)
+            // Holding ⌘ turns the trailing label into the chord that launches this row.
+            if let slot, palette.commandHeld {
+                HStack(spacing: Theme.Spacing.xxs) {
+                    KeyCapChip(text: "⌘", style: .outline)
+                    KeyCapChip(text: String(slot), style: .outline)
+                }
+            } else {
+                Text(app.kindLabel)
+                    .font(Theme.Typography.rowTrailing)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding(.horizontal, Theme.Spacing.md)
         .padding(.vertical, Theme.Spacing.sm)

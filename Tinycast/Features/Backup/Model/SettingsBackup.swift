@@ -10,6 +10,7 @@ struct SettingsBackup: Codable {
     var favoriteApps: [String]?
     var hiddenLauncherItems: [String]?
     var hiddenLauncherKinds: [String]?
+    var launcherAliases: [String: String]?
 
     /// Enums store by raw value, so an unknown one is ignored rather than failing.
     struct SettingsData: Codable {
@@ -32,6 +33,7 @@ struct SettingsBackup: Codable {
         var fileSearchEnabled: Bool?
         var fileSearchScopes: [String]?
         var fileSearchIgnorePatterns: [String]?
+        var notesEnabled: Bool?
         // `snippetsEnabled` is absent: an import must not enable keystroke listening.
         var customCommandsEnabled: Bool?
         var customCommandsShowInLauncher: Bool?
@@ -44,6 +46,7 @@ struct SettingsBackup: Codable {
         // Carried, unlike `snippetsEnabled`: opening a link grants no permission class of its own.
         var quicklinksEnabled: Bool?
         var quicklinksShowInLauncher: Bool?
+        var extensionsShowInLauncher: Bool?
         var quicklinkOpensNewWindow: Bool?
         var quicklinkSelectionFallback: String?
         var quicklinkConfirmsBeforeDelete: Bool?
@@ -71,6 +74,9 @@ struct SettingsBackup: Codable {
         var toggleClipboard: HotKeyBinding?
         var toggleClipboardAlternate: HotKeyBinding?
         var toggleEmoji: HotKeyBinding?
+        var showNotes: HotKeyBinding?
+        var createNote: HotKeyBinding?
+        var searchNotes: HotKeyBinding?
         var searchFiles: HotKeyBinding?
         var apps: [String: HotKeyBinding]?
         var panes: [String: HotKeyBinding]?
@@ -86,6 +92,7 @@ struct SettingsBackup: Codable {
         var hotkeys = 0
         var favorites = 0
         var hiddenItems = 0
+        var aliases = 0
         var customCommands = 0
         var quicklinks = 0
     }

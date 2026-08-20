@@ -26,6 +26,7 @@ extension SettingsBackup {
             fileSearchEnabled: s.fileSearchEnabled,
             fileSearchScopes: s.fileSearchScopes,
             fileSearchIgnorePatterns: s.fileSearchIgnorePatterns,
+            notesEnabled: s.notesEnabled,
             customCommandsEnabled: s.customCommandsEnabled,
             customCommandsShowInLauncher: s.customCommandsShowInLauncher,
             snippetsShowInLauncher: s.snippetsShowInLauncher,
@@ -35,6 +36,7 @@ extension SettingsBackup {
             windowCycleOnRepeat: s.windowCycleOnRepeat,
             quicklinksEnabled: s.quicklinksEnabled,
             quicklinksShowInLauncher: s.quicklinksShowInLauncher,
+            extensionsShowInLauncher: s.extensionsShowInLauncher,
             quicklinkOpensNewWindow: s.quicklinkOpensNewWindow,
             quicklinkSelectionFallback: s.quicklinkSelectionFallback.rawValue,
             quicklinkConfirmsBeforeDelete: s.quicklinkConfirmsBeforeDelete,
@@ -57,6 +59,9 @@ extension SettingsBackup {
         hotkeys.toggleClipboard = hk.binding(for: .toggleClipboard)
         hotkeys.toggleClipboardAlternate = hk.binding(for: .toggleClipboardAlternate)
         hotkeys.toggleEmoji = hk.binding(for: .toggleEmoji)
+        hotkeys.showNotes = hk.binding(for: .showNotes)
+        hotkeys.createNote = hk.binding(for: .createNote)
+        hotkeys.searchNotes = hk.binding(for: .searchNotes)
         hotkeys.searchFiles = hk.binding(for: .searchFiles)
         hotkeys.apps = Dictionary(
             uniqueKeysWithValues: hk.boundBundleIDs.compactMap { id in
@@ -89,6 +94,7 @@ extension SettingsBackup {
         backup.favoriteApps = core.favorites.keys
         backup.hiddenLauncherItems = Array(core.visibility.hiddenItemKeys)
         backup.hiddenLauncherKinds = Array(core.visibility.hiddenKinds)
+        backup.launcherAliases = core.aliases.aliases
         return backup
     }
 
@@ -113,6 +119,10 @@ extension SettingsBackup {
             let kinds = hiddenLauncherKinds ?? Array(core.visibility.hiddenKinds)
             core.visibility.replace(hiddenItems: items, hiddenKinds: kinds)
             summary.hiddenItems = items.count
+        }
+        if let launcherAliases {
+            core.aliases.replace(launcherAliases)
+            summary.aliases = core.aliases.aliases.count
         }
         return summary
     }
@@ -190,6 +200,10 @@ extension SettingsBackup {
             settings.fileSearchIgnorePatterns = patterns
             count += 1
         }
+        if let flag = s.notesEnabled {
+            settings.notesEnabled = flag
+            count += 1
+        }
         if let flag = s.customCommandsEnabled {
             settings.customCommandsEnabled = flag
             count += 1
@@ -224,6 +238,10 @@ extension SettingsBackup {
         }
         if let flag = s.quicklinksShowInLauncher {
             settings.quicklinksShowInLauncher = flag
+            count += 1
+        }
+        if let flag = s.extensionsShowInLauncher {
+            settings.extensionsShowInLauncher = flag
             count += 1
         }
         if let flag = s.quicklinkOpensNewWindow {
@@ -302,6 +320,9 @@ extension SettingsBackup {
         if let b = hotkeys.toggleClipboard { apply(b, .toggleClipboard) }
         if let b = hotkeys.toggleClipboardAlternate { apply(b, .toggleClipboardAlternate) }
         if let b = hotkeys.toggleEmoji { apply(b, .toggleEmoji) }
+        if let b = hotkeys.showNotes { apply(b, .showNotes) }
+        if let b = hotkeys.createNote { apply(b, .createNote) }
+        if let b = hotkeys.searchNotes { apply(b, .searchNotes) }
         if let b = hotkeys.searchFiles { apply(b, .searchFiles) }
         for (id, b) in hotkeys.apps ?? [:] { apply(b, .app(bundleID: id)) }
         for (id, b) in hotkeys.panes ?? [:] { apply(b, .settingsPane(bundleID: id)) }

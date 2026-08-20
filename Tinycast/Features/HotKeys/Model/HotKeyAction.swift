@@ -8,6 +8,9 @@ enum HotKeyAction: Hashable, Sendable {
     case toggleClipboard
     case toggleClipboardAlternate
     case toggleEmoji
+    case showNotes
+    case createNote
+    case searchNotes
     case searchFiles
     case app(bundleID: String)
     case settingsPane(bundleID: String)
@@ -15,6 +18,9 @@ enum HotKeyAction: Hashable, Sendable {
     case systemAction(id: SystemAction.ID)
     case windowCommand(id: WindowCommand.ID)
     case quicklink(id: UUID)
+    /// Keyed by `AppEntry.id` (`extension:<extension>/<command>`), which is what survives a
+    /// reinstall — an extension carries no id of its own beyond its name.
+    case extensionCommand(entryID: String)
 
     /// The UserDefaults key, and the `HotKeyCenter` registration id: one per action.
     var defaultsKey: String {
@@ -24,6 +30,9 @@ enum HotKeyAction: Hashable, Sendable {
         case .toggleClipboard: "hotkey.toggleClipboard"
         case .toggleClipboardAlternate: "hotkey.toggleClipboard.alternate"
         case .toggleEmoji: "hotkey.toggleEmoji"
+        case .showNotes: "hotkey.showNotes"
+        case .createNote: "hotkey.createNote"
+        case .searchNotes: "hotkey.searchNotes"
         case .searchFiles: "hotkey.searchFiles"
         case .app(let bundleID): "hotkey.app." + bundleID
         case .settingsPane(let bundleID): "hotkey.pane." + bundleID
@@ -31,6 +40,13 @@ enum HotKeyAction: Hashable, Sendable {
         case .systemAction(let id): "hotkey.systemAction." + id.rawValue
         case .windowCommand(let id): "hotkey.windowCommand." + id.rawValue
         case .quicklink(let id): "hotkey.quicklink." + id.uuidString.lowercased()
+        case .extensionCommand(let entryID): "hotkey.extensionCommand." + entryID
         }
     }
+
+    /// The fixed actions every install can bind; the per-item catalogs extend them at launch.
+    static let builtInActions: [HotKeyAction] = [
+        .togglePalette, .togglePaletteAlternate, .toggleClipboard, .toggleClipboardAlternate,
+        .toggleEmoji, .showNotes, .createNote, .searchNotes, .searchFiles
+    ]
 }

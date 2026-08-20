@@ -41,6 +41,23 @@ enum Theme {
     enum Size {
         static let panelWidth: CGFloat = 750 * scale
         static let panelHeight: CGFloat = 475 * scale
+        /// Opening size on a first run and the floor: below it the title bar's own parts collide.
+        static let noteWindow = CGSize(width: 440 * scale, height: 180 * scale)
+        static let noteEditorInset: CGFloat = 16 * scale
+        /// Shorter than the horizontal inset, so the first line sits close under the title bar.
+        static let noteEditorTopInset: CGFloat = 6 * scale
+        static let noteSearchHeight: CGFloat = 34 * scale
+        /// The switcher popover, sized independently of a note window that can be 180pt tall.
+        static let noteSwitcher = CGSize(width: 300 * scale, height: 240 * scale)
+        static let noteSwitcherEmptyHeight: CGFloat = 96 * scale
+        static let noteSwitcherDrop: CGFloat = 56 * scale
+        static let noteFooterHeight: CGFloat = 28 * scale
+        /// Holds the launcher's action capsule with the same margin its own bar gives it.
+        static let noteTitlebar: CGFloat = 52 * scale
+        /// Symmetric, so the title stays centred on the window while clearing lights and capsule.
+        static let noteTitleInset: CGFloat = 120 * scale
+        /// Notes seats its traffic lights further in than the palette.
+        static let noteTrafficLightInset: CGFloat = 20 * scale
         /// Fraction of visible height above the palette's top edge; it grows downward.
         static let paletteTopMarginFraction: CGFloat = 0.18
         static let headerHeight: CGFloat = 44 * scale
@@ -83,6 +100,8 @@ enum Theme {
         static let compactKeyCap: CGFloat = 15 * scale
         static let heroKeyCap: CGFloat = 22 * scale
         static let menuButton: CGFloat = 36 * scale
+        static let noteGlyph: CGFloat = 16 * scale
+        static let noteEmptyGlyph: CGFloat = 28 * scale
         /// The menu circle's hand-drawn two-line glyph: long bar, short bar, weight, gap.
         static let menuGlyphWide: CGFloat = 14 * scale
         static let menuGlyphNarrow: CGFloat = 8 * scale
@@ -95,6 +114,8 @@ enum Theme {
         static let previewRowIcon: CGFloat = 20 * scale
         static let emojiCell: CGFloat = 56 * scale
         static let menuWidth: CGFloat = 276 * scale
+        /// The clipboard type filter's menu; `menuWidth` is too wide for five short rows.
+        static let clipboardFilterMenuWidth: CGFloat = 200 * scale
         /// A menu row's glyph slot, sized so symbol and app-icon rows read the same.
         static let menuIcon: CGFloat = 20 * scale
         /// Opening size and the resize floor; tall enough that the sidebar's rows never scroll.
@@ -106,6 +127,8 @@ enum Theme {
         static let settingsRowIcon: CGFloat = 20 * scale
         /// Settings editor modals (Custom Commands, Snippets): fixed width, intrinsic height.
         static let editorSheetWidth: CGFloat = 480 * scale
+        /// Label column of an extension form, so every field's input starts on one line.
+        static let formLabelWidth: CGFloat = 110 * scale
         /// The multi-line box inside those modals; it scrolls rather than grows the sheet.
         static let editorTextHeight: CGFloat = 120 * scale
         /// The argument prompt's field column, kept under the alert's natural width.
@@ -161,9 +184,12 @@ enum Theme {
         static let compactKeyCap = scaled(.caption2)
         static let heroKeyCap = scaled(.body)
         static let bar = scaled(.callout, .medium)
+        /// A dropdown control's trailing chevron, smaller than the label it follows.
+        static let disclosure = scaled(.caption1, .semibold)
         static let menuRow = scaled(.body)
         static let menuShortcut = scaled(.callout)
         static let menuIcon = scaled(.body)
+        static let noteTitle = scaled(.headline)
         /// A dialog's title line, above its wrapped `rowTrailing` message.
         static let dialogTitle = scaled(.headline, .bold)
         /// The oversized glyph an empty list or a missing thumbnail stands in with.
@@ -210,8 +236,13 @@ enum Theme {
         static let controlSurface = Color.black.opacity(0.08)
         /// Control borders: outlined kbd chips.
         static let border = Color.black.opacity(0.16)
+        static let textPrimary = Color.black
         static let textSecondary = Color.black.opacity(0.60)
         static let textTertiary = Color.black.opacity(0.40)
+        static let noteText = Color.black.opacity(0.85)
+        static let iconPlaceholder = Color.black.opacity(0.06)
+        /// The faint wash behind a header on the light surface.
+        static let sheen = Color.black.opacity(0.04)
         /// The Settings card: a faint surface whose border doubles as the row divider.
         static let cardFill = Color.white.opacity(0.45)
         static let cardStroke = Color.black.opacity(0.10)

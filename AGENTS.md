@@ -2,9 +2,10 @@
 
 A native macOS menu-bar launcher — a minimal Raycast: fuzzy app launcher, global and per-app hotkeys, a
 text/image clipboard history, an inline calculator, snippets, quicklinks, web search, a herdr workspace
-opener, a VS Code project opener, a Linear view opener, iCloud settings sync, window management and an
-emoji picker. SwiftUI + AppKit, running as an accessory with no Dock
-icon (`LSUIElement`). Zero third-party dependencies.
+opener, a VS Code project opener, a Linear view opener, iCloud settings sync, a floating note, window
+management and an emoji picker. It also **runs Raycast extensions** natively, in JavaScriptCore.
+SwiftUI + AppKit, running as an accessory with no Dock icon (`LSUIElement`). Zero third-party
+dependencies.
 
 ## What this checkout is: one person's fork
 
@@ -52,8 +53,9 @@ Write code as if the platform released yesterday:
   migration scaffolding, no "just in case" fallbacks. The two migrations that exist are scheduled for
   deletion; nothing new may depend on them.
 
-Carbon is the one deliberate exception, and it is a capability gap rather than inertia: nothing modern
-registers a system-wide chord. Full reasoning in [standards.md](docs/standards.md#posture).
+Carbon is a deliberate capability-gap dependency rather than inertia: nothing modern registers a
+system-wide chord, and HIToolbox's TIS APIs remain the public input-source mechanism. Full reasoning in
+[standards.md](docs/standards.md#posture).
 
 ## Where things are
 
@@ -99,17 +101,28 @@ feature's doc, under its own `## Invariants`.
   goes through `DialogController`, a report through a HUD via `HUDPresenter`.
 - **A networked feature's switch is structural, even though they all now ship on.** Currency rates,
   iCloud sync, search suggestions and Linear default to enabled and ask nothing
-  ([FORK.md](FORK.md) divergence 15); **snippets is the last gated feature**, and only because
+  ([FORK.md](FORK.md) divergence 15); **snippets remains gated**, because
   enabling it grants keyword expansion over every keystroke. What holds regardless: the flag lives on
   the owning store and **never** in `AppSettings`, so no import or synced payload can flip it; the
   store re-checks it on both sides of every `await`, so switching off mid-request still stops the
   reply landing; every fetch goes out on a private `.ephemeral`, `urlCache = nil` session; and
   `snippetsEnabled` stays out of settings backups. `CurrencyRateStore` is the reference — copy it
   rather than inventing a second shape.
+- **Extensions stay inside `Features/Extensions/`.** Every view, row, menu, geometry and sizing
+  constant an extension needs is written and owned there — never added to `DesignSystem/`, never bolted
+  onto `Theme`, and never shared with another feature. An extension renders untrusted third-party code
+  whose shape we do not control, so it must never be able to force a change on a launcher surface.
+  **Duplicating a view or a piece of layout maths to keep it here is the correct trade**, and the one
+  place the no-duplication rule yields. What *is* shared: `Theme`'s base tokens (spacing, radius,
+  colour), `PopoverMenuItem` as a data shape, and `Platform/`. What is never shared: anything with
+  "how an extension looks or moves" in it. `ExtensionActionsPanel` and `ExtensionGridGeometry` exist
+  precisely because the palette's own menu and the emoji grid must stay free to change without them.
 - **`AppEntry.Kind` is the only thing that says what an entry is.** One case per launcher section, per
   `VisibilityStore` category and per Settings pane — never re-derive a category by sniffing an entry ID.
 - **Generated files are never hand-edited.** `EmojiData.generated.swift` comes from
-  `node Scripts/gen-emoji.js`, `CurrencyData.generated.swift` from `node Scripts/gen-currencies.js`.
+  `node Scripts/gen-emoji.js`, `CurrencyData.generated.swift` from `node Scripts/gen-currencies.js`, and
+  `Resources/RaycastRuntime.generated.js` from `Scripts/raycast-runtime/build.mjs` — the runtime is
+  committed so building the app never needs Node.
 - **`DesignSystem/Scrolling/EdgeDissolve.swift` and `ThinScrollbar.swift` are off-limits.** Both are
   tuned by eye against the palette's floating bars, so any edit is a visual regression. Needing to touch
   one to fix a scroll bug means the real fix belongs elsewhere.

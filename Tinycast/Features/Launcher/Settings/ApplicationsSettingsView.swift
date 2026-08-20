@@ -17,5 +17,6 @@ struct ApplicationsSettingsView: View {
                     "Type it, then a space, to search applications and System Settings panes only.")
         }
         .formStyle(.grouped)
+        .releasesFocusOnOutsideClick()
     }
 }

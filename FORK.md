@@ -595,7 +595,7 @@ git checkout main && git merge --ff-only origin/main   # keep the mirror clean
 git checkout philip && git rebase origin/main           # replay the divergences
 ```
 
-Rebase rather than merge, so the fork stays a readable stack of the fifteen commits above rather than a
+Rebase rather than merge, so the fork stays a readable stack of the divergences above rather than a
 braid.
 
 **The 2026-08-12 absorption of upstream `a0cfc60..ef1e1b5` was a merge commit, not a rebase**, and is
@@ -605,6 +605,15 @@ high-risk divergences 2, 3, 4 and 9; replaying twenty-four commits through it me
 collision repeatedly, with a silent half-revert the likely outcome. One resolution pass was the safer
 trade. Prefer a rebase again next time — the stack is still readable through the merge — and treat
 this as the precedent for when not to.
+
+**The 2026-08-20 absorption of rewritten upstream `42eb238..793bb1f` is the second merge exception.**
+Upstream force-rewrote the history that had previously ended at `ef1e1b5`, although `ef1e1b5` and its
+replacement `42eb238` have identical trees. Git therefore selected the pre-fork `d9d6f` merge base and
+reported most of the repository as conflicting. The merge was performed with a temporary local replace
+ref grafting `ef1e1b5` onto `42eb238`, so Git used that identical tree as the logical base and exposed
+only the real overlap. The replace ref was deleted after the merge commit; it is not part of repository
+history. Do not reproduce this technique unless upstream has again rewritten a previously absorbed tree
+and the old and new boundary commits are verified tree-identical.
 
 Then, before calling it done — the standard gate from
 [testing.md](docs/testing.md#definition-of-done) plus the fork-specific checks:

@@ -100,6 +100,16 @@ final class AppSettings {
         didSet { defaults.set(openOnCursorScreen, forKey: Key.openOnCursorScreen.rawValue) }
     }
 
+    var autoSwitchInputSourceID: String? {
+        didSet {
+            guard let autoSwitchInputSourceID else {
+                defaults.removeObject(forKey: Key.autoSwitchInputSource.rawValue)
+                return
+            }
+            defaults.set(autoSwitchInputSourceID, forKey: Key.autoSwitchInputSource.rawValue)
+        }
+    }
+
     /// Lets the panel be dragged by its top edge; off by default, so most launches never grab it.
     var paletteDraggable: Bool {
         didSet { defaults.set(paletteDraggable, forKey: Key.paletteDraggable.rawValue) }
@@ -134,6 +144,10 @@ final class AppSettings {
         }
     }
 
+    var notesEnabled: Bool {
+        didSet { defaults.set(notesEnabled, forKey: Key.notesEnabled.rawValue) }
+    }
+
     var customCommandsEnabled: Bool {
         didSet { defaults.set(customCommandsEnabled, forKey: Key.customCommandsEnabled.rawValue) }
     }
@@ -153,6 +167,44 @@ final class AppSettings {
 
     var snippetsShowInLauncher: Bool {
         didSet { defaults.set(snippetsShowInLauncher, forKey: Key.snippetsShowInLauncher.rawValue) }
+    }
+
+    /// Also consent to run third-party JavaScript, and the one feature with a standing memory cost,
+    /// so it confirms first, defaults off and never rides a backup.
+    var extensionsEnabled: Bool {
+        didSet { defaults.set(extensionsEnabled, forKey: Key.extensionsEnabled.rawValue) }
+    }
+
+    var extensionsShowInLauncher: Bool {
+        didSet {
+            defaults.set(extensionsShowInLauncher, forKey: Key.extensionsShowInLauncher.rawValue)
+        }
+    }
+
+    /// Only a source registry needs one — the store serves extensions already built.
+    var extensionPackageManager: ExtensionPackageManager {
+        didSet {
+            defaults.set(
+                extensionPackageManager.rawValue, forKey: Key.extensionPackageManager.rawValue)
+        }
+    }
+
+    /// Where extensions are searched for. Seeded with the store and the official repository; a user
+    /// can add their own, which is the point of it being a list rather than a flag.
+    var extensionRegistries: [ExtensionRegistry] {
+        didSet {
+            guard let data = try? JSONEncoder().encode(extensionRegistries) else { return }
+            defaults.set(data, forKey: Key.extensionRegistries.rawValue)
+        }
+    }
+
+    /// Extra PATH folders searched before the built-in list, for a toolchain in a place Tinycast
+    /// doesn't already know — mise or Nix shims are the common case. Empty means nothing extra.
+    var extensionCustomSearchPaths: [String] {
+        didSet {
+            defaults.set(
+                extensionCustomSearchPaths, forKey: Key.extensionCustomSearchPaths.rawValue)
+        }
     }
 
     /// Off means fully off: no launcher entries, and a still-registered shortcut moves nothing.
@@ -310,6 +362,7 @@ final class AppSettings {
         openOnCursorScreen =
             defaults.object(forKey: Key.openOnCursorScreen.rawValue) == nil
             || defaults.bool(forKey: Key.openOnCursorScreen.rawValue)
+        autoSwitchInputSourceID = defaults.string(forKey: Key.autoSwitchInputSource.rawValue)
         paletteDraggable = defaults.bool(forKey: Key.paletteDraggable.rawValue)
         // A half-written pair is no position at all, so both coordinates have to be there.
         palettePosition = (defaults.array(forKey: Key.palettePosition.rawValue) as? [Double])
@@ -321,6 +374,7 @@ final class AppSettings {
             ?? FileSearchScope.defaultScopes
         fileSearchIgnorePatterns =
             defaults.stringArray(forKey: Key.fileSearchIgnorePatterns.rawValue) ?? []
+        notesEnabled = defaults.bool(forKey: Key.notesEnabled.rawValue)
         customCommandsEnabled = defaults.bool(forKey: Key.customCommandsEnabled.rawValue)
         // These default on, so absence must be distinguished from a stored `false`.
         customCommandsShowInLauncher =
@@ -330,6 +384,20 @@ final class AppSettings {
         snippetsShowInLauncher =
             defaults.object(forKey: Key.snippetsShowInLauncher.rawValue) == nil
             || defaults.bool(forKey: Key.snippetsShowInLauncher.rawValue)
+        // Opt-in, unlike its siblings: until it is asked for, nothing about extensions is loaded.
+        extensionsEnabled = defaults.bool(forKey: Key.extensionsEnabled.rawValue)
+        extensionsShowInLauncher =
+            defaults.object(forKey: Key.extensionsShowInLauncher.rawValue) == nil
+            || defaults.bool(forKey: Key.extensionsShowInLauncher.rawValue)
+        extensionPackageManager =
+            defaults.string(forKey: Key.extensionPackageManager.rawValue)
+            .flatMap(ExtensionPackageManager.init(rawValue:)) ?? .automatic
+        extensionRegistries =
+            defaults.data(forKey: Key.extensionRegistries.rawValue)
+            .flatMap { try? JSONDecoder().decode([ExtensionRegistry].self, from: $0) }
+            ?? ExtensionRegistry.defaults
+        extensionCustomSearchPaths =
+            defaults.stringArray(forKey: Key.extensionCustomSearchPaths.rawValue) ?? []
         windowManagementEnabled = defaults.bool(forKey: Key.windowManagementEnabled.rawValue)
         windowManagementShowInLauncher =
             defaults.object(forKey: Key.windowManagementShowInLauncher.rawValue) == nil

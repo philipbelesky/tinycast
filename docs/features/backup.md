@@ -13,8 +13,10 @@ feature lives in `Features/Backup/`.
 - **`snippetsEnabled` is excluded, and that is a security control.** It doubles as consent to keystroke
   listening, so an imported file must not be able to grant it. A `Mirror` or a macro is the wrong
   answer: neither can be read to check what is covered.
-- **A networked feature's switch never lives in `AppSettings`.** `CurrencyRateStore` owns its own,
-  precisely so a backup cannot carry it — in either direction. A new one follows that shape.
+- **A flag that grants a capability is never carried by a backup**, whether it is excluded from
+  `SettingsBackupCoverage` like `snippetsEnabled` or kept out of `AppSettings` entirely, as with the
+  network switches owned by their feature stores. Importing a config must not be able to grant
+  something the user never granted.
 - The format is internal and may change freely. The only requirement is that **export → import
   round-trips within one build** — there is no version field and no migration. iCloud sync
   ([sync.md](sync.md)) carries this same payload between Macs; every field being optional is what
@@ -24,7 +26,7 @@ feature lives in `Features/Backup/`.
 
 | File | Role |
 | --- | --- |
-| `Model/SettingsBackup.swift` | The `SettingsData` payload and its `Codable` shape |
+| `Model/SettingsBackup.swift` | The settings, fixed/per-item hotkey payloads, and their `Codable` shape |
 | `Model/SettingsBackupCoverage.swift` | The coverage declaration the harness checks |
 | `Service/SettingsBackupApplying.swift` | `gather(from:)` / `apply(to:)` — the live-store half |
 | `Model/RaycastFormat.swift` | Detects v1 vs v2 — the only branch between the two |

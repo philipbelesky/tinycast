@@ -1,7 +1,7 @@
 enum SettingsTab: CaseIterable, Identifiable {
     case general, applications, systemSettings, systemActions, commands, quicklinks, fileSearch,
-        webSearch, herdr, vsCode, linear, snippets, windowManagement, clipboard, emoji, permissions,
-        backup, miscellaneous, about
+        webSearch, herdr, vsCode, linear, notes, snippets, windowManagement, clipboard, emoji,
+        extensions, permissions, backup, miscellaneous, about
     /// The case, never an index: a selectable `List` flattens section and row IDs together.
     var id: Self { self }
 
@@ -18,10 +18,12 @@ enum SettingsTab: CaseIterable, Identifiable {
         case .herdr: return "herdr"
         case .vsCode: return "VS Code"
         case .linear: return "Linear"
+        case .notes: return "Notes"
         case .snippets: return "Snippets"
         case .windowManagement: return "Window Management"
         case .clipboard: return "Clipboard"
         case .emoji: return "Emoji & Symbols"
+        case .extensions: return "Extensions"
         case .permissions: return "Permissions"
         case .backup: return "Backup"
         case .miscellaneous: return "Miscellaneous"
@@ -42,10 +44,12 @@ enum SettingsTab: CaseIterable, Identifiable {
         case .herdr: return "macwindow"
         case .vsCode: return "chevron.left.forwardslash.chevron.right"
         case .linear: return "line.3.horizontal.decrease.circle"
+        case .notes: return "text.page"
         case .snippets: return "curlybraces"
         case .windowManagement: return "macwindow"
         case .clipboard: return "doc.on.clipboard"
         case .emoji: return "face.smiling"
+        case .extensions: return "puzzlepiece.extension"
         case .permissions: return "lock.shield"
         case .backup: return "arrow.up.arrow.down.circle"
         case .miscellaneous: return "ellipsis.circle"
@@ -76,8 +80,8 @@ enum SettingsSection: CaseIterable, Identifiable {
             return [.applications, .systemSettings, .systemActions, .commands, .quicklinks]
         case .features:
             return [
-                .fileSearch, .webSearch, .herdr, .vsCode, .linear, .snippets, .windowManagement,
-                .clipboard, .emoji
+                .fileSearch, .webSearch, .herdr, .vsCode, .linear, .notes, .snippets,
+                .windowManagement, .clipboard, .emoji, .extensions
             ]
         case .advanced: return [.backup, .miscellaneous, .about]
         }

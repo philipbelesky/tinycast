@@ -56,6 +56,7 @@ struct DoubleTapDetectorTests {
     static func main() {
         modifierGlyphs()
         defaultsKeys()
+        commandActions()
         hyperChord()
         hyperRetargeting()
         firing()
@@ -89,12 +90,11 @@ struct DoubleTapDetectorTests {
 
     /// Every kind of action that can hold a binding, so the sweep below sees the whole key space.
     private static var everyAction: [HotKeyAction] {
-        var actions: [HotKeyAction] = [
-            .togglePalette, .togglePaletteAlternate, .toggleClipboard, .toggleClipboardAlternate,
-            .toggleEmoji, .searchFiles,
+        var actions = HotKeyAction.builtInActions + [
             .app(bundleID: "com.example.app"), .settingsPane(bundleID: "com.example.pane"),
             .customCommand(id: UUID(uuidString: "00000000-0000-0000-0000-0000000000c0")!),
-            .quicklink(id: UUID(uuidString: "00000000-0000-0000-0000-0000000000c1")!)
+            .quicklink(id: UUID(uuidString: "00000000-0000-0000-0000-0000000000c1")!),
+            .extensionCommand(entryID: "extension:example/command")
         ]
         actions += SystemAction.ID.allCases.map { .systemAction(id: $0) }
         actions += WindowCommand.ID.allCases.map { .windowCommand(id: $0) }
@@ -115,6 +115,32 @@ struct DoubleTapDetectorTests {
             HotKeyAction.togglePaletteAlternate.defaultsKey
                 != HotKeyAction.togglePalette.defaultsKey,
             "so does the alternate palette chord")
+    }
+
+    // MARK: - Built-in command mappings
+
+    static func commandActions() {
+        let expected: [(CommandID, HotKeyAction, String)] = [
+            (.clipboardHistory, .toggleClipboard, "hotkey.toggleClipboard"),
+            (.searchEmoji, .toggleEmoji, "hotkey.toggleEmoji"),
+            (.searchFiles, .searchFiles, "hotkey.searchFiles"),
+            (.showNotes, .showNotes, "hotkey.showNotes"),
+            (.createNote, .createNote, "hotkey.createNote"),
+            (.searchNotes, .searchNotes, "hotkey.searchNotes")
+        ]
+        let answers = CommandID.allCases.compactMap { id in id.hotKeyAction.map { (id, $0) } }
+        expect(
+            answers.count == expected.count,
+            "exactly the bindable commands answer — got \(answers.map(\.0.name))")
+        for (id, action, key) in expected {
+            expect(
+                id.hotKeyAction == action && action.defaultsKey == key,
+                "\(id.name) maps to \(key)")
+        }
+        expect(
+            Set(HotKeyAction.builtInActions)
+                .isSuperset(of: Set(CommandID.allCases.compactMap(\.hotKeyAction))),
+            "every bindable command appears among the built-in hotkey actions")
     }
 
     // MARK: - The Hyper chord
