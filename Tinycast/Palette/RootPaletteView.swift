@@ -162,7 +162,7 @@ struct RootPaletteView: View {
         }
         // The window's frame is the size source, so the glass and clip stay matched.
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(Theme.Colors.panelTint)
+        .background(Theme.Colors.panelScrim)
         .background(VisualEffectView())
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous))
         // Every show bumps focusToken: refocus search and drop any menu left open.

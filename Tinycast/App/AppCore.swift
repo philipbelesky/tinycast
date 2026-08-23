@@ -113,6 +113,8 @@ final class AppCore {
         settings: settings, appIndex: appIndex, session: fileSearch, palette: palette,
         paletteCoordinator: paletteCoordinator, core: self)
 
+    @ObservationIgnored private var appearanceObservation: NSKeyValueObservation?
+
     @ObservationIgnored private lazy var windowController = PaletteWindowController(core: self)
     @ObservationIgnored private lazy var messageHUD = MessageHUDController(settings: settings)
     /// Every confirmation, report and prompt; it also stops a held hotkey stacking them.
@@ -138,8 +140,8 @@ final class AppCore {
             // Shorten AppKit's ~2–3s tooltip delay; registration domain, so a user default wins.
             UserDefaults.standard.register(defaults: ["NSInitialToolTipDelay": 250])
             NSApp.setActivationPolicy(.accessory)
-            // Force light: the Liquid Glass material is tuned for a bright frosted surface.
-            NSApp.appearance = NSAppearance(named: .aqua)
+            applyAppearance()
+            observeEffectiveAppearance()
 
             clipboardStore.maxAge = settings.clipboardRetention.maxAge
             // Defer the SQLite read + prune off the launch path; the palette fills in later.
@@ -319,6 +321,21 @@ final class AppCore {
         track(
             { _ = $0.snippetsShowInLauncher },
             reproject: { $0.snippetExpansion.applySnippetsLauncherPresence() })
+        track({ _ = $0.appearance }, reproject: { $0.applyAppearance() })
+    }
+
+    /// `.system` resolves to `nil`, which is what makes AppKit follow macOS without anything polling.
+    private func applyAppearance() {
+        NSApp.appearance = settings.appearance.nsAppearance
+    }
+
+    /// Covers our own assignment and a macOS change alike, which is why `IconCache` is told here
+    /// rather than from `applyAppearance()` — under `.system` that one never fires.
+    private func observeEffectiveAppearance() {
+        // Synchronous on main, so no row can cache a tile under the outgoing appearance's key.
+        appearanceObservation = NSApp.observe(\.effectiveAppearance, options: [.initial]) { app, _ in
+            MainActor.assumeIsolated { IconCache.setDarkSurface(app.effectiveAppearance.isDark) }
+        }
     }
 
     /// Fires synchronously on main before the write lands, so the task re-arms and re-reads.

@@ -55,7 +55,8 @@ run emoji-test             Tinycast/Features/Emoji/Model/EmojiCatalog.swift \
                            Tinycast/Features/Emoji/Model/EmojiData.generated.swift
 run palette-selection-test Tinycast/Features/PaletteRowIndex.swift \
                            Tinycast/Features/Emoji/Model/EmojiGridGeometry.swift
-run palette-placement-test Tinycast/DesignSystem/Theme.swift \
+run palette-placement-test Tinycast/Platform/Appearance.swift \
+                           Tinycast/DesignSystem/Theme.swift \
                            $L/ScopeTint.swift \
                            Tinycast/Palette/PalettePlacement.swift
 run scroll-reveal-test     Tinycast/DesignSystem/Scrolling/SelectionReveal.swift
@@ -72,13 +73,19 @@ run hotkey-test            Tinycast/Features/HotKeys/Model/DoubleTapModifier.swi
                            Tinycast/Features/HotKeys/Service/KeyShortcut.swift \
                            Tinycast/Features/SystemActions/Model/SystemAction.swift \
                            Tinycast/Features/WindowManagement/WindowCommand.swift
-run callout-test           Tinycast/DesignSystem/Theme.swift \
+run callout-test           Tinycast/Platform/Appearance.swift \
+                           Tinycast/DesignSystem/Theme.swift \
                            $L/ScopeTint.swift \
                            Tinycast/Features/HotKeys/UI/CalloutPlacement.swift
-run icon-cache-test        Tinycast/DesignSystem/Theme.swift \
+run icon-cache-test        Tinycast/Platform/Appearance.swift \
+                           Tinycast/DesignSystem/Theme.swift \
                            $L/ScopeTint.swift \
                            Tinycast/Platform/Images/IconCache.swift
 run system-action-test     Tinycast/Features/SystemActions/Model/SystemAction.swift
+run appearance-test        Tinycast/Platform/Appearance.swift \
+                           $L/ScopeTint.swift \
+                           Tinycast/DesignSystem/Theme.swift \
+                           Tinycast/Features/Settings/AppAppearance.swift
 run volume-test            Tinycast/Features/SystemActions/Model/VolumeLevel.swift
 run window-command-test    Tinycast/Features/WindowManagement/WindowCommand.swift \
                            Tinycast/Features/WindowManagement/WindowLayout.swift \

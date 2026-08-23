@@ -18,6 +18,7 @@ extension SettingsBackup {
             showInMenuBar: UserDefaults.standard.object(forKey: SettingsKey.showInMenuBar) as? Bool
                 ?? true,
             popToRootSeconds: s.popToRootTimeout.rawValue,
+            appearance: s.appearance.rawValue,
             compactMode: s.compactMode,
             showFavoritesInCompactMode: s.showFavoritesInCompactMode,
             searchScopes: s.searchScopes,
@@ -155,6 +156,10 @@ extension SettingsBackup {
         }
         if let secs = s.popToRootSeconds, let timeout = PopToRootTimeout(rawValue: secs) {
             settings.popToRootTimeout = timeout
+            count += 1
+        }
+        if let raw = s.appearance, let appearance = AppAppearance(rawValue: raw) {
+            settings.appearance = appearance
             count += 1
         }
         if let flag = s.compactMode {

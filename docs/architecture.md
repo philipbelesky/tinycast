@@ -119,8 +119,8 @@ imperatively from AppKit.
   `VolumeHUDController` (the level box), both over a shared `HUDPresenter` that owns the
   one-at-a-time, auto-dismiss and fade policy. See [ui.md](ui.md#dialogs--hud).
 
-`NSAlert` is never used, and the app forces `.aqua` globally — the appearance is
-[FORK.md](../FORK.md) divergence 2. Both are load-bearing.
+`NSAlert` is never used, and the appearance is a setting resolved per token rather than a global
+lock — [FORK.md](../FORK.md) divergence 2. Both are load-bearing.
 
 ## Observation
 

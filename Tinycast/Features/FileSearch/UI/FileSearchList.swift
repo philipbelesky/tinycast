@@ -64,7 +64,7 @@ private struct FileSearchRow: View {
                     Image(nsImage: image).resizable()
                 } else {
                     RoundedRectangle(cornerRadius: Theme.Radius.thumbnail, style: .continuous)
-                        .fill(Color.white.opacity(0.06))
+                        .fill(Theme.Colors.iconPlaceholder)
                 }
             }
             .frame(width: Theme.Size.rowIcon, height: Theme.Size.rowIcon)

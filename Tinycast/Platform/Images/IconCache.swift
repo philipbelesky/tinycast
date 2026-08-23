@@ -76,17 +76,35 @@ enum IconCache {
         return icon
     }
 
-    /// The variant is part of the key, so one symbol can be both an inked tile and a tinted one.
+    /// Tiles rasterize off-main, where a dynamic `NSColor` resolves wrong, so carry the surface.
+    private static let darkSurface = Mutex(false)
+
+    /// Only a real change purges: `effectiveAppearance` fires for more than a light/dark flip.
+    @MainActor static func setDarkSurface(_ isDark: Bool) {
+        let changed = darkSurface.withLock { surface -> Bool in
+            defer { surface = isDark }
+            return surface != isDark
+        }
+        guard changed else { return }
+        cache.removeAllObjects()
+        purgeFitted()
+    }
+
+    /// The variant and the surface are both part of the key, so one symbol can be an inked tile,
+    /// a tinted one, and either of those on either appearance.
     private static func symbolKey(_ name: String, tint: ScopeTint?) -> NSString {
-        ("symbol:" + name + ":" + (tint?.rawValue ?? "")) as NSString
+        let surface = darkSurface.withLock { $0 } ? "dark" : "light"
+        return "symbol:\(surface):\(name):\(tint?.rawValue ?? "")" as NSString
     }
 
     /// Command icons: a symbol on a tile; a tint reverses the glyph out of its category fill.
     static func symbolIcon(named name: String, tint: ScopeTint? = nil) -> NSImage {
         let key = symbolKey(name, tint: tint)
         if let cached = cache.object(forKey: key) { return cached }
-        let fill = tint.map(Theme.Colors.tile) ?? .black.withAlphaComponent(0.08)
-        let ink: NSColor = tint == nil ? .black.withAlphaComponent(0.80) : .white
+        let plainInk: CGFloat = darkSurface.withLock { $0 } ? 1 : 0
+        let fill = tint.map(Theme.Colors.tile) ?? .srgbInk(plainInk, alpha: 0.09)
+        // A tinted tile keeps white ink in both appearances; the tint carries the contrast.
+        let ink: NSColor = tint == nil ? .srgbInk(plainInk, alpha: 0.85) : .white
 
         let side = displayPixel
         let image = NSImage(size: NSSize(width: side, height: side), flipped: false) { _ in

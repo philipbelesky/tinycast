@@ -1,8 +1,10 @@
 # Fork
 
-This checkout is a **fork of [`abue-ammar/tinycast`](https://github.com/abue-ammar/tinycast)**, which is
-the `origin` remote and the mainline this file calls **upstream**. Fork work lives on branch `philip`;
-`main` tracks `origin/main` untouched, so it is always a clean mirror of upstream.
+This checkout is a **fork of [`abue-ammar/tinycast`](https://github.com/abue-ammar/tinycast)**, the
+mainline this file calls **upstream** and the `upstream` remote. `origin` is the fork itself,
+`philipbelesky/tinycast`, and fork work lives on its default branch `philip`. There is no local mirror
+branch: `main` was deleted on 2026-08-23 because it had drifted off upstream and was being mistaken for
+the fork's own state. Compare against `upstream/main` after a `git fetch upstream`.
 
 It is a **personal** fork, and a permanent one. It ships to the author's own Macs and nowhere else, so
 nothing here is waiting to become a pull request — the "Upstreamable?" column below is a note on how
@@ -28,7 +30,7 @@ themselves are in [AGENTS.md](AGENTS.md#non-negotiables). This file covers only 
 | # | Divergence | Upstream conflict risk | Upstreamable? |
 | --- | --- | --- | --- |
 | 1 | [Apple Development signing](#1--apple-development-signing) | Low, but silently reverted by `xcodegen` | No — machine-specific |
-| 2 | [Forced light appearance](#2--forced-light-appearance) | **High** — contradicts upstream decision 4 | No — it inverts a stated invariant |
+| 2 | [Light by default](#2--light-by-default) | Low — one line in `AppSettings.init` | No — a preference, not a feature |
 | 3 | [`Theme.scale`](#3--themescale-and-derived-typography) | **High** — rewrites `Theme.swift` wholesale | Plausibly yes |
 | 4 | [Scope keywords + web search](#4--scope-keywords-and-web-search) | Medium — hooks into `AppIndex`, `RootPaletteView`, `AppEntry.Kind` | Yes, as a feature |
 | 5 | [herdr opener](#5--herdr-opener) | Medium — the same `AppEntry.Kind` surface as 4 | Unlikely — niche third-party tool |
@@ -92,59 +94,71 @@ build fails outright when `CODE_SIGN_IDENTITY` names an identity the keychain do
 
 ---
 
-## 2 — Forced light appearance
+## 2 — Light by default
 
-**Touches:** `AppCore.swift`, `Theme.swift` (the `Colors` block), `IconCache.swift`, nine view and window
-files, and five docs.
+**Touches:** `AppSettings.init` — one line.
 
-Upstream is locked to `.darkAqua` and says so as a non-negotiable: decision 4 calls light mode "not a
-switch, it is a second design", and [ui.md](docs/ui.md) builds a whole white-alpha ramp on top of that
-assumption. **This fork inverts it**: `NSApp.appearance = NSAppearance(named: .aqua)`, and the ramp is
-black-alpha over a bright frosted surface. The rest of this section is the second design that decision 4
-said would be required — so expect to re-do it, not merely re-apply it, whenever upstream restyles.
+Upstream's `AppAppearance` defaults to `.system`. This fork defaults to `.light`, because it shipped
+light-only for its whole life and an update that silently flipped the app to dark on a dark-mode Mac
+would read as a bug. Everything else about appearance is upstream's, unmodified.
 
-The fork-local docs have been rewritten to describe light as the invariant, which means **AGENTS.md,
-docs/ui.md, docs/architecture.md and docs/features/launcher.md all conflict with any
-upstream edit to the same passages.** When they do, take upstream's *substance* and re-invert only the
-appearance claim; do not take upstream's paragraph wholesale, or the docs will start lying about the
-code again.
+### This used to be the whole second design
 
-### What actually changed
+Until upstream's [#274](https://github.com/abue-ammar/tinycast/pull/274) this divergence inverted a
+stated upstream invariant. Upstream forced `.darkAqua` with a white-alpha ramp; the fork forced
+`.aqua` with a black-alpha one, rewrote `Theme.Colors`, `IconCache` and nine view files to match, and
+re-pointed five docs at light as the invariant. The section used to open by warning that upstream
+restyling would mean re-doing the design rather than re-applying it.
 
-| Layer | Change |
-| --- | --- |
-| Appearance | `AppCore.start()` sets `.aqua`, not `.darkAqua` |
-| Panel surface | `panelDimming` (a `CGFloat` composed as `Color.black.opacity(…)` at four call sites) became **`panelTint`**, a `Color` — white 0.55 |
-| Marking colors | `selection` `rowHover` `menuHover` `separator` `controlSurface` `border` `textSecondary` `textTertiary` `cardStroke` all flipped white-alpha → black-alpha |
-| Lifting colors | `cardFill` (white 0.45) and `glassFrost` (white 0.30) stayed white — they lift a surface off the material rather than mark something on it |
-| Rasterized art | `IconCache.symbolIcon` draws its tile and glyph in black alphas; it bakes bitmaps, so it cannot inherit the appearance |
-| Caret & tint | `PalettePanel` insertion point → `.labelColor`; the search field's `.tint(.white)` → `.tint(.primary)` |
-| Ad-hoc fills | Icon placeholders (`AppIconView`, `UninstallView`), the onboarding gradient, the volume slider track/knob, the volume HUD bar, the About icon shadow |
+#274 did restyle: appearance became a setting (System / Light / Dark) and every token now resolves
+through `Theme.Colors.ramp(dark:light:)` / `adaptive(dark:light:)`, with the scrim and the glass frost
+inverting rather than ramping. That is a superset of what this fork had built by hand — upstream's
+*light* branch is very nearly the palette this fork was already drawing, down to the white 0.55 panel
+scrim. So the fork took upstream's system **and both of its colour branches** wholesale, and the
+second design is gone. `panelTint` became `panelScrim`; the literals at the ad-hoc call sites became
+`iconPlaceholder`, `sheen` and `textPrimary`.
 
-Deliberately **untouched**: `EdgeDissolve.swift` uses black only as a gradient *mask*, where the color is
-irrelevant, and `ThinScrollbar.swift` already draws in `Color.primary`, which follows the appearance on
-its own. Both are off-limits per AGENTS.md, and neither needed an exception.
+Adopting upstream's numbers rather than pinning the fork's own was deliberate. The fork's light stops
+were mechanical inversions of upstream's dark ones, where upstream's had been tuned for a light
+surface and run slightly stronger — `separator` 0.12 not 0.10, `border` 0.18 not 0.16, `textTertiary`
+0.42 not 0.40. Two of the fork's values were outright bugs of the class the old grep below was written
+to catch, both invisible-on-light whites that the ramp fixes: `dropGuide` at white 0.35 over a
+white-0.55 panel, and `FileSearchList`'s icon placeholder, which the original light conversion missed
+entirely while converting the other two. One value moved visibly and is worth an eye: `cardFill` was a
+bright white-0.45 lift and is now a faint black-0.04 wash on the Settings and calculator cards.
 
 ### The rule that keeps this maintainable
 
-A merged-in view that hardcodes `Color.white.opacity(…)` will be invisible on this surface. After every
-upstream merge, run:
+The old rule was "a merged-in view that hardcodes `Color.white.opacity(…)` will be invisible here".
+It now cuts both ways, so the rule is simpler: **no literal alpha at a call site, in either
+direction.** After every upstream merge, run:
 
 ```sh
-grep -rn "Color\.white\|\.white\.opacity\|NSColor\.white\|darkAqua" --include="*.swift" Tinycast/ \
-  | grep -v "EmojiData.generated\|CurrencyData.generated"
+grep -rn "Color\.white\|Color\.black\|\.white\.opacity\|\.black\.opacity" --include="*.swift" Tinycast/ \
+  | grep -v "EmojiData.generated\|CurrencyData.generated\|DesignSystem/Theme.swift\|Platform/Appearance.swift"
 ```
 
-Every hit is a *lifting* color (`panelTint`, `cardFill`, `glassFrost`, the onboarding gradient), the
-white glyph reversed out of a category tile (`IconCache`, divergence 4 — the tile behind it is
-saturated, so white is the legible ink there), or a bug this fork has to fix. There is no hit that is
-fine by default.
+Six hits are expected, and every one of them is deliberate: `EdgeDissolve`'s four gradient stops, where
+black is *mask luminance* and the colour is irrelevant; `AboutView`'s drop shadow, which is black on
+both surfaces exactly as upstream draws it; and `RootPaletteView`'s alpha-0.001 hit-test plane.
+Anything else is a bug. `appearance-test` pins both branches of every token, so a retune fails the
+suite rather than drifting quietly.
+
+The one colour this fork still owns is the category tile palette (divergence 4), and it has **not**
+been tuned for dark. `Theme.Colors.tile(.black)` in particular draws a black tile on a dark panel; the
+glyph is reversed out in white so it still reads, but the tile itself nearly vanishes into the surface.
 
 ### Not verified visually by an agent
 
-`screencapture` and `osascript` keystrokes are both blocked by TCC from a shell here — ui.md's "Restyle
-from screenshots" note says as much — so the alpha values are reasoned, not eyeballed. `panelTint`, `glassFrost`, `cardFill` and
-`selection` are the four numbers to adjust if the surface reads wrong; they are all in `Theme.Colors`.
+`screencapture` is still blocked by TCC from a shell here — probed again on 2026-08-23, and it fails
+with "could not create image from display" — so the dark surface has not been looked at by eye. What
+*was* verified: a clean Debug build, all 32 harnesses, `appearance-test`'s 57 assertions pinning both
+branches, and a launch of the built app that started and ran without crashing. Dark is upstream's
+shipped baseline rather than anything invented here, which is the main reason to trust it unseen;
+`cardFill` on the Settings pane is the one place the light surface actually moved.
+
+**On merge:** take upstream's `Theme.Colors` whole. The only line to keep is the `.light` fallback in
+`AppSettings.init`.
 
 ---
 
@@ -590,9 +604,8 @@ layer: `HotKeyCenter` already keys registrations by arbitrary string id and has 
 ## Merging upstream
 
 ```sh
-git fetch origin
-git checkout main && git merge --ff-only origin/main   # keep the mirror clean
-git checkout philip && git rebase origin/main           # replay the divergences
+git fetch upstream
+git checkout philip && git rebase upstream/main   # replay the divergences
 ```
 
 Rebase rather than merge, so the fork stays a readable stack of the fifteen commits above rather than a

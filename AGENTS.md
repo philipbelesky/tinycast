@@ -9,7 +9,8 @@ icon (`LSUIElement`). Zero third-party dependencies.
 ## What this checkout is: one person's fork
 
 This is **Philip's personal fork of [`abue-ammar/tinycast`](https://github.com/abue-ammar/tinycast)**,
-on branch `philip`; `main` stays a clean mirror of upstream. It is **not released**: no App Store, no
+on branch `philip`; upstream is tracked through the `upstream` remote, not a local mirror branch. It is
+**not released**: no App Store, no
 notarization, no other users. `./Scripts/build-dmg.sh` drops a DMG into iCloud Drive, which is how it
 reaches the author's other Macs, and that is the whole distribution story
 ([release.md](docs/release.md)).
@@ -93,8 +94,10 @@ feature's doc, under its own `## Invariants`.
 - **Swift 6 language mode: data-race violations are hard errors.** `@MainActor` is the default,
   cross-actor model types are `Sendable`, and heavy or IO-bound work goes off-main as `nonisolated`
   functions driven by `Task.detached`. Do not add a second actor.
-- **The app is locked to `.aqua` globally.** The Liquid Glass material is tuned for a bright frosted
-  surface; dark mode is not a switch, it is a second design. ([FORK.md](FORK.md) divergence 2)
+- **Appearance is a setting, and both colour branches are upstream's.** Every `Theme.Colors` token
+  resolves through `ramp`/`adaptive`; never reintroduce a literal alpha at a call site.
+  `appearance-test` pins both branches, so retuning either is a deliberate re-divergence, not a tweak.
+  ([FORK.md](FORK.md) divergence 2)
 - **Tinycast presents its own dialogs — never `NSAlert`, `NSSlider` or a system popover.** A question
   goes through `DialogController`, a report through a HUD via `HUDPresenter`.
 - **A networked feature's switch is structural, even though they all now ship on.** Currency rates,

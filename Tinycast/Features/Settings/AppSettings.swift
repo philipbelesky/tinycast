@@ -82,6 +82,11 @@ final class AppSettings {
         didSet { defaults.set(popToRootTimeout.rawValue, forKey: Key.popToRootTimeout.rawValue) }
     }
 
+    /// Follow macOS, or pin Tinycast to one appearance. Applied by `AppCore.applyAppearance()`.
+    var appearance: AppAppearance {
+        didSet { defaults.set(appearance.rawValue, forKey: Key.appearance.rawValue) }
+    }
+
     /// Summon the launcher as a slim search bar that expands into the full list on typing.
     var compactMode: Bool {
         didSet { defaults.set(compactMode, forKey: Key.compactMode.rawValue) }
@@ -291,6 +296,9 @@ final class AppSettings {
         popToRootTimeout =
             PopToRootTimeout(rawValue: defaults.integer(forKey: Key.popToRootTimeout.rawValue))
             ?? .immediately
+        // Light, not upstream's `.system`: the fork shipped light-only, so absence means light.
+        appearance =
+            defaults.string(forKey: Key.appearance.rawValue).flatMap(AppAppearance.init) ?? .light
         compactMode = defaults.bool(forKey: Key.compactMode.rawValue)
         // Defaults to true, so absence must be distinguished from a stored `false`.
         showFavoritesInCompactMode =

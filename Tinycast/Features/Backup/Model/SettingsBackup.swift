@@ -23,6 +23,7 @@ struct SettingsBackup: Codable {
         var emojiSkinTone: String?
         var showInMenuBar: Bool?
         var popToRootSeconds: Int?
+        var appearance: String?
         var compactMode: Bool?
         var showFavoritesInCompactMode: Bool?
         var searchScopes: [String]?

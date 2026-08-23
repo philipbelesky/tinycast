@@ -46,7 +46,7 @@ struct AboutView: View {
                 .resizable()
                 .interpolation(.high)
                 .frame(width: Self.iconSize, height: Self.iconSize)
-                .shadow(color: .black.opacity(0.22), radius: 12, y: 6)
+                .shadow(color: .black.opacity(0.35), radius: 12, y: 6)
 
             VStack(spacing: Theme.Spacing.sm) {
                 Text(Bundle.main.appDisplayName)
