@@ -257,8 +257,10 @@ enum Theme {
         /// Category tiles carry a white glyph and are the surface's only category-coded colour.
         static func tile(_ tint: ScopeTint) -> NSColor {
             switch tint {
+            case .red: return .systemRed
+            // The Safari icon's compass blue (sampled mean), so the Quicklinks tile reads as Safari.
+            case .blue: return NSColor(srgbRed: 0.302, green: 0.679, blue: 0.980, alpha: 1)
             case .teal: return .systemTeal
-            case .cyan: return .systemCyan
             case .orange: return .systemOrange
             case .purple: return .systemPurple
             case .brown: return .systemBrown

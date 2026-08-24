@@ -31,7 +31,7 @@
         static let applicationsScope = AppEntry(
             id: "scope:applications", name: "Search Applications",
             url: URL(string: "tinycast://scope/applications")!, bundleID: nil, kind: .scope,
-            symbolName: "square.grid.2x2", symbolTint: .teal)
+            symbolName: "square.grid.2x2", symbolTint: .red)
 
         static let linearScope = AppEntry(
             id: "scope:linear", name: "Search Linear",

@@ -210,8 +210,10 @@ which no tint touches. A web search row has no scope row in the launcher, so it 
 A scope names its colour rather than choosing one: `ScopeDefinition.tint` is a `ScopeTint` case,
 assigned in `ScopeCatalog`, and `Theme.Colors.tile(_:)` is the only place that maps a case to an
 `NSColor`. The model layer stays free of AppKit and `Theme` stays the only token source. `ScopeTint`
-contains only the colour choices currently in use and no `red` — red means destructive here, and a
-tile means nothing at all.
+contains only the colour choices currently in use. Two cases carry owner's calls: `red` is
+Applications' colour by request, accepting the collision with red-as-destructive elsewhere on this
+surface; and `blue` is not `systemBlue` but the Safari icon's own compass blue (the sampled mean of
+its disc), paired with the `safari` glyph so the Quicklinks tile reads as Safari.
 
 `IconCache.symbolIcon(named:tint:)` rasterizes both variants and keys the cache on the tint, so one
 symbol can be an inked tile in Settings and a coloured one in the launcher. Passing no tint is the
