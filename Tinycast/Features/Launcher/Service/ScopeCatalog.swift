@@ -33,11 +33,11 @@ enum ScopeCatalog {
     private static let filters: [Entry] = [
         Entry(
             definition: ScopeDefinition(
-                keyword: "a", id: applications, title: "Applications", symbol: "square.grid.2x2", tint: .teal),
+                keyword: "a", id: applications, title: "Applications", symbol: "square.grid.2x2", tint: .red),
             target: .kinds([.application, .systemSettings])),
         Entry(
             definition: ScopeDefinition(
-                keyword: "q", id: quicklinks, title: "Quicklinks", symbol: Quicklink.sfSymbol, tint: .cyan),
+                keyword: "q", id: quicklinks, title: "Quicklinks", symbol: "safari", tint: .blue),
             target: .kinds([.quicklink])),
         Entry(
             definition: ScopeDefinition(
