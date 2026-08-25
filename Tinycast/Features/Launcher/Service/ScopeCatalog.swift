@@ -107,13 +107,23 @@ enum ScopeCatalog {
         allDefinitions(settings: settings).first { $0.id == id }
     }
 
-    /// The tile colour a kind wears, so a row matches the scope that narrows the list to it.
-    /// Settings play no part: a row's colour cannot depend on whether its keyword is live.
-    static func tint(for kind: AppEntry.Kind) -> ScopeTint? {
+    /// The scope holding this kind. Settings play no part: a row's category cannot depend on
+    /// whether its keyword is live.
+    private static func filterDefinition(for kind: AppEntry.Kind) -> ScopeDefinition? {
         filters.first { entry in
             guard case .kinds(let kinds) = entry.target else { return false }
             return kinds.contains(kind)
-        }?.definition.tint
+        }?.definition
+    }
+
+    /// The tile colour a kind wears, so a row matches the scope that narrows the list to it.
+    static func tint(for kind: AppEntry.Kind) -> ScopeTint? {
+        filterDefinition(for: kind)?.tint
+    }
+
+    /// The glyph the launcher list gives a kind's rows: the scope's own, inherited literally.
+    static func symbol(for kind: AppEntry.Kind) -> String? {
+        filterDefinition(for: kind)?.symbol
     }
 
     /// Only the scopes that can currently do something: a disabled feature offers no keyword.

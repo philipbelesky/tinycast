@@ -206,7 +206,10 @@ Every scope also **publishes a row of its own** (`AppEntry.Kind.scope`, `AppInde
 the empty query and wearing a coloured category tile — `ScopeTint`, `Theme.Colors.tile(_:)` and the
 tinted branch of `IconCache.symbolIcon(named:tint:)`, all documented in
 [ui.md](docs/ui.md#category-tiles). That tile is the only white ink on this surface that divergence 2
-does not treat as a bug.
+does not treat as a bug. The rows a scope reveals wear the whole tile too: `AppEntry.categoryIconSource`
+gives the launcher list the scope's glyph as well as its tint, while `iconSource` keeps the per-entry
+answer everywhere an entry stands for itself, with `AppIconView`'s `source:` parameter carrying the
+choice.
 
 This is the divergence most worth offering upstream — it is additive, it invents no new architecture,
 and the grammar is pure and tested. Until then, the conflict surface is what it touches: `AppIndex`

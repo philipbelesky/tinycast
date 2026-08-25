@@ -41,7 +41,7 @@ These are the things that quietly break the look if changed. Preserve them unles
 - **Don't use the native scroll edge effect.** Inside a transparent panel it renders a hard-bounded rectangle. Use `edgeDissolve()`.
 - **Test over a dark desktop.** Transparency and corner masking bugs only show where the wallpaper contrasts with the panel; bright wallpaper hides them under a light surface.
 - **No `NSAlert`, no `NSSlider`, no system popovers.** Every confirmation, failure report, value prompt and transient readout is Tinycast's own SwiftUI surface (see "Dialogs & HUD"). An Aqua alert on a black-alpha-over-vibrancy app reads as a different product, and its `runModal` run loop keeps Carbon hotkeys firing underneath.
-- **A dialog has three independent axes; never let one infer another.** The **icon** (`DialogRequest.symbol`, required) is always the *subject's* own glyph — a command being confirmed uses its `SystemAction.sfSymbol`, so the Restart dialog shows the same icon as the Restart row. Tone never picks an icon. The **tone** (`DialogTone`: `.neutral` / `.success` / `.danger`) tints only that glyph. The **button** takes its color from `DialogAction.Role` (`.standard` `.primary` / `.destructive` red / `.cancel` secondary), so a red-glyph security warning can still carry a plain primary button — as "Import executable commands?" does.
+- **A dialog has three independent axes; never let one infer another.** The **icon** (`DialogRequest.symbol`, required) is always the *subject's* own glyph — a command being confirmed uses its `SystemAction.sfSymbol`, naming the action itself rather than the category tile its launcher row wears. Tone never picks an icon. The **tone** (`DialogTone`: `.neutral` / `.success` / `.danger`) tints only that glyph. The **button** takes its color from `DialogAction.Role` (`.standard` `.primary` / `.destructive` red / `.cancel` secondary), so a red-glyph security warning can still carry a plain primary button — as "Import executable commands?" does.
 - **Resolve every glyph through `SymbolImage`, not `Image(systemName:)`.** Some catalog symbols are bundled assets in `Assets.xcassets` (`toggleBluetooth`), and `Image(systemName:)` silently renders nothing for those.
 - **↵ runs the primary action, Escape cancels, and Cancel always renders leading** (the left button), matching macOS convention. A button never prints its key cap; hovering it shows a `Tooltip` instead, styled like the palette's own keycap chips.
 - **A transient readout is a HUD, not a dialog.** `VolumeHUDController`'s box is volume and mute only, since that one needs an actual level and number; every other success or info confirmation goes through `MessageHUDController`'s pill, whose trailing glyph *is* its `DialogTone`. A pill has no subject to name, so the icon rule above does not apply to it — and that mapping stays file-scoped so nothing can reach for it when building a `DialogRequest`. A new HUD means a new presenter, not a second shape bolted onto an existing controller.
@@ -199,13 +199,16 @@ opens with — carries a distinctive tile with the glyph reversed out in **white
 told apart at a glance rather than read. An entry with no category tint keeps the ordinary tile, black
 0.08 with black-0.80 ink.
 
-**The rows a scope reveals wear its colour too.** A herdr tab, a quicklink and a Linear view each take
-the tile of the scope that narrows the list to them, so the row and the scope that leads to it read as
-one category — `ScopeCatalog.tint(for:)` maps `AppEntry.Kind` back to the scope holding it, and
-`AppEntry.tileTint` prefers a scope row's own colour before falling back to it. Per-entry glyphs stay:
-a window layout and a Linear initiative keep the symbol that tells them apart from their neighbours,
-and only the tile behind it is shared. Applications are unaffected — they draw their real file icon,
-which no tint touches. A web search row has no scope row in the launcher, so it keeps the inked tile.
+**The rows a scope reveals wear its whole tile — glyph as well as colour.** In the launcher's list a
+herdr tab, a quicklink and an application each draw the tile of the scope that narrows the list to
+them, glyph included, so a category is one repeated mark and a row's identity is its title. This is
+the owner's call, superseding the earlier per-entry glyphs — an application row draws the red grid
+tile in the list, not its file icon. `ScopeCatalog.tint(for:)` and `symbol(for:)` map `AppEntry.Kind`
+back to the scope holding it; `AppEntry.categoryIconSource` is the list's answer, and `iconSource`
+stays everyone else's. Where an entry stands for itself — the favorites strip, a Settings item list,
+an app picker — it keeps its real file icon or per-entry glyph, which is also what keeps the
+quicklink icon picker meaningful. A web search row keeps its engine's glyph on the inked tile: each
+engine is its own scope, so the rule holds of itself.
 
 A scope names its colour rather than choosing one: `ScopeDefinition.tint` is a `ScopeTint` case,
 assigned in `ScopeCatalog`, and `Theme.Colors.tile(_:)` is the only place that maps a case to an
@@ -378,7 +381,8 @@ sole owner rule) and is the only presenter, so every confirmation in the app loo
   whole point of the design, and collapsing any two of them back together is a regression.
 - **Icon.** `DialogRequest.symbol` is required and is always the subject's own glyph: a system
   command passes its `SystemAction.sfSymbol`, so the Restart dialog shows `arrow.clockwise` and
-  Empty Trash shows `trash.slash` — the same glyph as the launcher row the user just activated.
+  Empty Trash shows `trash.slash` — the action's own mark, where its launcher row wears the
+  category tile.
   Custom commands use `terminal`, the backup flows `square.and.arrow.up` / `.down`. Symbols render
   through `SymbolImage` (`DesignSystem/SymbolImage.swift`), never raw `Image(systemName:)`, because some
   catalog symbols are bundled template assets rather than SF Symbols — `toggleBluetooth` ships its
