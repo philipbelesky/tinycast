@@ -242,8 +242,8 @@ off, so a toggle can't leave the section and its commands out of step. See
 ## VS Code projects
 
 `AppEntry.Kind.vsCodeProject` publishes what VS Code has opened, re-read each time the palette opens
-and pruned of anything no longer on disk. It is the only synthetic kind that draws a **real file
-icon** rather than an SF Symbol, and so the only one that can be revealed in Finder. The slice keeps
+and pruned of anything no longer on disk. It is the only synthetic kind backed by a **real file**,
+and so the only one that can be revealed in Finder. The slice keeps
 the store's recency order instead of being alphabetized. See [vscode.md](vscode.md).
 
 ## herdr

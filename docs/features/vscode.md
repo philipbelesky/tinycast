@@ -56,9 +56,9 @@ palette opens → PaletteCoordinator.onShow → VSCodeCoordinator.refresh
 Opening goes through `NSWorkspace`, not the `code` CLI: a GUI app inherits none of a login shell's
 `PATH`, and the shell wrapper only ends up calling the same app anyway.
 
-A row's icon is the real file icon rather than an SF Symbol, so a folder and a `.code-workspace` look
-as different in the palette as they do in Finder, and **⌘↵ reveals the project in Finder** like any
-other file-backed entry.
+In the launcher list a row wears the VS Code scope's tile like every scoped kind
+([ui.md](../ui.md#category-tiles)); where the entry stands for itself it keeps the real file icon,
+and **⌘↵ reveals the project in Finder** like any other file-backed entry.
 
 ## What a row reads
 

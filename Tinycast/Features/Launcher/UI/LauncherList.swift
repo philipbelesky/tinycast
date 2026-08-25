@@ -269,7 +269,7 @@ private struct AppRow: View {
 
     var body: some View {
         HStack(spacing: Theme.Spacing.lg) {
-            AppIconView(app: app)
+            AppIconView(app: app, source: app.categoryIconSource)
                 .frame(width: Theme.Size.rowIcon, height: Theme.Size.rowIcon)
                 .overlay(alignment: .bottom) {
                     if running {

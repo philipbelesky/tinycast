@@ -147,14 +147,26 @@ struct AppEntry: Identifiable, Hashable, Sendable {
     /// Synthetic entries have no file to reveal; a destination is its record's own action.
     var canRevealInFinder: Bool { kind.descriptor.canRevealInFinder }
 
-    /// What this row draws, and the only thing any icon path needs to ask.
+    /// What this row draws where the entry stands for itself — Settings lists, pickers, favorites.
     @MainActor var iconSource: EntryIcon {
         if let iconOverride { return iconOverride }
         guard kind.descriptor.isSymbolIcon else { return .file }
         let name = symbolName ?? kindSymbol
         guard let tint = tileTint else { return .symbol(name) }
-        return .tintedSymbol(
-            name: name, tint: SymbolTint(key: tint.rawValue, color: Theme.Colors.tile(tint)))
+        return tile(name, tint)
+    }
+
+    /// The launcher list's answer instead: a row wears its scope's glyph as well as its colour, so
+    /// results read as categories — owner's call, docs/ui.md#category-tiles.
+    @MainActor var categoryIconSource: EntryIcon {
+        guard let symbol = ScopeCatalog.symbol(for: kind), let tint = tileTint else {
+            return iconSource
+        }
+        return tile(symbol, tint)
+    }
+
+    @MainActor private func tile(_ name: String, _ tint: ScopeTint) -> EntryIcon {
+        .tintedSymbol(name: name, tint: SymbolTint(key: tint.rawValue, color: Theme.Colors.tile(tint)))
     }
 
     private var kindSymbol: String {
@@ -185,9 +197,6 @@ struct AppEntry: Identifiable, Hashable, Sendable {
         IconCache.observeStyle()
         return IconCache.icon(for: iconSource, fileURL: url)
     }
-
-    /// Icon identity for a row's async load: re-skinning changes the glyph while `id` stays put.
-    @MainActor var iconKey: String { "\(id)|\(iconSource)" }
 }
 
 extension AppEntry.Kind {

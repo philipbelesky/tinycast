@@ -44,7 +44,8 @@ shadow: a one-letter "scheme" is a Windows drive letter, and a `scheme:` whose r
 digits is a `host:port`. A literal space is rescued by encoding it; anything else illegal is a real
 error, since blanket re-encoding would corrupt the `%xx` the template engine already produced.
 
-The detected kind decides the icon a row draws when the quicklink has no icon of its own, and
+The detected kind decides the icon the quicklink carries when it has none of its own — drawn in
+Settings; the launcher list wears the scope's glyph ([ui.md](../ui.md#category-tiles)) — and
 `usesURLEncoding` decides whether substituted values are percent-encoded. That question is answered
 from the link's **prefix**, not from a parsed destination, because the encoding has to be chosen
 before the placeholders are resolved.
