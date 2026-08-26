@@ -104,6 +104,7 @@ struct FuzzTest {
 
     static func main() {
         displayNameRanking()
+        wordOrder()
         fieldPriority()
         userAliases()
         alternateNameSanitizing()
@@ -171,6 +172,54 @@ struct FuzzTest {
             "only subsequence is non-literal",
             [FuzzyMatch.Tier.exact, .prefix, .wordStart, .substring].allSatisfy(\.isLiteral)
                 && !FuzzyMatch.Tier.subsequence.isLiteral)
+    }
+
+    // MARK: - Word order
+
+    static func wordOrder() {
+        print("\n# word order")
+
+        check(
+            "a reordered query still finds the entry",
+            rank("code visual").contains("Visual Studio Code"), "got \(rank("code visual"))")
+        check(
+            "a reordering never claims a literal tier, however well it fits",
+            FuzzyMatch.match(query: "sharing screen", candidate: "Screen Sharing")?.tier
+                == .subsequence)
+        check(
+            "a reordering of an interior phrase matches too",
+            FuzzyMatch.match(query: "exchange file", candidate: "Bluetooth File Exchange")?.tier
+                == .subsequence)
+        check(
+            "a reordered hit still tops a query nothing else answers",
+            rank("sharing screen").first == "Screen Sharing", "got \(rank("sharing screen"))")
+        check(
+            "an entry matched in the typed order outranks one matched only reordered",
+            SearchRelevance.score(query: "annual report", fields: SearchFields(names: ["Report Annual"]))!
+                < SearchRelevance.score(
+                    query: "annual report", fields: SearchFields(names: ["Annual Reporting Notes"]))!)
+        check(
+            "a reordering cannot rescue an identifier field",
+            SearchRelevance.score(
+                query: "apple com",
+                fields: SearchFields(names: ["\u{FFFF}"], bundleID: "com.apple.safari")) == nil)
+        check(
+            "the typed order still wins the entry it already matched",
+            rank("screen sharing").first == "Screen Sharing", "got \(rank("screen sharing"))")
+        // "b a" is a substring of "ab a b" and "a b" a word-start hit, which would outscore it.
+        check(
+            "a literal hit in the typed order is never displaced by a reordering",
+            FuzzyMatch.match(query: "b a", candidate: "ab a b")?.tier == .substring)
+        check("three words reorder", FuzzyMatch.match(query: "a b c", candidate: "c b a") != nil)
+        check(
+            "four words do not, so the variant count stays bounded",
+            FuzzyMatch.match(query: "a b c d", candidate: "d c b a") == nil)
+        check(
+            "a word matching no order still matches nothing",
+            FuzzyMatch.match(query: "zzz screen", candidate: "Screen Sharing") == nil)
+        check(
+            "a reordering cannot pull in an unrelated entry",
+            !rank("sharing screen").contains("Chess"), "got \(rank("sharing screen"))")
     }
 
     // MARK: - Field priority

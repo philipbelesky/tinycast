@@ -45,6 +45,7 @@ themselves are in [AGENTS.md](AGENTS.md#non-negotiables). This file covers only 
 | 14 | [Xcode only, no LSP scaffolding](#14--xcode-only-no-lsp-scaffolding) | Medium — five upstream files deleted | No — upstream supports both editors |
 | 15 | [Networked features default on](#15--networked-features-default-on) | **High** — deletes all four consent sheets upstream considers structural | No — it inverts a stated invariant |
 | 16 | [Second chords for the palette and the clipboard history](#16--second-chords-for-the-palette-and-the-clipboard-history) | Medium — two new `HotKeyAction` cases, so every exhaustive switch over them | Yes, small — but it only pays off with sync |
+| 17 | [Word-order-independent matching](#17--word-order-independent-matching) | Medium — reshapes `FuzzyMatch.Query` and `match`, which upstream is actively editing | Yes, as a feature |
 
 Keep each divergence as **its own commit**, never squashed together. Rebasing `philip` onto a new
 `origin/main` then replays them one at a time, and a divergence that upstream has since made redundant
@@ -567,6 +568,37 @@ adding one is a decision rather than a default.
 switches — take upstream's cases and re-add these two beside them. If upstream ever ships its own
 second binding, drop this divergence whole rather than reconciling it. Nothing here touches the Carbon
 layer: `HotKeyCenter` already keys registrations by arbitrary string id and has always supported N.
+
+## 17 — Word-order-independent matching
+
+**Touches:** `Launcher/Model/SearchRelevance.swift` — `FuzzyMatch.Query`, `FuzzyMatch.match` and two
+new private helpers — plus a `wordOrder()` section in `Tests/fuzz-test.swift` and
+`docs/features/launcher.md`.
+
+Upstream matches the query as one string in the order typed, so `pr terminal` finds nothing named
+`Terminal PRs`: neither the substring pass nor the subsequence walk can go backwards. That suits app
+names, which are short and which people type from the front. It suits none of the entry kinds this
+fork added — quicklinks, herdr workspaces, VS Code projects, Linear views — whose names are phrases the
+owner wrote (`Work / Terminal PRs`) and recalls by content rather than by order.
+
+`FuzzyMatch.Query` now folds every reordering of a two- or three-word query alongside the order typed,
+once per keystroke rather than once per candidate. A reordering is scored by the **subsequence walk
+alone**, never by the tier ladder, and that restraint is what keeps the change additive: every literal
+tier and every band still means what it meant, a reordered hit always sits below an in-order one, and
+identifier fields — which already refuse the subsequence band — refuse reorderings for free. Three
+words is the cap because the twenty-fourth permutation is where the factorial stops being free.
+
+`Tests/file-search-test.swift` is what found the right rule. Scoring reorderings on the full ladder
+let a file named `Report Annual` outrank `Annual Reporting Notes` for `annual report`, which is the
+change nobody asked for; the harness already pinned that ordering, and it still passes untouched.
+
+**On merge:** medium risk, and upstream is live in this file — `origin/main` has since added
+`FuzzyMatch.score(_:candidate:)`, `isExact(_:candidate:)` and a folded
+`SearchRelevance.score(_:fields:)` that this branch has not yet absorbed. `isExact` reads `query.text`,
+which is now `query.natural.text`; that rename is the whole fixup. Take the folded-`Query` overloads
+when they arrive — they are the same once-per-keystroke optimisation this divergence is built on.
+
+---
 
 ## Merging upstream
 

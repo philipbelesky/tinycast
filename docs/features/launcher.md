@@ -57,6 +57,13 @@ frecency boost (frequency plus decaying recency). The boost can reorder results 
 tier but cannot make a weaker match kind beat a stronger one. Matching strips invisible Unicode
 format scalars first, since app metadata can contain bidi/zero-width markers before the visible name.
 
+A query of two or three words matches in **any order**: `FuzzyMatch.Query` folds each reordering of its
+words once per keystroke, so `pr terminal` finds `Terminal PRs`. A reordering is scored by the
+subsequence walk alone, however exactly it fits — the order typed is evidence, so a reordering rescues
+an entry the typed order missed and never outranks one it found. Four words are matched only as typed,
+because the twenty-fourth permutation is where the factorial stops being free. The words are rejoined
+with a single space, so a name carrying no separator there (`TerminalPRs`) is out of reach.
+
 ## Searchable fields
 
 An app is matched on five fields kept deliberately separate — flattening them into one string would
@@ -93,9 +100,9 @@ wins outright.
 
 Identifier fields never subsequence-match — reverse-DNS text is a subsequence of nearly every short
 query (`cop` ⊂ `com.apple.Photos`), which would change _which_ apps appear rather than just their
-order. For the same reason a bundle id is matched with its leading component stripped
-(`apple.Photos`, not `com.apple.Photos`): `com` alone prefixes almost every installed app. The full id
-still matches exactly, so a pasted identifier resolves.
+order — and, for free, no reordering reaches them either. For the same reason a bundle id is matched
+with its leading component stripped (`apple.Photos`, not `com.apple.Photos`): `com` alone prefixes
+almost every installed app. The full id still matches exactly, so a pasted identifier resolves.
 
 ### Category search
 

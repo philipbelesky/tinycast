@@ -21,13 +21,25 @@ enum FuzzyMatch {
 
     /// A query folded once, so ranking doesn't re-fold it for every candidate field.
     struct Query: Sendable {
-        fileprivate let text: String
-        /// Folded once too: the subsequence pass needs random access on every candidate.
-        fileprivate let characters: [Character]
-        var isEmpty: Bool { text.isEmpty }
+        fileprivate let natural: Variant
+        fileprivate let reorderings: [Variant]
+        var isEmpty: Bool { natural.text.isEmpty }
 
         init(_ raw: String) {
-            text = FuzzyMatch.normalized(raw)
+            let text = FuzzyMatch.normalized(raw)
+            natural = Variant(text)
+            reorderings = FuzzyMatch.reorderings(of: text)
+        }
+    }
+
+    /// One spelling of the query — the order typed, or a reordering of its words.
+    fileprivate struct Variant: Sendable {
+        let text: String
+        /// Folded once too: the subsequence pass needs random access on every candidate.
+        let characters: [Character]
+
+        init(_ text: String) {
+            self.text = text
             characters = Array(text)
         }
     }
@@ -38,10 +50,23 @@ enum FuzzyMatch {
     }
 
     static func match(_ query: Query, candidate: String) -> Match? {
-        let q = query.text
+        guard !query.isEmpty else { return Match(tier: .exact, score: 0) }
         let c = normalized(candidate)
-        guard !q.isEmpty else { return Match(tier: .exact, score: 0) }
+        let typed = match(query.natural, in: c)
+        // The order typed is evidence, so a reordering only ever scores as the subsequence it is.
+        if let typed, typed.tier.isLiteral { return typed }
 
+        var best = typed
+        for variant in query.reorderings {
+            guard let score = subsequenceScore(variant.characters, c) else { continue }
+            if score > (best?.score ?? Int.min) { best = Match(tier: .subsequence, score: score) }
+        }
+        return best
+    }
+
+    /// The full tier ladder, for the order the user actually typed.
+    private static func match(_ variant: Variant, in c: String) -> Match? {
+        let q = variant.text
         if c == q { return Match(tier: .exact, score: 100_000) }
         if c.hasPrefix(q) { return Match(tier: .prefix, score: 90_000 - c.count) }
 
@@ -52,7 +77,7 @@ enum FuzzyMatch {
                 score: (atWordStart ? 80_000 : 70_000) - c.count)
         }
 
-        guard let sub = subsequenceScore(query.characters, c) else { return nil }
+        guard let sub = subsequenceScore(variant.characters, c) else { return nil }
         return Match(tier: .subsequence, score: sub)
     }
 
@@ -73,6 +98,30 @@ enum FuzzyMatch {
 
     /// The widest score `match` returns; the bands are sized off it so they never overlap.
     static let maximumScore = 100_000
+
+    /// Past three words the factorial stops being cheap, and a query that long is specific already.
+    private static let maximumReorderedWords = 3
+
+    /// Word order is the user's habit, not the entry's: `pr terminal` has to find `Terminal PRs`.
+    private static func reorderings(of text: String) -> [Variant] {
+        let words = text.split(whereSeparator: \Character.isWhitespace).map(String.init)
+        guard words.count > 1, words.count <= maximumReorderedWords else { return [] }
+        var seen: Set<String> = [text]
+        return permutations(of: words).compactMap { order in
+            let spelling = order.joined(separator: " ")
+            guard seen.insert(spelling).inserted else { return nil }
+            return Variant(spelling)
+        }
+    }
+
+    private static func permutations(of words: [String]) -> [[String]] {
+        guard words.count > 1 else { return [words] }
+        return words.indices.flatMap { index -> [[String]] in
+            var rest = words
+            let word = rest.remove(at: index)
+            return permutations(of: rest).map { [word] + $0 }
+        }
+    }
 
     /// No scalar below U+00AD is `.format`, so ASCII names skip the rebuild and the ICU lookup.
     private static func normalized(_ value: String) -> String {
