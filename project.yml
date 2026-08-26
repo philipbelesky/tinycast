@@ -32,6 +32,9 @@ targets:
     platform: macOS
     sources:
       - path: Tinycast
+      # The MIT mark's licence asks the notice to travel with the binary, not just the repo.
+      - path: NOTICE.md
+        buildPhase: resources
     settings:
       base:
         # Fork-local ids: com.tinycast.app is another team's App ID, which iCloud provisioning needs.

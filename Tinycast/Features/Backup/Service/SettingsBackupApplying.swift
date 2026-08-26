@@ -50,7 +50,14 @@ extension SettingsBackup {
             vsCodeShowInLauncher: s.vsCodeShowInLauncher,
             scopeKeywords: s.scopeKeywords,
             linearShowInLauncher: s.linearShowInLauncher,
-            linearDestination: s.linearDestination.rawValue)
+            linearDestination: s.linearDestination.rawValue,
+            calendarShowInLauncher: s.calendarShowInLauncher,
+            joinWindowMinutes: s.joinWindowMinutes.rawValue,
+            autoJoinConfirms: s.autoJoinConfirms,
+            menuBarEvents: s.menuBarEvents.rawValue,
+            menuBarLinkedEventsOnly: s.menuBarLinkedEventsOnly,
+            hideCurrentEvent: s.hideCurrentEvent.rawValue,
+            supportReminders: s.supportRemindersEnabled)
 
         let hk = core.hotKeys
         var hotkeys = HotkeyBackup()
@@ -63,6 +70,9 @@ extension SettingsBackup {
         hotkeys.createNote = hk.binding(for: .createNote)
         hotkeys.searchNotes = hk.binding(for: .searchNotes)
         hotkeys.searchFiles = hk.binding(for: .searchFiles)
+        hotkeys.joinNextMeeting = hk.binding(for: .joinNextMeeting)
+        hotkeys.mySchedule = hk.binding(for: .mySchedule)
+        hotkeys.createEvent = hk.binding(for: .createEvent)
         hotkeys.apps = Dictionary(
             uniqueKeysWithValues: hk.boundBundleIDs.compactMap { id in
                 hk.binding(for: .app(bundleID: id)).map { (id, $0) }
@@ -93,7 +103,7 @@ extension SettingsBackup {
         backup.quicklinks = core.quicklinks.quicklinks
         backup.favoriteApps = core.favorites.keys
         backup.hiddenLauncherItems = Array(core.visibility.hiddenItemKeys)
-        backup.hiddenLauncherKinds = Array(core.visibility.hiddenKinds)
+        backup.hiddenLauncherKinds = Array(core.visibility.disabledKinds)
         backup.launcherAliases = core.aliases.aliases
         return backup
     }
@@ -116,8 +126,8 @@ extension SettingsBackup {
         }
         if hiddenLauncherItems != nil || hiddenLauncherKinds != nil {
             let items = hiddenLauncherItems ?? Array(core.visibility.hiddenItemKeys)
-            let kinds = hiddenLauncherKinds ?? Array(core.visibility.hiddenKinds)
-            core.visibility.replace(hiddenItems: items, hiddenKinds: kinds)
+            let kinds = hiddenLauncherKinds ?? Array(core.visibility.disabledKinds)
+            core.visibility.replace(hiddenItems: items, disabledKinds: kinds)
             summary.hiddenItems = items.count
         }
         if let launcherAliases {
@@ -299,6 +309,34 @@ extension SettingsBackup {
             settings.webSearchEngine = engine
             count += 1
         }
+        if let flag = s.calendarShowInLauncher {
+            settings.calendarShowInLauncher = flag
+            count += 1
+        }
+        if let raw = s.joinWindowMinutes, let window = JoinWindow(rawValue: raw) {
+            settings.joinWindowMinutes = window
+            count += 1
+        }
+        if let flag = s.autoJoinConfirms {
+            settings.autoJoinConfirms = flag
+            count += 1
+        }
+        if let raw = s.menuBarEvents, let lead = MenuBarEvents(rawValue: raw) {
+            settings.menuBarEvents = lead
+            count += 1
+        }
+        if let flag = s.menuBarLinkedEventsOnly {
+            settings.menuBarLinkedEventsOnly = flag
+            count += 1
+        }
+        if let raw = s.hideCurrentEvent, let hide = HideCurrentEvent(rawValue: raw) {
+            settings.hideCurrentEvent = hide
+            count += 1
+        }
+        if let flag = s.supportReminders {
+            settings.supportRemindersEnabled = flag
+            count += 1
+        }
         if let flag = s.quicklinkConfirmsBeforeDelete {
             settings.quicklinkConfirmsBeforeDelete = flag
             count += 1
@@ -324,6 +362,9 @@ extension SettingsBackup {
         if let b = hotkeys.createNote { apply(b, .createNote) }
         if let b = hotkeys.searchNotes { apply(b, .searchNotes) }
         if let b = hotkeys.searchFiles { apply(b, .searchFiles) }
+        if let b = hotkeys.joinNextMeeting { apply(b, .joinNextMeeting) }
+        if let b = hotkeys.mySchedule { apply(b, .mySchedule) }
+        if let b = hotkeys.createEvent { apply(b, .createEvent) }
         for (id, b) in hotkeys.apps ?? [:] { apply(b, .app(bundleID: id)) }
         for (id, b) in hotkeys.panes ?? [:] { apply(b, .settingsPane(bundleID: id)) }
         for (rawID, b) in hotkeys.customCommands ?? [:] {

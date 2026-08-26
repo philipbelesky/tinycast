@@ -1,8 +1,10 @@
 # Fork
 
 This checkout is a **fork of [`abue-ammar/tinycast`](https://github.com/abue-ammar/tinycast)**, which is
-the `origin` remote and the mainline this file calls **upstream**. Fork work lives on branch `philip`;
-`main` tracks `origin/main` untouched, so it is always a clean mirror of upstream.
+the `upstream` remote and the mainline this file calls **upstream**; `origin` is the fork itself,
+`philipbelesky/tinycast`. Fork work lives on branch `philip`, which is the only branch either remote
+carries — the stale local `main` mirror was deleted, so compare against `upstream/main` after
+`git fetch upstream`.
 
 It is a **personal** fork, and a permanent one. It ships to the author's own Macs and nowhere else, so
 nothing here is waiting to become a pull request — the "Upstreamable?" column below is a note on how
@@ -135,10 +137,24 @@ grep -rn "Color\.white\|\.white\.opacity\|NSColor\.white\|darkAqua" --include="*
   | grep -v "EmojiData.generated\|CurrencyData.generated"
 ```
 
-Every hit is a *lifting* color (`panelTint`, `cardFill`, `glassFrost`, the onboarding gradient), the
-white glyph reversed out of a category tile (`IconCache`, divergence 4 — the tile behind it is
-saturated, so white is the legible ink there), or a bug this fork has to fix. There is no hit that is
-fine by default.
+Every hit is a *lifting* color (`panelTint`, `cardFill`, `glassFrost`, `dropGuide`, the onboarding
+gradient), white ink reversed out of a **saturated fill** — the category tile's glyph (`IconCache`,
+divergence 4), the Support window's brand capsule, the extension tint picker's selection ring — or a
+bug this fork has to fix. There is no hit that is fine by default.
+
+### Upstream now has a picker, and the fork keeps deleting it
+
+Upstream shipped `Features/Settings/AppAppearance.swift` — a System / Light / Dark enum behind a real
+Settings row — and `Theme.Colors` became `adaptive(dark:light:)` / `ramp(dark:light:)` on top of it.
+The fork deleted that file when it absorbed `793bb1f` and resolved the ramp back to flat light alphas,
+and every merge since has silently carried the deletion forward. So this divergence is no longer "the
+second design decision 4 said would be required" — **upstream has built it**, and the fork could drop
+this divergence entirely by taking `AppAppearance` and defaulting it to `.light`.
+
+That is a decision, not a merge resolution, so a merge should keep deleting the file until it is made.
+Two things a merge must do while the deletion stands: drop upstream's `appearance-test` from
+`run-tests.sh`, since it compiles the deleted file, and rename any new `Theme.Colors.panelScrim` call
+site to the fork's `panelTint` (`CameraPreviewView` needed this at v0.10.1).
 
 ### Not verified visually by an agent
 
@@ -170,6 +186,14 @@ tokens*, keep the fork's `* scale` multiplication and derived `Typography`.
 The corollary the fork now depends on: **a magic number in a view is a real defect, not a style nit** — a
 literal `8` no longer tracks the rest of the UI. Upstream code merged in will contain magic numbers.
 Converting them to tokens is part of finishing the merge, not a follow-up.
+
+The same applies to upstream's new *typography*, and it is easier to miss: a `Font.body` token merged
+into `Theme.Typography` renders at 100% while everything around it renders at `scale`, so upstream's
+additions have to be re-spelled through `scaled(_:_:_:)`. Where a value is genuinely chrome and should
+not scale, say so on the line — `dropGuideDash`, `dropGuideWidth` and `hairline` are the three that
+carry that exemption. **Views under `Features/*/Settings/` and the standalone `Windows/` surfaces are
+outside this**: they are system-sized AppKit chrome, and both the fork's own panes and upstream's use
+bare `.font(.caption)` there. The rule binds on palette surfaces.
 
 ---
 
@@ -450,10 +474,11 @@ ever restores a decisions file, move the four sections back and drop this diverg
 
 ## 13 — No binary-size budget
 
-**Touches:** one deleted line in `docs/standards.md` ("Release binary under **4 MB**") and one in
-`docs/testing.md` ("Release binary under **4 MB**, and under 2% growth for an ordinary change").
+**Touches:** one deleted line in `docs/standards.md` ("Release binary under **5 MB**") and one in
+`docs/testing.md` ("Release binary under **5 MB**, and under 2% growth for an ordinary change"). The
+number moves — it was 4 MB through v0.9.x — so match on the sentence, not the figure.
 
-Upstream holds the Release binary under 4 MB. The fork drops the constraint outright rather than
+Upstream holds the Release binary under a fixed ceiling. The fork drops the constraint outright rather than
 raising the number, because the number was never the point: upstream ships a download to strangers,
 where size is a real cost paid by every install. This fork ships a DMG into iCloud Drive for one
 person's own Macs ([release.md](docs/release.md)), where it is a cost paid by nobody.
@@ -548,9 +573,10 @@ it arrives off, and whether it joins this list is a fresh decision rather than a
 
 **Touches:** two `HotKeyAction` cases and their `defaultsKey`s, the four exhaustive switches over it —
 `HotKeyManager.setBinding`, `displayName`, `perform`, and `AppCore.hotKeyDisplayName` — plus
-`LegacyHotKeyRecords.legacyKey`, `candidateActions`, `SettingsBackup.HotkeyBackup`, both halves of
+`candidateActions`, `VisibilityStore.allowsHotKey`, `SettingsBackup.HotkeyBackup`, both halves of
 `SettingsBackupApplying`, one row each in `GeneralSettingsView` and `ClipboardSettingsView`, and the
-`hotkey-test` harness line in `run-tests.sh`.
+`hotkey-test` harness line in `run-tests.sh`. It used to touch `LegacyHotKeyRecords.legacyKey` too;
+upstream deleted that scheduled migration in #333 and the fork took the deletion.
 
 Upstream gives every action exactly one global shortcut. This fork adds a second recorder to two of
 them: **`HotKeyAction.togglePaletteAlternate`** under `hotkey.togglePalette.alternate`, and
@@ -593,9 +619,8 @@ layer: `HotKeyCenter` already keys registrations by arbitrary string id and has 
 ## Merging upstream
 
 ```sh
-git fetch origin
-git checkout main && git merge --ff-only origin/main   # keep the mirror clean
-git checkout philip && git rebase origin/main           # replay the divergences
+git fetch upstream --tags
+git checkout philip && git rebase upstream/main         # replay the divergences
 ```
 
 Rebase rather than merge, so the fork stays a readable stack of the divergences above rather than a
@@ -653,7 +678,9 @@ Then, before calling it done — the standard gate from
       something honest (divergence 11).
 - [ ] **`nm -a <Release binary> | grep -c 11PreviewData` returns zero, and the same query against
       the Debug `.debug.dylib` does not** — the second half is the control, since a Debug build's
-      `MacOS/` executable is a stub and returns zero either way (divergence 11).
+      `MacOS/` executable is a stub and returns zero either way (divergence 11). The Debug bundle is
+      `Debug/Tinycast Dev.app/Contents/MacOS/Tinycast Dev.debug.dylib`, not `Tinycast.app`; the
+      wrong path returns zero and reads as a passing control.
 - [ ] The palette, a dialog and both HUDs were opened and *looked at*. No agent here can do this.
 
 ## Adding a divergence

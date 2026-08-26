@@ -18,6 +18,12 @@ enum Theme {
         static let xxxl: CGFloat = 28 * scale
         /// Gap under a category header, shared by every palette list's `SectionHeader`.
         static let sectionHeaderBottom: CGFloat = 4 * scale
+        /// Clearance under a transcript's last message, so its actions row reads as belonging to
+        /// the message rather than to the palette footer sitting directly beneath it.
+        static let chatTranscriptBottom: CGFloat = 28 * scale
+        /// How near the end still counts as following a reply. A stream grows the transcript while
+        /// the reader is on their way down, so an exact-bottom test is a target that runs away.
+        static let chatFollowTailSlack: CGFloat = 44 * scale
         /// Space above every header but the first, reading as the previous section's close.
         static let sectionSpacing: CGFloat = 12 * scale
     }
@@ -36,6 +42,12 @@ enum Theme {
         static let keyCap: CGFloat = 6 * scale
         /// Settings shortcut-recorder keycap — smaller than the palette's `keyCap` chip.
         static let recorderKeyCap: CGFloat = 4 * scale
+    }
+
+    enum Blur {
+        /// Enough to make a redacted address unreadable at full size without turning the row into a
+        /// smear; the scramble underneath is what actually hides it.
+        static let redaction: CGFloat = 3
     }
 
     enum Size {
@@ -107,6 +119,12 @@ enum Theme {
         static let menuGlyphNarrow: CGFloat = 8 * scale
         static let menuGlyphWeight: CGFloat = 1.5 * scale
         static let menuGlyphGap: CGFloat = 3 * scale
+        /// Hit target for a chat message footer glyph; its caption symbol floats inside it.
+        static let chatMessageAction: CGFloat = 16 * scale
+        /// A one-pixel markdown rule and table header separator. Chrome, so unscaled.
+        static let hairline: CGFloat = 1
+        static let markdownListMarker: CGFloat = 20 * scale
+        static let markdownQuoteBar: CGFloat = 2 * scale
         /// The uninstall list's leading checkbox / lock glyph.
         static let checkbox: CGFloat = 16 * scale
         static let clipboardListWidth: CGFloat = 290 * scale
@@ -118,6 +136,13 @@ enum Theme {
         static let clipboardFilterMenuWidth: CGFloat = 200 * scale
         /// A menu row's glyph slot, sized so symbol and app-icon rows read the same.
         static let menuIcon: CGFloat = 20 * scale
+        /// A brand mark inside the menu icon slot, sized to the optical weight of a symbol.
+        static let menuBrandIcon: CGFloat = 14 * scale
+        /// The same mark in a header bar button, matched to the callout symbol beside it.
+        static let barBrandIcon: CGFloat = 12 * scale
+        /// A sent image in the transcript; a staged one is a glyph in a pill beside the search text.
+        static let chatImageThumb: CGFloat = 96 * scale
+        static let chatAttachmentGlyph: CGFloat = 16 * scale
         /// Opening size and the resize floor; tall enough that the sidebar's rows never scroll.
         static let settingsWindow = CGSize(width: 860 * scale, height: 700 * scale)
         /// Settings sidebar: a fixed column, wide enough for "Window Management".
@@ -140,6 +165,8 @@ enum Theme {
         static let dialogWidth: CGFloat = 420 * scale
         /// A dialog's leading glyph, larger than a row icon: it carries the subject.
         static let dialogIcon: CGFloat = 32 * scale
+        /// 16:9 at the dialog's own width, so the two surfaces read as siblings.
+        static let cameraPreview = CGSize(width: 420 * scale, height: 236 * scale)
         /// Transient volume HUD shown after any volume or mute command.
         static let hudWidth: CGFloat = 200 * scale
         static let hudHeight: CGFloat = 100 * scale
@@ -159,6 +186,8 @@ enum Theme {
         static let exit: TimeInterval = 0.12
         /// Fade-in/out for a hover `Tooltip`.
         static let tooltip: TimeInterval = 0.15
+        static let copyFeedback: TimeInterval = 1.2
+        static let chatFooter: TimeInterval = 0.12
     }
 
     /// Point sizes are the platform's own text-style metrics, so `scale` is the only departure.
@@ -183,8 +212,17 @@ enum Theme {
         /// Pair with the matching `Size` for `KeyCapChip.Scale`.
         static let compactKeyCap = scaled(.caption2)
         static let heroKeyCap = scaled(.body)
+        static let markdownHeading1 = scaled(.title2, .semibold)
+        static let markdownHeading2 = scaled(.title3, .semibold)
+        static let markdownHeading3 = scaled(.headline)
+        static let code = scaled(.callout, .regular, .monospaced)
+        static let inlineCode = scaled(.body, .regular, .monospaced)
         static let bar = scaled(.callout, .medium)
-        /// A dropdown control's trailing chevron, smaller than the label it follows.
+        /// A staged chat attachment's name beside the search text; the NSFont measures the chip.
+        static let chip = scaled(.callout)
+        @MainActor static let chipNSFont = NSFont.systemFont(
+            ofSize: NSFont.preferredFont(forTextStyle: .callout).pointSize * scale)
+        /// A dropdown control's trailing chevron, deliberately smaller than the label it follows.
         static let disclosure = scaled(.caption1, .semibold)
         static let menuRow = scaled(.body)
         static let menuShortcut = scaled(.callout)

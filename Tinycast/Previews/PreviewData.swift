@@ -248,7 +248,8 @@
                     DialogAction(title: "Set Volume"),
                     DialogAction(title: "Cancel", role: .cancel)
                 ],
-                defaultIndex: 0, cancelIndex: 1, volume: VolumeState(level: 0.65))
+                defaultIndex: 0, cancelIndex: 1,
+                accessory: .volume(VolumeState(level: 0.65)))
         }
 
         // MARK: - Clocks

@@ -1,7 +1,7 @@
 enum SettingsTab: CaseIterable, Identifiable {
-    case general, applications, systemSettings, systemActions, commands, quicklinks, fileSearch,
+    case general, applications, systemSettings, systemActions, commands, quicklinks, ai, fileSearch,
         webSearch, herdr, vsCode, linear, notes, snippets, windowManagement, clipboard, emoji,
-        extensions, permissions, backup, miscellaneous, about
+        calendar, extensions, permissions, backup, miscellaneous, about
     /// The case, never an index: a selectable `List` flattens section and row IDs together.
     var id: Self { self }
 
@@ -13,6 +13,7 @@ enum SettingsTab: CaseIterable, Identifiable {
         case .systemActions: return "System Actions"
         case .commands: return "Commands"
         case .quicklinks: return "Quicklinks"
+        case .ai: return "AI"
         case .fileSearch: return "File Search"
         case .webSearch: return "Web Search"
         case .herdr: return "herdr"
@@ -23,6 +24,7 @@ enum SettingsTab: CaseIterable, Identifiable {
         case .windowManagement: return "Window Management"
         case .clipboard: return "Clipboard"
         case .emoji: return "Emoji & Symbols"
+        case .calendar: return "Calendar"
         case .extensions: return "Extensions"
         case .permissions: return "Permissions"
         case .backup: return "Backup"
@@ -39,6 +41,7 @@ enum SettingsTab: CaseIterable, Identifiable {
         case .systemActions: return "bolt"
         case .commands: return "terminal"
         case .quicklinks: return "link"
+        case .ai: return "sparkles"
         case .fileSearch: return "doc.text.magnifyingglass"
         case .webSearch: return "magnifyingglass"
         case .herdr: return "macwindow"
@@ -49,6 +52,7 @@ enum SettingsTab: CaseIterable, Identifiable {
         case .windowManagement: return "macwindow"
         case .clipboard: return "doc.on.clipboard"
         case .emoji: return "face.smiling"
+        case .calendar: return "calendar"
         case .extensions: return "puzzlepiece.extension"
         case .permissions: return "lock.shield"
         case .backup: return "arrow.up.arrow.down.circle"
@@ -80,8 +84,8 @@ enum SettingsSection: CaseIterable, Identifiable {
             return [.applications, .systemSettings, .systemActions, .commands, .quicklinks]
         case .features:
             return [
-                .fileSearch, .webSearch, .herdr, .vsCode, .linear, .notes, .snippets,
-                .windowManagement, .clipboard, .emoji, .extensions
+                .ai, .fileSearch, .webSearch, .herdr, .vsCode, .linear, .notes, .snippets,
+                .windowManagement, .clipboard, .emoji, .calendar, .extensions
             ]
         case .advanced: return [.backup, .miscellaneous, .about]
         }

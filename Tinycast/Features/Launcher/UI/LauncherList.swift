@@ -7,11 +7,11 @@ struct LauncherList: View {
     let showSections: Bool
     /// Changes only when the list should scroll, so mouse selection never yanks it.
     let scroll: ScrollIntent
-    /// The inline answer, at flat index 0 when present; needs a non-empty query.
-    var calc: CalcResult?
-    var calcSelected = false
-    var onActivateCalc: () -> Void = {}
-    var onCalcActions: () -> Void = {}
+    /// The card at flat index 0, when one leads. At most one ever does.
+    var card: LeadCard?
+    var cardSelected = false
+    var onActivateCard: () -> Void = {}
+    var onCardActions: () -> Void = {}
     /// The one row a web scope shows; it replaces the list rather than joining it.
     var webSearch: WebSearchPrompt?
     /// Completions for what is typed, beneath that row. Empty without consent — see the store.
@@ -22,8 +22,26 @@ struct LauncherList: View {
     let onActions: (AppEntry) -> Void
     @Environment(RunningAppsMonitor.self) private var runningApps
 
-    private nonisolated static let calcRowID = "calc-card"
-    private nonisolated static let webSearchRowID = "web-search-row"
+    /// The calculator answers a typed query and the join card an empty one, so they cannot both
+    /// lead — which is what keeps the flat selection index a single-row offset.
+    enum LeadCard: Equatable {
+        case calc(CalcResult)
+        case meeting(MeetingEvent, now: Date)
+
+        var sectionTitle: String {
+            switch self {
+            case .calc: return "Calculator"
+            case .meeting: return "Meeting"
+            }
+        }
+
+        var rowID: String {
+            switch self {
+            case .calc: return "calc-card"
+            case .meeting: return "meeting-card"
+            }
+        }
+    }
 
     /// What the scoped search row draws: already-composed text, so the list stays presentational.
     struct WebSearchPrompt: Equatable {
@@ -36,7 +54,7 @@ struct LauncherList: View {
 
     private enum Row: Identifiable {
         case header(String)
-        case calc(CalcResult)
+        case card(LeadCard)
         case webSearch(WebSearchPrompt)
         case suggestion(String)
         /// `slot` is the row's ⌘-digit, carried from the section build so no row has to search for it.
@@ -44,21 +62,23 @@ struct LauncherList: View {
         var id: String {
             switch self {
             case .header(let title): return "header-" + title
-            case .calc: return LauncherList.calcRowID
-        case .webSearch(let prompt): return prompt.id
-        case .suggestion(let text): return SearchSuggestions.rowID(text)
-        case .app(let app, _): return app.id
+            case .card(let card): return card.rowID
+            case .webSearch(let prompt): return prompt.id
+            case .suggestion(let text): return SearchSuggestions.rowID(text)
+            case .app(let app, _): return app.id
             }
         }
     }
 
     /// Scroll target for the current selection.
-    private var selectedRowID: String? { calcSelected ? Self.calcRowID : selectedID }
+    private var selectedRowID: String? {
+        cardSelected ? card?.rowID : selectedID
+    }
 
-    /// Whether the selection sits on flat index 0: the calc card, the search row, else the first result.
+    /// Whether the selection sits on flat index 0: the search row, the card, else the first result.
     private var firstRowSelected: Bool {
         if let webSearch { return selectedID == webSearch.id }
-        return calc != nil ? calcSelected : selectedID != nil && selectedID == results.first?.id
+        return card != nil ? cardSelected : selectedID != nil && selectedID == results.first?.id
     }
 
     private var rows: [Row] {
@@ -67,13 +87,13 @@ struct LauncherList: View {
             return [.header(webSearch.sectionTitle), .webSearch(webSearch)]
                 + suggestions.map(Row.suggestion)
         }
-        var calcRows: [Row] = []
-        if let calc { calcRows = [.header("Calculator"), .calc(calc)] }
+        var cardRows: [Row] = []
+        if let card { cardRows = [.header(card.sectionTitle), .card(card)] }
         guard showSections else {
-            guard !results.isEmpty else { return calcRows }
-            return calcRows + [.header("Results")] + results.map { .app($0, slot: nil) }
+            guard !results.isEmpty else { return cardRows }
+            return cardRows + [.header("Results")] + results.map { .app($0, slot: nil) }
         }
-        var rows: [Row] = calcRows
+        var rows: [Row] = cardRows
         let favorites = results.prefix(favoriteCount)
         let rest = results.dropFirst(favoriteCount)
         var grouped: [AppEntry.Kind: [AppEntry]] = [:]
@@ -87,7 +107,7 @@ struct LauncherList: View {
         }
         // Publication order, so rows match the flat index.
         let kinds: [AppEntry.Kind] = [
-            .scope,
+            .scope, .meeting,
             .application, .systemSettings, .extensionCommand, .quicklink, .vsCodeProject,
             .herdrTarget, .linearTarget, .webSearch, .snippet,
             .systemAction, .windowCommand, .customCommand, .command
@@ -109,7 +129,7 @@ struct LauncherList: View {
     var body: some View {
         let rows = rows
         return Group {
-            if results.isEmpty && calc == nil && webSearch == nil {
+            if results.isEmpty && card == nil && webSearch == nil {
                 EmptyResults(text: "No apps found")
             } else {
                 ScrollViewReader { proxy in
@@ -119,13 +139,13 @@ struct LauncherList: View {
                                 switch row {
                                 case .header(let title):
                                     SectionHeader(title: title, isFirst: row.id == rows.first?.id)
-                                case .calc(let result):
-                                    CalculatorCard(result: result, selected: calcSelected)
+                                case .card(let card):
+                                    LeadCardView(card: card, selected: cardSelected)
                                         .contentShape(Rectangle())
-                                        .onTapGesture(perform: onActivateCalc)
-                                        .onRightClick(perform: onCalcActions)
+                                        .onTapGesture(perform: onActivateCard)
+                                        .onRightClick(perform: onCardActions)
                                         .padding(.bottom, Theme.Spacing.xs)
-                                        .selectionFrame(calcSelected)
+                                        .selectionFrame(cardSelected)
                                 case .webSearch(let prompt):
                                     WebSearchRow(prompt: prompt, selected: selectedID == prompt.id)
                                         .contentShape(Rectangle())
@@ -231,6 +251,21 @@ private struct WebSearchRow: View {
                 .fill(selected ? Theme.Colors.selection : (hovered ? Theme.Colors.rowHover : .clear))
         )
         .armedHover($hovered)
+    }
+}
+
+/// Draws whichever card leads; each feature still owns how its own card looks.
+private struct LeadCardView: View {
+    let card: LauncherList.LeadCard
+    let selected: Bool
+
+    var body: some View {
+        switch card {
+        case .calc(let result):
+            CalculatorCard(result: result, selected: selected)
+        case .meeting(let meeting, let now):
+            MeetingCard(meeting: meeting, now: now, selected: selected)
+        }
     }
 }
 
@@ -345,8 +380,8 @@ private struct AppRow: View {
             favoriteCount: 0,
             showSections: false,
             scroll: ScrollIntent(kind: .top),
-            calc: PreviewData.calcArithmetic,
-            calcSelected: true,
+            card: .calc(PreviewData.calcArithmetic),
+            cardSelected: true,
             onActivate: { _ in },
             onActions: { _ in }
         )

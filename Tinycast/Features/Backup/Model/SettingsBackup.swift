@@ -65,6 +65,16 @@ struct SettingsBackup: Codable {
         // Carried: neither is the Linear consent flag, which lives on the store and never leaves it.
         var linearShowInLauncher: Bool?
         var linearDestination: String?
+        // `calendarEnabled` is absent: an import must not grant calendar access.
+        var calendarShowInLauncher: Bool?
+        var joinWindowMinutes: Int?
+        // `autoJoinMeetings` and `cameraPreview` are absent: an import must arm neither.
+        var autoJoinConfirms: Bool?
+        var menuBarEvents: Int?
+        var menuBarLinkedEventsOnly: Bool?
+        var hideCurrentEvent: Int?
+        // Safe to carry: it silences a prompt rather than granting anything.
+        var supportReminders: Bool?
     }
 
     /// Combos keep the legacy shape, so older files import. docs/features/hotkeys.md#persistence
@@ -78,6 +88,9 @@ struct SettingsBackup: Codable {
         var createNote: HotKeyBinding?
         var searchNotes: HotKeyBinding?
         var searchFiles: HotKeyBinding?
+        var joinNextMeeting: HotKeyBinding?
+        var mySchedule: HotKeyBinding?
+        var createEvent: HotKeyBinding?
         var apps: [String: HotKeyBinding]?
         var panes: [String: HotKeyBinding]?
         var customCommands: [String: HotKeyBinding]?

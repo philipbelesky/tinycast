@@ -19,6 +19,7 @@ final class AppCore {
     let hotKeys = HotKeyManager()
     let hyperKeyTap = HyperKeyTap()
     let windowMover = WindowMover()
+    let spaceSwitcher = SpaceSwitcher()
     let inputSourceSwitcher = InputSourceSwitcher()
     let settings: AppSettings
     @ObservationIgnored private let iconStyle = IconStyleMonitor()
@@ -28,6 +29,10 @@ final class AppCore {
     let calcHistory = CalculatorHistoryStore()
     let currencyRates = CurrencyRateStore()
     let searchSuggestions = SearchSuggestionStore()
+    let calendarStore = CalendarStore()
+    let meetingClock = MeetingClock()
+    let updateChecker = UpdateCheckStore()
+    let supportReminders: SupportReminderStore
     let emojiIndex = EmojiIndex()
     let frequentEmoji = FrequentEmojiStore()
     let runningApps = RunningAppsMonitor()
@@ -38,6 +43,10 @@ final class AppCore {
     let quicklinkArguments = QuicklinkArgumentSession()
     let notesStore: NotesStore
     let extensions: ExtensionManager
+    let chatHistory: ChatHistoryStore
+    let aiChat: AIChatState
+    let aiSettings = AISettingsStore()
+    let chatGPTSubscription = ChatGPTSubscriptionManager()
 
     /// Set when a quicklink editor should open with Settings; the pane consumes it.
     var pendingQuicklinkEdit: QuicklinkEditRequest?
@@ -94,7 +103,8 @@ final class AppCore {
         extensions: extensions, palette: palette, paletteCoordinator: paletteCoordinator,
         settingsCoordinator: settingsCoordinator, settings: settings, core: self)
     @ObservationIgnored private(set) lazy var windowCommandCoordinator = WindowCommandCoordinator(
-        settings: settings, paletteCoordinator: paletteCoordinator, windowMover: windowMover)
+        settings: settings, paletteCoordinator: paletteCoordinator, windowMover: windowMover,
+        spaceSwitcher: spaceSwitcher)
     @ObservationIgnored private(set) lazy var customCommandCoordinator = CustomCommandCoordinator(
         store: customCommands, settings: settings, appIndex: appIndex,
         paletteCoordinator: paletteCoordinator, settingsCoordinator: settingsCoordinator,
@@ -116,6 +126,7 @@ final class AppCore {
         windowCommandCoordinator: windowCommandCoordinator,
         snippetExpansion: snippetExpansion, fileSearchCoordinator: fileSearchCoordinator,
         notesCoordinator: notesCoordinator, extensionCoordinator: extensionCoordinator,
+        calendarCoordinator: calendarCoordinator,
         core: self)
     @ObservationIgnored private(set) lazy var clipboardCoordinator = ClipboardCoordinator(
         clipboardStore: clipboardStore, palette: palette, windowController: windowController,
@@ -125,9 +136,20 @@ final class AppCore {
         paletteCoordinator: paletteCoordinator)
     @ObservationIgnored private(set) lazy var calculatorCoordinator = CalculatorCoordinator(
         calcHistory: calcHistory, paletteCoordinator: paletteCoordinator, core: self)
+    @ObservationIgnored private(set) lazy var calendarCoordinator = CalendarCoordinator(
+        store: calendarStore, clock: meetingClock, appIndex: appIndex, settings: settings,
+        paletteCoordinator: paletteCoordinator, core: self)
     @ObservationIgnored private(set) lazy var fileSearchCoordinator = FileSearchCoordinator(
         settings: settings, appIndex: appIndex, session: fileSearch, palette: palette,
         paletteCoordinator: paletteCoordinator, core: self)
+    @ObservationIgnored private(set) lazy var updateCoordinator = UpdateCoordinator(
+        store: updateChecker, core: self)
+    @ObservationIgnored private(set) lazy var supportCoordinator = SupportCoordinator(
+        store: supportReminders, core: self)
+    @ObservationIgnored private(set) lazy var aiChatCoordinator = AIChatCoordinator(
+        chat: aiChat, settings: settings, appIndex: appIndex, palette: palette,
+        paletteCoordinator: paletteCoordinator, settingsCoordinator: settingsCoordinator,
+        core: self)
 
     @ObservationIgnored private lazy var windowController = PaletteWindowController(core: self)
     @ObservationIgnored private lazy var messageHUD = MessageHUDController(settings: settings)
@@ -138,8 +160,12 @@ final class AppCore {
     private init() {
         let launcherRanking = LauncherRankingStore()
         let settings = AppSettings()
+        let chatHistory = ChatHistoryStore(directory: AppPaths.applicationSupport())
         self.launcherRanking = launcherRanking
         self.settings = settings
+        self.chatHistory = chatHistory
+        supportReminders = SupportReminderStore(settings: settings)
+        aiChat = AIChatState(history: chatHistory)
         appIndex = AppIndex(ranking: launcherRanking, aliases: aliases)
         let clipboardManager = ClipboardManager(store: clipboardStore, settings: settings)
         self.clipboardManager = clipboardManager
@@ -177,6 +203,7 @@ final class AppCore {
             fileSearchCoordinator.applyEnabled()
             fileSearchCoordinator.applyPolicy()
             notesCoordinator.applyEnabled()
+            aiChatCoordinator.applyEnabled()
             customCommands.onChange = { [weak self] _ in
                 self?.customCommandCoordinator.applyCustomCommandsPresence()
             }
@@ -205,9 +232,17 @@ final class AppCore {
             // Before `hotKeys.start` even when off: the prune reads it. docs/features/quicklinks.md
             quicklinks.load()
             quicklinkCoordinator.applyQuicklinksPresence()
+            updateCoordinator.applyEnabled()
+            calendarCoordinator.applyEnabled()
             Task { await appIndex.refresh() }
             Task { await emojiIndex.load() }
             currencyRates.start()
+            updateChecker.onUpdateAvailable = { [weak self] release in
+                self?.updateCoordinator.presentIfAvailable(release) ?? true
+            }
+            updateChecker.start()
+            supportReminders.onDue = { [weak self] in self?.supportCoordinator.presentIfDue() }
+            supportReminders.start()
 
             hyperKeyTap.healthTicker = healthTicker
             hotKeys.doubleTapMonitor.healthTicker = healthTicker
@@ -220,6 +255,12 @@ final class AppCore {
             hotKeys.onCreateNote = { [weak self] in self?.notesCoordinator.createNote() }
             hotKeys.onSearchNotes = { [weak self] in self?.notesCoordinator.searchNotes() }
             hotKeys.onSearchFiles = { [weak self] in self?.fileSearchCoordinator.show() }
+            hotKeys.onShowAIChat = { [weak self] in self?.aiChatCoordinator.showChat() }
+            hotKeys.onJoinNextMeeting = { [weak self] in
+                self?.calendarCoordinator.joinNextMeeting()
+            }
+            hotKeys.onShowSchedule = { [weak self] in self?.calendarCoordinator.showSchedule() }
+            hotKeys.onCreateEvent = { [weak self] in self?.calendarCoordinator.createEvent() }
             hotKeys.onRunCustomCommand = { [weak self] id in
                 self?.customCommandCoordinator.runCustomCommand(id: id)
             }
@@ -239,6 +280,9 @@ final class AppCore {
                 self?.extensionCoordinator.removeExtensionReferences(entryIDs: entryIDs)
             }
             hotKeys.displayName = { [weak self] action in self?.hotKeyDisplayName(for: action) }
+            hotKeys.allowsAction = { [weak self] action in
+                self?.visibility.allowsHotKey(action) ?? false
+            }
             KeyShortcut.displayedHyperChord = { [settings] in
                 guard settings.hyperKey != .none else { return nil }
                 return KeyShortcut.hyperChord(includesShift: settings.hyperKeyIncludesShift)
@@ -280,7 +324,20 @@ final class AppCore {
     func handleReopen() {
         if settingsCoordinator.focusExisting() { return }
         if onboardingCoordinator.focusExisting() { return }
+        if updateCoordinator.focusExisting() { return }
+        if supportCoordinator.focusExisting() { return }
         paletteCoordinator.showPalette(mode: .launcher, restoreAnyMode: true)
+    }
+
+    func handleOpenURL(_ url: URL) {
+        switch ExtensionOAuthSession.handleCallbackURL(url) {
+        case .delivered:
+            paletteCoordinator.showPalette(mode: .extensionCommand, restoreAnyMode: true)
+        case .expired:
+            showMessage("Sign-in expired — run the command again", tone: .danger)
+        case .ignored:
+            break
+        }
     }
 
     /// The store-backed half of the conflict message; `HotKeyManager` names the catalogs itself.
@@ -299,7 +356,7 @@ final class AppCore {
             return appIndex.apps.first { $0.kind == .extensionCommand && $0.id == entryID }?.name
         case .togglePalette, .togglePaletteAlternate, .toggleClipboard, .toggleClipboardAlternate,
             .toggleEmoji, .searchFiles, .systemAction, .showNotes, .createNote, .searchNotes,
-            .windowCommand:
+            .windowCommand, .joinNextMeeting, .mySchedule, .createEvent, .aiChat:
             return nil
         }
     }
@@ -316,6 +373,13 @@ final class AppCore {
         snippetListener.stop()
         snippetsStore.stop()
         settingsSync.stop()
+        aiChat.cancel()
+        chatGPTSubscription.stop()
+    }
+
+    func aiProvider() throws -> any AIProvider {
+        try AIProviderFactory.make(
+            settings: aiSettings, subscription: chatGPTSubscription)
     }
 
     // MARK: - Feature switches
@@ -354,6 +418,17 @@ final class AppCore {
             }, reproject: { $0.quicklinkCoordinator.applyQuicklinksPresence() })
         track({ _ = $0.fileSearchEnabled }, reproject: { $0.fileSearchCoordinator.applyEnabled() })
         track({ _ = $0.notesEnabled }, reproject: { $0.notesCoordinator.applyEnabled() })
+        track({ _ = $0.aiEnabled }, reproject: { $0.aiChatCoordinator.applyEnabled() })
+        track(
+            {
+                _ = $0.calendarEnabled
+                _ = $0.calendarShowInLauncher
+            }, reproject: { $0.calendarCoordinator.applyEnabled() })
+        track(
+            {
+                _ = $0.autoJoinMeetings
+                _ = $0.menuBarEvents
+            }, reproject: { $0.calendarCoordinator.applyClock() })
         track(
             {
                 _ = $0.fileSearchScopes
@@ -411,11 +486,31 @@ final class AppCore {
         appIndex.setWebSearchVisible(settings.webSearchEnabled && settings.webSearchShowInLauncher)
     }
 
+    // MARK: - Interruption
+
+    /// What the app is in the middle of; the update prompt and the support reminder both ask first.
+    var currentActivity: UpdateActivity {
+        UpdateActivity(
+            isExpandingSnippet: snippetTextInjector.isDelivering,
+            isRunningExtension: extensions.running != nil,
+            isUninstalling: uninstall.isTrashing,
+            isRecordingHotKey: hotKeys.recordingAction != nil,
+            isPromptingForArguments: quicklinkArguments.isActive,
+            isShowingDialog: isShowingDialog,
+            isPaletteVisible: paletteCoordinator.isVisible)
+    }
+
+    /// Whether a window may take focus without interrupting something the user started.
+    var canInterruptUser: Bool { UpdateReadiness.evaluate(currentActivity) == nil }
+
     // MARK: - Dialogs, routed here so `dialogs` stays the single owner
 
     func showNotice(title: String, message: String, symbol: String, tone: DialogTone) async {
         await dialogs.notice(title: title, message: message, symbol: symbol, tone: tone)
     }
+
+    /// True while a dialog is up, so a surface behind one can tell it apart from losing focus.
+    var isShowingDialog: Bool { dialogs.isPresenting }
 
     /// `tone` styles the glyph, `confirmRole` the button; separate on purpose.
     func confirm(
@@ -446,5 +541,10 @@ final class AppCore {
     /// The volume slider, so `dialogs` stays the single owner of every prompt in the app.
     func pickVolume(current: Float32) async -> Float32? {
         await dialogs.pickVolume(current: current)
+    }
+
+    /// The new-event prompt, for the same reason.
+    func createEvent() async -> EventDraft? {
+        await dialogs.createEvent()
     }
 }
