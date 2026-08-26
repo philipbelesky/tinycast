@@ -38,9 +38,12 @@ renamed channel ([FORK.md](../FORK.md) divergence 10).
 
 ## Signing & Gatekeeper
 
-CI releases sign with the stable `Tinycast Self-Signed` identity and local builds with whatever
-`project.yml` names (see [FORK.md](../FORK.md) divergence 1) — neither is an Apple Developer ID, so
-macOS quarantines a directly-downloaded DMG. The Homebrew cask strips that
+CI releases sign with the stable `Tinycast Self-Signed` identity; local Release builds sign with
+**Developer ID Application** and local Debug builds with `Apple Development` (see
+[FORK.md](../FORK.md) divergence 1). Developer ID is what lets a local build run on a Mac that no
+provisioning profile names. It is **not notarised**, and Gatekeeper demands notarisation of a
+*quarantined* Developer ID app — which the iCloud Drive drop never produces, but a browser download
+or AirDrop does. The Homebrew cask strips that
 automatically; direct downloaders run `xattr -dr com.apple.quarantine "…/Tinycast.app"` once. Full
 details in [signing.md](signing.md).
 
