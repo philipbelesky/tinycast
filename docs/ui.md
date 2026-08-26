@@ -10,13 +10,16 @@ Read this before touching any view body, `Theme` value, or the panel chrome.
 
 ## The look, in one paragraph
 
-Tinycast is a **Raycast-style light command palette**: a borderless floating panel whose surface is
-just the OS behind-window blur under a 55% white tint — there is no gray chrome. Everything on that
-surface is black at a fixed alpha ramp. The header and bottom bar **float over the list as fully
-transparent overlays**; there are no hard-edged bars, strips, or dividers. Rows don't clip under the
-bars, they **dissolve**: a scroll-driven gradient mask ghosts them as they pass beneath. Floating
-controls (the action pill, the menu circle, popover menus) are **Liquid Glass**. The whole app is
-locked to light mode because the glass material is tuned for a bright frosted surface.
+Tinycast is a **Raycast-style command palette**: a borderless floating panel whose surface is just the
+OS behind-window blur under a 40% black scrim — there is no gray chrome. Everything on that surface is
+white at a fixed alpha ramp. The header and bottom bar **float over the list as fully transparent
+overlays**; there are no hard-edged bars, strips, or dividers. Rows don't clip under the bars, they
+**dissolve**: a scroll-driven gradient mask ghosts them as they pass beneath. Floating controls (the
+action pill, the menu circle, popover menus) are **Liquid Glass**.
+
+That paragraph describes **Dark**, which is the design. Light is the same design with the ink
+inverted: a white scrim over the same blur, and a black-alpha ramp at matched stops. Nothing about
+geometry, type, motion or state changes between them.
 
 Five load-bearing ideas, in priority order:
 
@@ -32,12 +35,13 @@ Five load-bearing ideas, in priority order:
 
 These are the things that quietly break the look if changed. Preserve them unless the task is explicitly to change them.
 
-- **Forced light.** `AppCore.start()` sets `NSApp.appearance = .aqua`. All colors are literal black/white alphas, not adaptive `Color`s. Don't introduce semantic/adaptive colors or a dark variant.
+- **Dark is the baseline and its values are frozen.** Every `Theme.Colors` token resolves per appearance, and its **dark branch is the literal the forced-dark build shipped** — restated, never recomputed. Retune a light branch freely; touch a dark one only when the task is to change Dark. `AppCore.applyAppearance()` is the only place an appearance is assigned, from `AppSettings.appearance`; `.system` assigns `nil` so AppKit follows macOS.
+- **New colors go through `Theme.Colors.ramp(dark:light:)`** (an alpha that inverts) or `adaptive(dark:light:)` (two explicit `NSColor`s, for anything that isn't a plain inversion — `panelScrim`, `glassFrost`). Never a bare `Color.white.opacity(…)` in a view: it disappears in Light.
 - **No grays, no opaque fills on the surface.** Reach for `Theme.Colors.*` (black-alpha) instead of `.gray`, `NSColor.windowBackground`, etc.
 - **Mask gradients and saturated tiles are exceptions to the ink ramp.** `EdgeDissolve` and `OverflowFade` encode mask luminance, while tinted category and extension tiles keep white ink for contrast.
 - **System icon style can still change while Tinycast stays light.** `IconStyleMonitor` waits until `NSWorkspace` actually vends different pixels, then invalidates styled icon cache entries. Any view drawing an app icon must observe the cache generation so it cannot keep a stale bitmap.
 - **No hard dividers between the list and the bars.** The header and bottom bar are `safeAreaInset` overlays with no background; separation comes from `edgeDissolve()`, nothing else. (One deliberate exception: the vertical hairline between the clipboard list and its preview pane.)
-- **The panel corner is clipped once, at the root.** `RootPaletteView.body` ends with `.background(panelTint) → .background(VisualEffectView()) → .clipShape(RoundedRectangle(26, .continuous))`. Keep that order; the tint goes _over_ the vibrancy, and the clip is last.
+- **The panel corner is clipped once, at the root.** `RootPaletteView.body` ends with `.background(panelScrim) → .background(VisualEffectView()) → .clipShape(RoundedRectangle(26, .continuous))`. Keep that order; the tint goes _over_ the vibrancy, and the clip is last.
 - **Don't use the native scroll edge effect.** Inside a transparent panel it renders a hard-bounded rectangle. Use `edgeDissolve()`.
 - **Test over a dark desktop.** Transparency and corner masking bugs only show where the wallpaper contrasts with the panel; bright wallpaper hides them under a light surface.
 - **No `NSAlert`, no `NSSlider`, no system popovers.** Every confirmation, failure report, value prompt and transient readout is Tinycast's own SwiftUI surface (see "Dialogs & HUD"). An Aqua alert on a black-alpha-over-vibrancy app reads as a different product, and its `runModal` run loop keeps Carbon hotkeys firing underneath.
@@ -45,7 +49,7 @@ These are the things that quietly break the look if changed. Preserve them unles
 - **Resolve every glyph through `SymbolImage`, not `Image(systemName:)`.** Some catalog symbols are bundled assets in `Assets.xcassets` (`toggleBluetooth`), and `Image(systemName:)` silently renders nothing for those.
 - **↵ runs the primary action, Escape cancels, and Cancel always renders leading** (the left button), matching macOS convention. A button never prints its key cap; hovering it shows a `Tooltip` instead, styled like the palette's own keycap chips.
 - **A transient readout is a HUD, not a dialog.** `VolumeHUDController`'s box is volume and mute only, since that one needs an actual level and number; every other success or info confirmation goes through `MessageHUDController`'s pill, whose trailing glyph *is* its `DialogTone`. A pill has no subject to name, so the icon rule above does not apply to it — and that mapping stays file-scoped so nothing can reach for it when building a `DialogRequest`. A new HUD means a new presenter, not a second shape bolted onto an existing controller.
-- **Glass is for controls; content takes the panel recipe.** `glassEffect` needs a backdrop to lens, so it only works *inside* a window that already has a `VisualEffectView` — the action capsule, the menu circle, `PopoverMenu`, a dialog's buttons. On a bare borderless panel it falls back to an opaque backing and shows as a hard edge. Both HUDs therefore use `panelTint` → `VisualEffectView()` → `clipShape`, exactly like a dialog.
+- **Glass is for controls; content takes the panel recipe.** `glassEffect` needs a backdrop to lens, so it only works *inside* a window that already has a `VisualEffectView` — the action capsule, the menu circle, `PopoverMenu`, a dialog's buttons. On a bare borderless panel it falls back to an opaque backing and shows as a hard edge. Both HUDs therefore use `panelScrim` → `VisualEffectView()` → `clipShape`, exactly like a dialog.
 
 ---
 
@@ -162,65 +166,41 @@ point size but not its tracking or leading: `compactKeyCap` measures ~1pt narrow
 `Font.largeTitle` (both call sites draw an `Image`, where it doesn't apply). Everything else is
 pixel-identical at `scale 1.0`.
 
-### Colors (`Theme.Colors`) — the black-alpha ramp
+### Colors (`Theme.Colors`) — the alpha ramp
 
-| Token             | Value          | Use                                               |
-| ----------------- | -------------- | ------------------------------------------------- |
-| `panelTint`       | white **0.55** | the panel tint over vibrancy                      |
-| `selection`       | black 0.09     | selected row fill (keyboard/active selection)     |
-| `rowHover`        | black 0.045    | mouse-hover fill (always fainter than selection)  |
-| `menuHover`       | black 0.09     | popover-menu row hover                            |
-| `separator`       | black 0.10     | the clipboard list↔preview hairline               |
-| `controlSurface`  | black 0.08     | filled keycaps, glyph tiles                       |
-| `border`          | black 0.16     | outlined keycap borders                           |
-| `textPrimary`     | black 1.00     | search text and caret, volume fill and knob       |
-| `textSecondary`   | black 0.60     | secondary labels                                  |
-| `textTertiary`    | black 0.40     | placeholders, trailing kind labels                |
-| `iconPlaceholder` | black 0.06     | empty tile while an icon decodes                  |
-| `sheen`           | black 0.04     | the wash behind the Onboarding header             |
-| `cardFill`        | white 0.45     | settings/calc card fill                           |
-| `cardStroke`      | black 0.10     | settings/calc card border + inset dividers        |
-| `glassFrost`      | white 0.30     | whitish tint layered into the floating glass      |
-| `noteText`        | black 0.85     | Notes Markdown source                             |
-| `dropGuide`       | white 0.35     | the palette's drop guides while dragging          |
+The **Dark column is the design and is frozen**; each value is the literal the forced-dark build
+shipped. Light is the same stop with the ink inverted, and is the only column open to retuning.
 
-`panelTint`, `cardFill` and `glassFrost` stay white: they *lift* a surface off the material rather than
-mark something on it. Everything that marks the surface is black-alpha.
+| Token             | Dark           | Light          | Use                                              |
+| ----------------- | -------------- | -------------- | ------------------------------------------------ |
+| `panelScrim`      | black **0.40** | white **0.55** | the panel scrim over vibrancy                    |
+| `selection`       | white 0.10     | black 0.09     | selected row fill (keyboard/active selection)    |
+| `rowHover`        | white 0.05     | black 0.045    | mouse-hover fill (always fainter than selection) |
+| `menuHover`       | white 0.10     | black 0.09     | popover-menu row hover                           |
+| `separator`       | white 0.10     | black 0.12     | the clipboard list↔preview hairline              |
+| `controlSurface`  | white 0.10     | black 0.08     | filled keycaps, glyph tiles                      |
+| `border`          | white 0.20     | black 0.18     | outlined keycap borders                          |
+| `textPrimary`     | white 1.00     | black 1.00     | search text and caret, volume fill and knob      |
+| `textSecondary`   | white 0.60     | black 0.60     | secondary labels                                 |
+| `textTertiary`    | white 0.40     | black 0.42     | placeholders, trailing kind labels               |
+| `iconPlaceholder` | white 0.06     | black 0.06     | the empty tile a row paints while an icon decodes |
+| `sheen`           | white 0.04     | black 0.04     | the wash behind the Onboarding header            |
+| `cardFill`        | white 0.05     | black 0.04     | settings/calc card fill                          |
+| `cardStroke`      | white 0.10     | black 0.10     | settings/calc card border + inset dividers       |
+| `glassFrost`      | white 0.05     | white **0.25** | whitish tint layered into the floating glass     |
+| `noteText`        | white 0.90     | black 0.85     | Notes Markdown source                            |
+| `dropGuide`       | white 0.35     | black 0.35     | the palette's drop guides while dragging         |
+
+`glassFrost` is white in **both** — the frost brightens glass rather than inking it — so it is an
+`adaptive` pair, not a `ramp`. `panelScrim` is the ramp's inverse, for the same reason.
+`brand`, `destructive`, `success` and `dropGuideArmed` are fixed hues and adapt on their own.
 
 Beyond these, `.secondary`/`.tertiary` foreground styles are fine for SF Symbols (they resolve against
-the forced-light environment). **Selection always beats hover** when a row is both.
+the environment's appearance). **Selection always beats hover** when a row is both.
 
----
-
-## Category tiles
-
-The one place this surface uses hue. A scope row — the `a` Applications / `l` Linear rows the launcher
-opens with — carries a distinctive tile with the glyph reversed out in **white**, so categories can be
-told apart at a glance rather than read. An entry with no category tint keeps the ordinary tile, black
-0.08 with black-0.80 ink.
-
-**The rows a scope reveals wear its whole tile — glyph as well as colour.** In the launcher's list a
-herdr tab, a quicklink and an application each draw the tile of the scope that narrows the list to
-them, glyph included, so a category is one repeated mark and a row's identity is its title. This is
-the owner's call, superseding the earlier per-entry glyphs — an application row draws the red grid
-tile in the list, not its file icon. `ScopeCatalog.tint(for:)` and `symbol(for:)` map `AppEntry.Kind`
-back to the scope holding it; `AppEntry.categoryIconSource` is the list's answer, and `iconSource`
-stays everyone else's. Where an entry stands for itself — the favorites strip, a Settings item list,
-an app picker — it keeps its real file icon or per-entry glyph, which is also what keeps the
-quicklink icon picker meaningful. A web search row keeps its engine's glyph on the inked tile: each
-engine is its own scope, so the rule holds of itself.
-
-A scope names its colour rather than choosing one: `ScopeDefinition.tint` is a `ScopeTint` case,
-assigned in `ScopeCatalog`, and `Theme.Colors.tile(_:)` is the only place that maps a case to an
-`NSColor`. The model layer stays free of AppKit and `Theme` stays the only token source. `ScopeTint`
-contains only the colour choices currently in use. Two cases carry owner's calls: `red` is
-Applications' colour by request, accepting the collision with red-as-destructive elsewhere on this
-surface; and `blue` is not `systemBlue` but the Safari icon's own compass blue (the sampled mean of
-its disc), paired with the `safari` glyph so the Quicklinks tile reads as Safari.
-
-`IconCache.symbolIcon(named:tint:)` rasterizes both variants and keys the cache on the tint, so one
-symbol can be an inked tile in Settings and a coloured one in the launcher. Passing no tint is the
-inked variant; `AppEntry.symbolTint` is non-nil only for scope rows.
+An extension's own surfaces live in `ExtensionColors` (`Features/Extensions/UI/`), not here — the
+`ramp` mechanism is shared, the values are the feature's. See the Extensions non-negotiable in
+[`AGENTS.md`](../AGENTS.md).
 
 ---
 
@@ -244,7 +224,7 @@ Source: `Features/Notes/UI/`.
 Notes is a sibling surface, not a palette mode. `NotesPanel` is a **titled**, resizable,
 non-activating panel — AppKit draws the traffic lights, the drag and the resize — but it keeps the
 palette's transparent recipe and deliberately does not dismiss on resign-key. `NotesView`'s root
-applies `panelTint` → `VisualEffectView()` → one continuous **`panel`** corner clip, so
+applies `panelScrim` → `VisualEffectView()` → one continuous **`panel`** corner clip, so
 Notes and the palette round identically. The clip is larger than the theme frame's own corner, so it
 is what shows; `invalidateShadow()` on every show recuts the shadow to match.
 
@@ -292,9 +272,8 @@ The signature effect. A scroll-driven `LinearGradient` mask on each list so rows
 a floating bar, ghost beneath it, and vanish only at the window edge. Attach with `.edgeDissolve()` on
 the `ScrollView`, **before `.thinScrollbar()`** (so the scrollbar overlay stays unmasked).
 
-- **The two edges are not symmetric, because the two bars are not.** The bottom bar is floating glass, so content dissolves _into_ it across `bottomBarHeight + 28`, flooring at **0.25** — the glass hides the rest. The header carries no material of its own, so anything still visible at its bottom edge reads as content sitting on top of the search field; there the mask goes to **0**.
-- Top: the band is the header's own height (`headerHeight + headerPadding`), and it clears over `topOvershoot` (20pt) — opaque at rest, since content rests against the bar's edge, fully transparent once an overshoot of it has scrolled under. The ramp back to full opacity finishes 20pt below the bar, so a row softens only in its last sliver before it disappears.
-- Bottom alpha eases by how much content is hidden past the edge (`1 − (1 − floor)·clamp(dist/band, 0, 1)`).
+- Fade bands: top = `headerHeight + headerPadding + 32`, bottom = `bottomBarHeight + 28` — each overshoots its bar into the visible list, so the ramp finishes ~32/28px _past_ the bar rather than cliffing at its edge.
+- Alpha floors mid-scroll (not to 0): **top 0.15, bottom 0.25**, eased by how much content is hidden past the edge (`1 − (1 − floor)·clamp(dist/band, 0, 1)`).
 - Only masks when the list is scrollable; the edge stop stays transparent so rubber-band bounces still dissolve. A list that fits gets no mask.
 - The mask spans the scroll view's **full** frame (`.ignoresSafeArea()`) — otherwise the bars' safe-area insets shift the gradient onto at-rest rows.
 
@@ -402,7 +381,7 @@ sole owner rule) and is the only presenter, so every confirmation in the app loo
   red-glyph security warning can carry a plain white button — "Import executable commands?" does,
   since importing a file destroys nothing — and running a shell command the user wrote themselves is
   `.neutral` + `.standard` rather than a red alarm.
-- **Surface.** A dialog reuses the palette's recipe `panelTint` → `VisualEffectView()` →
+- **Surface.** A dialog reuses the palette's recipe `panelScrim` → `VisualEffectView()` →
   `clipShape(RoundedRectangle(dialog 20))`, in that order at `dialogWidth 420`. Glass is reserved for
   the buttons, matching the "glass only on floating controls" rule. The **volume HUD takes the same
   recipe**, and so does the **message pill**. That is the line: glass needs a backdrop to lens, so it
@@ -511,7 +490,7 @@ per-scroll-view shim: chasing that flip after the fact is what caused the flash.
 ## The camera preview panel
 
 `CameraPreviewPanel` is the third borderless surface, beside the dialog and the notes panel. It takes
-the same recipe — `panelTint`, then `VisualEffectView`, then the clip — and the same optical lift a
+the same recipe — `panelScrim`, then `VisualEffectView`, then the clip — and the same optical lift a
 dialog takes, but sits at `.floating` rather than `.modalPanel` so a failure report still lands on
 top of it.
 
@@ -623,14 +602,13 @@ Three chrome modifiers, and picking the wrong one is the usual way a preview lie
 - **`.previewOnDesktop()`** — for a view that already draws its own surface: `RootPaletteView`, a
   dialog, either HUD. It adds only the dark desktop and the light appearance.
 - **`.previewInPalette(width:height:)`** — for content that normally lives *inside* the panel, so a
-  list gets the real `panelTint` → `VisualEffectView` → `clipShape` recipe at panel size.
+  list gets the real `panelScrim` → `VisualEffectView` → `clipShape` recipe at panel size.
 - **`.previewOnPanel()`** — the same recipe hugging its content, for a leaf control. Use it for
   anything glass: `glassEffect` with no `VisualEffectView` behind it falls back to an opaque backing.
 
-All three inject the live store graph via `.previewStores()` and force light, since the `.aqua` lock
-lives in `AppCore.start()`, which a canvas never runs. Taking the stores from `AppCore.shared` is
-safe because `init` only constructs — registration, polling and the app scan all wait for `start()`.
-`PreviewData` holds the fixtures; keep them literal, so no canvas depends on a scan or a fetch.
+All three inject the live store graph via `.previewStores()`. A canvas never runs
+`AppCore.start()`, so it renders in whatever appearance Xcode is showing — use the canvas's own
+appearance toggle to check both.
 
 **What a canvas cannot stage, and must not pretend to.** Some state is owned by a store with a
 `private(set)` or a persisting setter, so a preview that faked it would either lie or write to the

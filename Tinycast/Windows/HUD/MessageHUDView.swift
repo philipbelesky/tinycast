@@ -21,7 +21,7 @@ struct MessageHUDView: View {
         .frame(maxWidth: Theme.Size.hudMaxWidth, alignment: .leading)
         .fixedSize()
         // Not glass: with nothing to lens it falls back to an opaque backing and shows.
-        .background(Theme.Colors.panelTint)
+        .background(Theme.Colors.panelScrim)
         .background(VisualEffectView())
         .clipShape(Capsule())
     }

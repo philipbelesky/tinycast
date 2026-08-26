@@ -20,14 +20,12 @@
                         startPoint: .topLeading, endPoint: .bottomTrailing)
                 )
                 .previewStores()
-                // `AppCore.start()` forces `.aqua` app-wide; a canvas never runs it.
-                .preferredColorScheme(.light)
         }
 
         /// For a leaf control with no list to fill a panel; glass still needs a real backdrop.
         func previewOnPanel() -> some View {
             padding(Theme.Spacing.xxl)
-                .background(Theme.Colors.panelTint)
+                .background(Theme.Colors.panelScrim)
                 .background(VisualEffectView())
                 .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.dialog, style: .continuous))
                 .previewOnDesktop()
@@ -38,7 +36,7 @@
             width: CGFloat = Theme.Size.panelWidth, height: CGFloat = Theme.Size.panelHeight
         ) -> some View {
             frame(width: width, height: height)
-                .background(Theme.Colors.panelTint)
+                .background(Theme.Colors.panelScrim)
                 .background(VisualEffectView())
                 .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous))
                 .previewOnDesktop()

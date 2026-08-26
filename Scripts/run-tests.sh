@@ -84,6 +84,10 @@ run emoji-test             Tinycast/Features/Emoji/Model/EmojiCatalog.swift \
                            Tinycast/Features/Emoji/Model/EmojiData.generated.swift
 run palette-selection-test Tinycast/Features/PaletteRowIndex.swift \
                            Tinycast/Features/Emoji/Model/EmojiGridGeometry.swift
+run appearance-test        Tinycast/Platform/Appearance.swift \
+                           Tinycast/DesignSystem/Theme.swift \
+                           $L/ScopeTint.swift \
+                           Tinycast/Features/Settings/AppAppearance.swift
 run palette-placement-test Tinycast/Platform/Appearance.swift \
                            Tinycast/DesignSystem/Theme.swift \
                            $L/ScopeTint.swift \

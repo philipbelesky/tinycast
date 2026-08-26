@@ -261,37 +261,47 @@ enum Theme {
     }
 
     enum Colors {
-        /// The panel's surface tint over the behind-window material; a Color, so no call site
-        /// has to know which way the surface leans.
-        static let panelTint = Color.white.opacity(0.55)
+        /// Resolves against the window's `effectiveAppearance`, which `NSHostingView` republishes as
+        /// SwiftUI's `colorScheme`, so a token repaints without anything observing the setting.
+        static func adaptive(dark: NSColor, light: NSColor) -> Color {
+            Color(nsColor: NSColor(name: nil) { $0.isDark ? dark : light })
+        }
+
+        /// The alpha ramp, inverted: white ink over the dark surface, black ink over the light one.
+        static func ramp(dark: Double, light: Double) -> Color {
+            adaptive(dark: .srgbInk(1, alpha: dark), light: .srgbInk(0, alpha: light))
+        }
+
+        /// The ramp's inverse: the scrim darkens the dark surface and lightens the light one.
+        static let panelScrim = adaptive(dark: .srgbInk(0, alpha: 0.40), light: .srgbInk(1, alpha: 0.55))
         /// Selection fill, shared by every list so they look identical.
-        static let selection = Color.black.opacity(0.09)
+        static let selection = ramp(dark: 0.10, light: 0.09)
         /// Mouse hover: a fainter layer, visually distinct from selection.
-        static let rowHover = Color.black.opacity(0.045)
-        static let menuHover = Color.black.opacity(0.09)
-        static let separator = Color.black.opacity(0.10)
+        static let rowHover = ramp(dark: 0.05, light: 0.045)
+        static let menuHover = ramp(dark: 0.10, light: 0.09)
+        static let separator = ramp(dark: 0.10, light: 0.12)
         /// Small control surfaces: kbd chips, glyph tiles.
-        static let controlSurface = Color.black.opacity(0.08)
+        static let controlSurface = ramp(dark: 0.10, light: 0.08)
         /// Control borders: outlined kbd chips.
-        static let border = Color.black.opacity(0.16)
-        static let textPrimary = Color.black
-        static let textSecondary = Color.black.opacity(0.60)
-        static let textTertiary = Color.black.opacity(0.40)
-        static let noteText = Color.black.opacity(0.85)
-        static let iconPlaceholder = Color.black.opacity(0.06)
-        /// The faint wash behind a header on the light surface.
-        static let sheen = Color.black.opacity(0.04)
+        static let border = ramp(dark: 0.20, light: 0.18)
+        /// Alpha 1, so a call site can dim it with `.opacity` and land on the value it replaced.
+        static let textPrimary = ramp(dark: 1.0, light: 1.0)
+        static let textSecondary = ramp(dark: 0.60, light: 0.60)
+        static let textTertiary = ramp(dark: 0.40, light: 0.42)
+        static let noteText = ramp(dark: 0.90, light: 0.85)
+        static let iconPlaceholder = ramp(dark: 0.06, light: 0.06)
+        /// The faint wash behind the Onboarding header.
+        static let sheen = ramp(dark: 0.04, light: 0.04)
         /// The Settings card: a faint surface whose border doubles as the row divider.
-        static let cardFill = Color.white.opacity(0.45)
-        static let cardStroke = Color.black.opacity(0.10)
-        /// Tint layered into the floating controls, so the glass reads frosted, not clear.
-        static let glassFrost = Color.white.opacity(0.30)
+        static let cardFill = ramp(dark: 0.05, light: 0.04)
+        static let cardStroke = ramp(dark: 0.10, light: 0.10)
+        /// White in both: the frost brightens glass, and light glass needs more of it to read at all.
+        static let glassFrost = adaptive(dark: .srgbInk(1, alpha: 0.05), light: .srgbInk(1, alpha: 0.25))
         /// The violet of the app mark, used only to tint the About support callout.
         static let brand = Color(red: 0.525, green: 0.231, blue: 1.0)
         /// The palette's drop guides while dragging, and once a release would snap it home.
-        static let dropGuide = Color.white.opacity(0.35)
+        static let dropGuide = ramp(dark: 0.35, light: 0.35)
         static let dropGuideArmed = Color.blue
-
         /// Category tiles carry a white glyph and are the surface's only category-coded colour.
         static func tile(_ tint: ScopeTint) -> NSColor {
             switch tint {

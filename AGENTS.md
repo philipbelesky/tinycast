@@ -95,8 +95,11 @@ feature's doc, under its own `## Invariants`.
 - **Swift 6 language mode: data-race violations are hard errors.** `@MainActor` is the default,
   cross-actor model types are `Sendable`, and heavy or IO-bound work goes off-main as `nonisolated`
   functions driven by `Task.detached`. Do not add a second actor.
-- **The app is locked to `.aqua` globally.** The Liquid Glass material is tuned for a bright frosted
-  surface; dark mode is not a switch, it is a second design. ([FORK.md](FORK.md) divergence 2)
+- **Dark is the baseline, and a colour's dark branch is the literal it always was.** `Theme.Colors`
+  resolves per appearance through `ramp`/`adaptive`; every dark value is the `Color.white.opacity(…)`
+  the forced-dark build shipped, restated rather than re-derived. Retune a light branch freely — change
+  a dark one only when the task is to change Dark. `AppAppearance` drives `NSApp.appearance`, and
+  `.system` maps to `nil` so AppKit follows macOS on its own.
 - **Tinycast presents its own dialogs — never `NSAlert`, `NSSlider` or a system popover.** A question
   goes through `DialogController`, a report through a HUD via `HUDPresenter`.
 - **A networked feature's switch is structural, even though they all now ship on.** Currency rates,

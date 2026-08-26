@@ -30,7 +30,7 @@ themselves are in [AGENTS.md](AGENTS.md#non-negotiables). This file covers only 
 | # | Divergence | Upstream conflict risk | Upstreamable? |
 | --- | --- | --- | --- |
 | 1 | [Apple Development signing](#1--apple-development-signing) | Low, but silently reverted by `xcodegen` | No — machine-specific |
-| 2 | [Forced light appearance](#2--forced-light-appearance) | **High** — contradicts upstream decision 4 | No — it inverts a stated invariant |
+| 2 | ~~Forced light appearance~~ — [retired](#2--forced-light-appearance-retired) | None — the fork now takes upstream's | n/a |
 | 3 | [`Theme.scale`](#3--themescale-and-derived-typography) | **High** — rewrites `Theme.swift` wholesale | Plausibly yes |
 | 4 | [Scope keywords + web search](#4--scope-keywords-and-web-search) | Medium — hooks into `AppIndex`, `RootPaletteView`, `AppEntry.Kind` | Yes, as a feature |
 | 5 | [herdr opener](#5--herdr-opener) | Medium — the same `AppEntry.Kind` surface as 4 | Unlikely — niche third-party tool |
@@ -94,75 +94,27 @@ build fails outright when `CODE_SIGN_IDENTITY` names an identity the keychain do
 
 ---
 
-## 2 — Forced light appearance
+## 2 — Forced light appearance (retired)
 
-**Touches:** `AppCore.swift`, `Theme.swift` (the `Colors` block), `IconCache.swift`, nine view and window
-files, and five docs.
+**Retired 2026-08-26, merging upstream v0.10.1.** This divergence forced `.aqua` app-wide and inverted
+the whole alpha ramp to black-on-white, because upstream was locked to `.darkAqua` and its decision 4
+called light "not a switch, it is a second design".
 
-Upstream is locked to `.darkAqua` and says so as a non-negotiable: decision 4 calls light mode "not a
-switch, it is a second design", and [ui.md](docs/ui.md) builds a whole white-alpha ramp on top of that
-assumption. **This fork inverts it**: `NSApp.appearance = NSAppearance(named: .aqua)`, and the ramp is
-black-alpha over a bright frosted surface. The rest of this section is the second design that decision 4
-said would be required — so expect to re-do it, not merely re-apply it, whenever upstream restyles.
+**Upstream then built that second design.** `Features/Settings/AppAppearance.swift` is a
+System / Light / Dark setting, `Theme.Colors` resolves per appearance through `ramp(dark:light:)` and
+`adaptive(dark:light:)`, and `IconCache` carries the surface across its off-main rasterization. The
+fork took all of it and dropped everything this divergence held: the `.aqua` assignment in
+`AppCore.start()`, the `panelTint` rename, the flipped alphas, the light-pinned preview canvases and
+the doc prose that called light the invariant. `AppSettings.appearance` defaults to `.system`, which is
+upstream's default — pin it to `.light` in `AppSettings.init` if this fork wants its old look back, and
+that is now a one-line preference rather than a divergence.
 
-The fork-local docs have been rewritten to describe light as the invariant, which means **AGENTS.md,
-docs/ui.md, docs/architecture.md and docs/features/launcher.md all conflict with any
-upstream edit to the same passages.** When they do, take upstream's *substance* and re-invert only the
-appearance claim; do not take upstream's paragraph wholesale, or the docs will start lying about the
-code again.
+What the retirement leaves behind, and where it went: the fork's category tiles are divergence 4, the
+`* scale` factors baked into `IconCache`'s rasterized art are divergence 3, and the previews are
+divergence 11. None of those depended on the appearance being fixed.
 
-### What actually changed
-
-| Layer | Change |
-| --- | --- |
-| Appearance | `AppCore.start()` sets `.aqua`, not `.darkAqua` |
-| Panel surface | `panelDimming` (a `CGFloat` composed as `Color.black.opacity(…)` at four call sites) became **`panelTint`**, a `Color` — white 0.55 |
-| Marking colors | `selection` `rowHover` `menuHover` `separator` `controlSurface` `border` `textSecondary` `textTertiary` `cardStroke` all flipped white-alpha → black-alpha |
-| Lifting colors | `cardFill` (white 0.45) and `glassFrost` (white 0.30) stayed white — they lift a surface off the material rather than mark something on it |
-| Rasterized art | `IconCache.symbolIcon` draws its tile and glyph in black alphas; it bakes bitmaps, so it cannot inherit the appearance |
-| Caret & tint | `PalettePanel` insertion point → `.labelColor`; the search field's `.tint(.white)` → `.tint(.primary)` |
-| Ad-hoc fills | Icon placeholders (`AppIconView`, `UninstallView`), the onboarding gradient, the volume slider track/knob, the volume HUD bar, the About icon shadow |
-
-Deliberately **untouched**: `EdgeDissolve.swift` uses black only as a gradient *mask*, where the color is
-irrelevant, and `ThinScrollbar.swift` already draws in `Color.primary`, which follows the appearance on
-its own. Both are off-limits per AGENTS.md, and neither needed an exception.
-
-### The rule that keeps this maintainable
-
-A merged-in view that hardcodes `Color.white.opacity(…)` will be invisible on this surface. After every
-upstream merge, run:
-
-```sh
-grep -rn "Color\.white\|\.white\.opacity\|NSColor\.white\|darkAqua" --include="*.swift" Tinycast/ \
-  | grep -v "EmojiData.generated\|CurrencyData.generated"
-```
-
-Every hit is a *lifting* color (`panelTint`, `cardFill`, `glassFrost`, `dropGuide`, the onboarding
-gradient), white ink reversed out of a **saturated fill** — the category tile's glyph (`IconCache`,
-divergence 4), the Support window's brand capsule, the extension tint picker's selection ring — or a
-bug this fork has to fix. There is no hit that is fine by default.
-
-### Upstream now has a picker, and the fork keeps deleting it
-
-Upstream shipped `Features/Settings/AppAppearance.swift` — a System / Light / Dark enum behind a real
-Settings row — and `Theme.Colors` became `adaptive(dark:light:)` / `ramp(dark:light:)` on top of it.
-The fork deleted that file when it absorbed `793bb1f` and resolved the ramp back to flat light alphas,
-and every merge since has silently carried the deletion forward. So this divergence is no longer "the
-second design decision 4 said would be required" — **upstream has built it**, and the fork could drop
-this divergence entirely by taking `AppAppearance` and defaulting it to `.light`.
-
-That is a decision, not a merge resolution, so a merge should keep deleting the file until it is made.
-Two things a merge must do while the deletion stands: drop upstream's `appearance-test` from
-`run-tests.sh`, since it compiles the deleted file, and rename any new `Theme.Colors.panelScrim` call
-site to the fork's `panelTint` (`CameraPreviewView` needed this at v0.10.1).
-
-### Not verified visually by an agent
-
-`screencapture` and `osascript` keystrokes are both blocked by TCC from a shell here — ui.md's "Restyle
-from screenshots" note says as much — so the alpha values are reasoned, not eyeballed. `panelTint`, `glassFrost`, `cardFill` and
-`selection` are the four numbers to adjust if the surface reads wrong; they are all in `Theme.Colors`.
-
----
+Kept as a numbered slot rather than renumbered away, so every "divergence N" reference written before
+today still points at what it meant.
 
 ## 3 — `Theme.scale` and derived typography
 
@@ -229,8 +181,8 @@ the search row onto a suggestion.
 Every scope also **publishes a row of its own** (`AppEntry.Kind.scope`, `AppIndex.setScopes`), leading
 the empty query and wearing a coloured category tile — `ScopeTint`, `Theme.Colors.tile(_:)` and the
 tinted branch of `IconCache.symbolIcon(named:tint:)`, all documented in
-[ui.md](docs/ui.md#category-tiles). That tile is the only white ink on this surface that divergence 2
-does not treat as a bug. The rows a scope reveals wear the whole tile too: `AppEntry.categoryIconSource`
+[ui.md](docs/ui.md#category-tiles). White is the legible ink on a saturated tile in either
+appearance, which is why it is an `adaptive` pair rather than a `ramp`. The rows a scope reveals wear the whole tile too: `AppEntry.categoryIconSource`
 gives the launcher list the scope's glyph as well as its tint, while `iconSource` keeps the per-entry
 answer everywhere an entry stands for itself, with `AppIconView`'s `source:` parameter carrying the
 choice.
@@ -651,8 +603,9 @@ Then, before calling it done — the standard gate from
 - [ ] Debug build compiles with no new warnings.
 - [ ] `./Scripts/lint.sh` is clean.
 - [ ] `grep -rln 'import AppKit\|import SwiftUI\|import Cocoa' Tinycast/Features/*/Model/` returns nothing.
-- [ ] **The white-alpha grep above returns only lifting colors and the category tile's glyph**
-      (divergences 2, 4).
+- [ ] **No bare `Color.white.opacity(…)` reached a view** — it vanishes in Light. New colours go
+      through `Theme.Colors.ramp(dark:light:)` or `adaptive(dark:light:)`; the only bare whites left
+      are ink over a saturated fill (the category tile, the Support capsule, the tint picker's ring).
 - [ ] **New or merged views carry no magic numbers** — every length and font size comes from `Theme` (divergence 3).
 - [ ] **Signing survived** — if `xcodegen` ran, re-apply divergence 1.
 - [ ] **New upstream harnesses compile against the fork's types.** `ScopeTint` and `ScopeDefinition`

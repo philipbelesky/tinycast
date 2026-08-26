@@ -78,6 +78,18 @@ enum IconCache {
         cache.object(forKey: symbolKey(name, tint))
     }
 
+    /// Tiles rasterize off-main, where a dynamic `NSColor` resolves wrong, so carry the surface.
+    private static let darkSurface = Mutex(true)
+
+    /// Only a real change invalidates: most `effectiveAppearance` notifications do not move it.
+    @MainActor static func setDarkSurface(_ isDark: Bool) {
+        let changed = darkSurface.withLock { surface -> Bool in
+            defer { surface = isDark }
+            return surface != isDark
+        }
+        if changed { invalidateStyled() }
+    }
+
     /// Global rather than injected: a missed injection in a menu or list would be silent staleness.
     @MainActor static let style = IconStyleSignal()
 
@@ -87,7 +99,7 @@ enum IconCache {
     /// For icons resolved synchronously in `body`: the read *is* the subscription, so not a no-op.
     @MainActor static func observeStyle() { _ = style.generation }
 
-    /// A system icon-style move stales every bitmap; the generation in each key fixes it.
+    /// A surface or icon-style move stales every bitmap; the generation in each key fixes it.
     @MainActor static func invalidateStyled() {
         styleGeneration.withLock { $0 &+= 1 }
         cache.removeAllObjects()
@@ -122,7 +134,8 @@ enum IconCache {
     }
 
     private static func symbolKey(_ name: String, _ tint: SymbolTint?) -> NSString {
-        key("symbol:\(tint?.key ?? "plain"):\(name)")
+        let surface = darkSurface.withLock { $0 } ? "dark" : "light"
+        return key("symbol:\(surface):\(tint?.key ?? "plain"):\(name)")
     }
 
     /// A freshly-decoded, thereafter-immutable `NSImage` is safe to move across the actor boundary.
@@ -165,17 +178,19 @@ enum IconCache {
         if let cached = cache.object(forKey: key) { return cached }
 
         let side = displayPixel
+        let isDark = darkSurface.withLock { $0 }
+        let plainInk: CGFloat = isDark ? 1 : 0
         let image = NSImage(size: NSSize(width: side, height: side), flipped: false) { _ in
             // Tile inset mirrors the margin macOS app icons carry inside their canvas.
             let margin = 4 * Theme.scale
             let corner = 9 * Theme.scale
             let tile = NSRect(x: 0, y: 0, width: side, height: side)
                 .insetBy(dx: margin, dy: margin)
-            (tint?.color ?? .srgbInk(0, alpha: 0.08)).setFill()
+            (tint?.color ?? .srgbInk(plainInk, alpha: 0.09)).setFill()
             NSBezierPath(roundedRect: tile, xRadius: corner, yRadius: corner).fill()
 
-            // A tinted tile keeps white ink because the saturated fill carries its own contrast.
-            let ink = tint == nil ? NSColor.srgbInk(0, alpha: 0.80) : .white
+            // A tinted tile keeps white ink in both appearances; the tint carries the contrast.
+            let ink = tint == nil ? NSColor.srgbInk(plainInk, alpha: 0.85) : .white
             guard let symbol = glyph(named: name, tint: ink)
             else { return true }
             let size = symbol.size
