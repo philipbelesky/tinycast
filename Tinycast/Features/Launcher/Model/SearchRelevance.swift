@@ -93,7 +93,7 @@ enum FuzzyMatch {
 
     /// Exact-only, for a caller that discards every weaker tier: skips the subsequence walk.
     static func isExact(_ query: Query, candidate: String) -> Bool {
-        normalized(candidate) == query.text
+        normalized(candidate) == query.natural.text
     }
 
     /// The widest score `match` returns; the bands are sized off it so they never overlap.
