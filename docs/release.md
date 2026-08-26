@@ -21,6 +21,15 @@ without the `xattr` step a browser download needs. Override the destination with
 destination that doesn't exist is skipped rather than failing the build, so CI and a fresh clone are
 unaffected.
 
+Last, the build installs itself over `/Applications/Tinycast.app`. Tinycast runs as a login-item agent,
+so the script quits a running copy first — replacing a bundle under a live process leaves the old build
+serving hotkeys until something restarts it — and relaunches it afterwards only if it had been running.
+The match is on the exact process name, so `Tinycast Dev` and `Tinycast Beta` are other apps and keep
+running. The new bundle is staged beside the target and moved into place, so a copy that dies partway
+leaves the installed app intact, and the whole step runs after the DMG has been written and dropped, so
+a refused install never costs the packaging. A copy that will not quit stops the script rather than
+being installed out from under.
+
 The DMG carries only the app: with iCloud settings sync enabled (Settings → Backup,
 [features/sync.md](features/sync.md)) the configuration — settings, hotkeys, quicklinks, custom
 commands, favorites — follows the iCloud account to every Mac that opts in. A Mac still holding an

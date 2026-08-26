@@ -1,6 +1,6 @@
 #!/bin/bash
-# Build a signed Tinycast.app into build/Tinycast-<version>.dmg, then drop a copy where the other
-# Macs can reach it. Usage: ./Scripts/build-dmg.sh [version]
+# Build a signed Tinycast.app into build/Tinycast-<version>.dmg, drop a copy where the other Macs can
+# reach it, then install it over /Applications. Usage: ./Scripts/build-dmg.sh [version]
 set -euo pipefail
 
 cd "$(dirname "$0")/.." || exit 1
@@ -59,4 +59,35 @@ if [ -d "$DROP" ]; then
     echo "✓ copied to $DROP"
 else
     echo "· $DROP not present — skipped the copy"
+fi
+
+# This Mac gets the build too, and last, so a refused install never costs the DMG that already shipped.
+# `-x` keeps this to the stable channel: Tinycast Dev and Tinycast Beta are other apps and stay running.
+INSTALL="/Applications/Tinycast.app"
+RELAUNCH=false
+if pgrep -qx Tinycast; then
+    RELAUNCH=true
+    echo "▸ Quitting Tinycast…"
+    # A login-item agent is essentially always live, and a replaced bundle under a running process
+    # leaves the old build serving hotkeys until something restarts it.
+    osascript -e 'tell application "Tinycast" to quit' 2>/dev/null || pkill -x Tinycast || true
+    for _ in $(seq 40); do pgrep -qx Tinycast || break; sleep 0.25; done
+fi
+
+if pgrep -qx Tinycast; then
+    echo "✗ Tinycast would not quit — quit it by hand and re-run. $DMG is already built." >&2
+    exit 1
+fi
+
+# Staged alongside the target, so a copy that dies partway leaves the installed app untouched.
+STAGED="/Applications/.Tinycast.app.new"
+rm -rf "$STAGED"
+ditto "$APP" "$STAGED"
+rm -rf "$INSTALL"
+mv "$STAGED" "$INSTALL"
+echo "✓ installed to $INSTALL"
+
+if $RELAUNCH; then
+    open -a "$INSTALL"
+    echo "✓ relaunched"
 fi

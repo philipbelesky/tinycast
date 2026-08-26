@@ -11,9 +11,9 @@ dependencies.
 
 This is **Philip's personal fork of [`abue-ammar/tinycast`](https://github.com/abue-ammar/tinycast)**,
 on branch `philip`; `main` stays a clean mirror of upstream. It is **not released**: no App Store, no
-notarization, no other users. `./Scripts/build-dmg.sh` drops a DMG into iCloud Drive, which is how it
-reaches the author's other Macs, and that is the whole distribution story
-([release.md](docs/release.md)).
+notarization, no other users. `./Scripts/build-dmg.sh` installs the build over `/Applications` and
+drops a DMG into iCloud Drive, which is how it reaches the author's other Macs, and that is the whole
+distribution story ([release.md](docs/release.md)).
 
 The install base being known changes what is worth building. A feature that suits exactly one person's
 workflow — the herdr, VS Code and Linear openers — is the point rather than scope creep, and there is

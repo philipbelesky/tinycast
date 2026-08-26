@@ -88,6 +88,13 @@ script gained a fork-local drop step — the finished DMG is copied to `TINYCAST
 `~/Library/Mobile Documents/com~apple~CloudDocs/Resources` — which is skipped when the directory is
 absent, so it is inert upstream and on CI.
 
+It then installs the app over `/Applications/Tinycast.app`, quitting a running copy and relaunching it
+around the swap. For a fork with one install base the build *is* the release, and a build that has not
+reached this Mac has not finished. Unlike the drop step this one is unconditional and would replace an
+installed app wherever it runs; nothing in CI invokes this script, and the exact-name match confines it
+to the stable channel, so `Tinycast Dev` and `Tinycast Beta` are unaffected. If upstream ever wires
+`build-dmg.sh` into a workflow, this step needs a guard before that merge lands.
+
 **On merge:** take upstream's `project.pbxproj` whole — hand-resolving it is never worth it — keep the
 fork's three lines in `project.yml`, then run `xcodegen generate` and commit the result. If you ever
 want upstream's self-signed identity back, create it first ([docs/signing.md](docs/signing.md)); the
