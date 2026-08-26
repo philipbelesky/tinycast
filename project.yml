@@ -15,16 +15,13 @@ settings:
     # Either way the identity must stay *stable*, or macOS forgets the Accessibility grant.
     DEVELOPMENT_TEAM: CNPCA4RAWZ
     CODE_SIGN_STYLE: Automatic
-    # Debug keeps the development profile: only what ships has to run on a Mac nobody registered.
+    # Stays development for every config: Developer ID is applied by build-dmg.sh at export, because
+    # automatic signing only ever picks a development identity during a build. FORK.md divergence 1.
     CODE_SIGN_IDENTITY: "Apple Development"
     ENABLE_HARDENED_RUNTIME: NO
     SWIFT_STRICT_CONCURRENCY: complete
   configs:
     Release:
-      # A Developer ID profile carries no ProvisionedDevices, so a shipped build runs on any Mac
-      # instead of the two the development profile names. iCloud is a DEVELOPER_ID capability, so
-      # the KVS entitlement — and settings sync with it — survives the switch. FORK.md divergence 1.
-      CODE_SIGN_IDENTITY: "Developer ID Application"
       # Strip the shipped binary (dSYM is still generated first) and drop unused code.
       DEPLOYMENT_POSTPROCESSING: YES
       STRIP_INSTALLED_PRODUCT: YES

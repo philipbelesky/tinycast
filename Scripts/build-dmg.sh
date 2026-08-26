@@ -5,45 +5,52 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.." || exit 1
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
-# Signing itself lives in project.yml so `xcodegen generate` carries it (FORK.md divergence 1); this
-# names the same identity only so a missing certificate fails here rather than mid-build.
-IDENTITY="${TINYCAST_SIGN_IDENTITY:-Developer ID Application}"
 DROP="${TINYCAST_DMG_DROP:-$HOME/Library/Mobile Documents/com~apple~CloudDocs/Resources}"
 DERIVED="build/DerivedData"
+# Read rather than repeat: the team owns the Developer ID identity and must not drift from project.yml.
+TEAM="$(awk '/DEVELOPMENT_TEAM:/ { print $2; exit }' project.yml)"
 
-if ! security find-identity -p codesigning | grep -q "$IDENTITY"; then
-    echo "✗ '$IDENTITY' code-signing identity not found." >&2
-    echo "  Xcode ▸ Settings ▸ Accounts ▸ Manage Certificates ▸ + ▸ Developer ID Application." >&2
+if [ -z "$TEAM" ]; then
+    echo "✗ No DEVELOPMENT_TEAM in project.yml — the export has no team to sign for." >&2
     exit 1
 fi
 
-echo "▸ Building signed Tinycast.app (Release)…"
+# Automatic signing only ever picks a *development* identity during a build, so naming Developer ID
+# as a build setting just conflicts with it. Developer ID is a distribution method: the archive signs
+# for development and the export re-signs, exactly as Xcode's Distribute App does.
+echo "▸ Archiving Tinycast.app (Release)…"
+ARCHIVE="build/Tinycast.xcarchive"
+rm -rf "$ARCHIVE"
 xcodebuild -project Tinycast.xcodeproj -scheme Tinycast -configuration Release \
     -derivedDataPath "$DERIVED" \
+    -archivePath "$ARCHIVE" \
     -allowProvisioningUpdates \
-    CODE_SIGN_IDENTITY="$IDENTITY" \
     ${1:+MARKETING_VERSION="$1"} \
-    build
+    archive
 
-APP="$DERIVED/Build/Products/Release/Tinycast.app"
+echo "▸ Exporting with Developer ID…"
+EXPORT="build/export"
+rm -rf "$EXPORT"
+OPTDIR="$(mktemp -d)"
+cat > "$OPTDIR/ExportOptions.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>method</key><string>developer-id</string>
+    <key>teamID</key><string>$TEAM</string>
+    <key>signingStyle</key><string>automatic</string>
+    <key>destination</key><string>export</string>
+</dict>
+</plist>
+PLIST
+xcodebuild -exportArchive -archivePath "$ARCHIVE" -exportPath "$EXPORT" \
+    -exportOptionsPlist "$OPTDIR/ExportOptions.plist" -allowProvisioningUpdates
+rm -rf "$OPTDIR"
+
+APP="$EXPORT/Tinycast.app"
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
 DMG="build/Tinycast-${VERSION}.dmg"
-
-# The KVS entitlement needs an Apple-issued profile (FORK.md divergence 10) and a development one names
-# the Macs it covers. Anywhere else the app dies at launch as "damaged or incomplete", so say it here.
-PROFILE="$APP/Contents/embedded.provisionprofile"
-if [ -f "$PROFILE" ]; then
-    PLIST="$(mktemp)"
-    security cms -D -i "$PROFILE" -o "$PLIST" 2>/dev/null || true
-    DEVICES="$(/usr/libexec/PlistBuddy -c 'Print :ProvisionedDevices' "$PLIST" 2>/dev/null |
-        sed -n 's/^[[:space:]]*\([0-9A-Fa-f]\{8\}-[0-9A-Fa-f]*\)[[:space:]]*$/    \1/p')"
-    rm -f "$PLIST"
-    if [ -n "$DEVICES" ]; then
-        echo "▸ This build runs on these Macs only — 'Provisioning UDID' in About This Mac ▸ Report:"
-        echo "$DEVICES"
-        echo "  Another Mac needs registering, then Xcode ▸ Settings ▸ Accounts ▸ Download Profiles."
-    fi
-fi
 
 echo "▸ Packaging ${DMG}"
 STAGE="$(mktemp -d)"

@@ -29,7 +29,7 @@ themselves are in [AGENTS.md](AGENTS.md#non-negotiables). This file covers only 
 
 | # | Divergence | Upstream conflict risk | Upstreamable? |
 | --- | --- | --- | --- |
-| 1 | [Apple Development and Developer ID signing](#1--apple-development-and-developer-id-signing) | Low, but silently reverted by `xcodegen` | No — machine-specific |
+| 1 | [Apple Development signing, Developer ID export](#1--apple-development-signing-developer-id-export) | Low, but silently reverted by `xcodegen` | No — machine-specific |
 | 2 | ~~Forced light appearance~~ — [retired](#2--forced-light-appearance-retired) | None — the fork now takes upstream's | n/a |
 | 3 | [`Theme.scale`](#3--themescale-and-derived-typography) | **High** — rewrites `Theme.swift` wholesale | Plausibly yes |
 | 4 | [Scope keywords + web search](#4--scope-keywords-and-web-search) | Medium — hooks into `AppIndex`, `RootPaletteView`, `AppEntry.Kind` | Yes, as a feature |
@@ -53,7 +53,7 @@ can be dropped whole rather than untangled.
 
 ---
 
-## 1 — Apple Development and Developer ID signing
+## 1 — Apple Development signing, Developer ID export
 
 **Touches:** `project.yml` (three lines) and the `project.pbxproj` regenerated from it. Originally
 commit `3ca4321 Signing fix/setup`, which patched the generated file directly.
@@ -70,20 +70,35 @@ reverted — and since `Tinycast Self-Signed` was never created in this keychain
 could not sign at all. **The settings now live in `project.yml`**, so regeneration carries them:
 
 ```yaml
-settings.base:                          settings.configs.Release:
-  DEVELOPMENT_TEAM: CNPCA4RAWZ            CODE_SIGN_IDENTITY: "Developer ID Application"
+settings.base:
+  DEVELOPMENT_TEAM: CNPCA4RAWZ
   CODE_SIGN_STYLE: Automatic
   CODE_SIGN_IDENTITY: "Apple Development"
 ```
 
-**Release signs with Developer ID, Debug with Apple Development**, and the split is the point. A
-development profile carries a `ProvisionedDevices` list, so a build signed that way runs only on the
-Macs named in it and dies at launch anywhere else. A Developer ID profile has no such list. Since
-iCloud is a `DEVELOPER_ID` capability — Xcode's own
-`DVTPortalCachedPortalCapabilities.json` lists `distributionTypes: [AD_HOC, DEVELOPER_ID, DEVELOPMENT,
-STORE]` against the `com.apple.developer.ubiquity-kvstore-identifier` entitlement — the switch costs no
-sync. Debug stays on `Apple Development` because the dev channel never leaves this Mac and a
-development profile is the cheaper thing for Xcode to manage.
+**Every config still builds with `Apple Development`; Developer ID is applied at export instead.**
+Naming `Developer ID Application` as a build setting does not work and Xcode says so outright —
+*"automatically signed for development, but a conflicting code signing identity Developer ID
+Application has been manually specified"*. Automatic signing only ever selects a **development**
+identity during a build; Developer ID is a *distribution* method, reached by archiving and then
+exporting. `build-dmg.sh` therefore archives, then runs `-exportArchive` with `method: developer-id`
+and `signingStyle: automatic` — precisely what Xcode's **Distribute App ▸ Developer ID** does.
+
+The reason to bother is the device list. A development profile carries `ProvisionedDevices`, so a build
+signed that way runs only on the Macs named in it and dies at launch anywhere else as *"damaged or
+incomplete"*. The export instead embeds a **`Mac Team Direct Provisioning Profile`**, which reports
+`ProvisionsAllDevices = true` and does not expire until **2044** — no device list, and no annual
+re-signing treadmill. The `com.apple.developer.ubiquity-kvstore-identifier` entitlement survives the
+re-sign intact, so settings sync is unaffected; iCloud is a `DEVELOPER_ID` capability, as Xcode's own
+`DVTPortalCachedPortalCapabilities.json` records with
+`distributionTypes: [AD_HOC, DEVELOPER_ID, DEVELOPMENT, STORE]`.
+
+`-allowProvisioningUpdates` does the rest: on the first export it **creates the Developer ID Application
+certificate and the Direct profile** without anyone visiting the developer portal. Note that the
+resulting certificate lives in a Xcode-managed vault keychain and is **invisible to
+`security find-identity -p codesigning`** — which is why the script no longer preflights for it, and
+why `TINYCAST_SIGN_IDENTITY` is gone. A check that greps for the identity reports a missing certificate
+while the export signs with it perfectly happily.
 
 The build is **not notarised**, deliberately. Notarisation would demand Hardened Runtime, which this
 app does not enable and which needs auditing against the JavaScriptCore JIT the extension runtime
@@ -98,10 +113,8 @@ of a file upstream doesn't know about.
 
 `Scripts/build-dmg.sh` followed: it used to hardcode `CODE_SIGN_STYLE=Manual`, the self-signed identity
 and `--timestamp=none`, which meant it aborted on line 10 of a fork checkout because that identity was
-never created here. It now leaves signing to `project.yml` and only preflights that the identity
-resolves, defaulting to `Developer ID Application` and overridable with `TINYCAST_SIGN_IDENTITY`.
-Automatic signing needs `-allowProvisioningUpdates` to fetch the Developer ID profile the entitlement
-requires, so the build passes it. The same
+never created here. It now leaves signing to `project.yml` and the export options, and
+preflights only that `project.yml` still names a team to sign for. The same
 script gained a fork-local drop step — the finished DMG is copied to `TINYCAST_DMG_DROP`, defaulting to
 `~/Library/Mobile Documents/com~apple~CloudDocs/Resources` — which is skipped when the directory is
 absent, so it is inert upstream and on CI.
@@ -385,9 +398,9 @@ message that reads like a broken download and is nothing of the sort. That is wh
 An earlier version of this file claimed Developer ID "cannot carry an iCloud entitlement at all, so it
 costs the feature". **That was wrong**, and it steered the design for as long as it stood. The claim
 came from documentation and forum lore that were true when iCloud KVS was Mac App Store only; Xcode's
-cached portal capabilities contradict it outright. Debug still signs with a development profile, so
-`build-dmg.sh` keeps printing any covered UDIDs after a build — with a Developer ID profile there are
-none and the block simply does not fire.
+cached portal capabilities contradict it outright. `build-dmg.sh` used to print the covered UDIDs after each build so the
+constraint could not be rediscovered from a failing DMG; the Developer ID export embeds a profile that
+names no devices, so that block was dead and has been deleted with the claim that motivated it.
 
 The rename resets everything keyed by bundle id on an installed Mac: prefs, caches, Application
 Support, TCC grants, the login item. `Scripts/migrate-channel.sh` copies the data classes across
