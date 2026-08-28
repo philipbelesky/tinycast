@@ -131,6 +131,7 @@ final class HyperKeyTap: HealthCheckable {
     @ObservationIgnored private var hyperActive = false
     @ObservationIgnored private var hyperDownAt: ContinuousClock.Instant?
     @ObservationIgnored private var otherKeyPressed = false
+    @ObservationIgnored private var reviveAttempted = false
     private let clock = ContinuousClock()
     private static let quickPressWindow: Duration = .milliseconds(250)
 
@@ -366,6 +367,7 @@ final class HyperKeyTap: HealthCheckable {
 
     private func tearDownTap() {
         cancelHold()
+        reviveAttempted = false
         if let runLoopSource {
             CFRunLoopRemoveSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
             self.runLoopSource = nil
@@ -392,9 +394,16 @@ final class HyperKeyTap: HealthCheckable {
             tearDownTap()
             status = .needsAccessibility
         } else if let tapPort, !CGEvent.tapIsEnabled(tap: tapPort) {
-            CGEvent.tapEnable(tap: tapPort, enable: true)
+            // An enable the system drops stays dropped, so a second failure earns a fresh port.
+            if reviveAttempted {
+                tearDownTap()
+            } else {
+                reviveAttempted = true
+                CGEvent.tapEnable(tap: tapPort, enable: true)
+            }
+        } else {
+            reviveAttempted = false
         }
-
     }
 
     private func sessionDidResign() {

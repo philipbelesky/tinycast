@@ -46,6 +46,7 @@ themselves are in [AGENTS.md](AGENTS.md#non-negotiables). This file covers only 
 | 15 | [Networked features default on](#15--networked-features-default-on) | **High** — deletes all four consent sheets upstream considers structural | No — it inverts a stated invariant |
 | 16 | [Second chords for the palette and the clipboard history](#16--second-chords-for-the-palette-and-the-clipboard-history) | Medium — two new `HotKeyAction` cases, so every exhaustive switch over them | Yes, small — but it only pays off with sync |
 | 17 | [Word-order-independent matching](#17--word-order-independent-matching) | Medium — reshapes `FuzzyMatch.Query` and `match`, which upstream is actively editing | Yes, as a feature |
+| 18 | [Event-tap watchdogs rebuild, not retry](#18--event-tap-watchdogs-rebuild-not-retry) | Low — one branch inside two `healthCheck()` bodies | Yes — it fixes a tap that stays dead |
 
 Keep each divergence as **its own commit**, never squashed together. Rebasing `philip` onto a new
 `origin/main` then replays them one at a time, and a divergence that upstream has since made redundant
@@ -641,6 +642,38 @@ change nobody asked for; the harness already pinned that ordering, and it still 
 `SearchRelevance.score(_:fields:)` that this branch has not yet absorbed. `isExact` reads `query.text`,
 which is now `query.natural.text`; that rename is the whole fixup. Take the folded-`Query` overloads
 when they arrive — they are the same once-per-keystroke optimisation this divergence is built on.
+
+---
+
+## 18 — Event-tap watchdogs rebuild, not retry
+
+**Touches:** `HotKeys/Service/DoubleTapMonitor.swift` and `HotKeys/Service/HyperKeyTap.swift` — one
+`reviveAttempted` flag and one branch in each `healthCheck()` — plus the lifecycle section of
+`docs/features/hotkeys.md`.
+
+Upstream's one-second watchdog treats a disabled tap as always recoverable: it calls
+`CGEvent.tapEnable(tap:enable:true)` and expects the tap back. That holds for the ordinary case the
+call was written for, `kCGEventTapDisabledByTimeout` on a callback that ran long. It does not hold
+when the window server has stopped honouring the port altogether, and then the watchdog retries
+forever against a call that does nothing.
+
+That is not hypothetical. An installed build ran for a day and a half with double-tap ⇧ silently dead:
+`CGGetEventTapList` showed the listen-only tap present and `enabled=false`, with `keyDown` stripped out
+of its `eventsOfInterest` mask — `0x200100a` against the `0x200140a` the source asks for — while the
+modifying Hyper tap in the same process was fine, so the Accessibility grant plainly wasn't the
+problem. A live `sample` caught the watchdog mid-call in `SLEventTapEnable`, so roughly 100,000 enable
+attempts had already been ignored. Quitting and relaunching fixed it instantly, which is the whole
+diagnosis: the port was unrecoverable and only a fresh one would do.
+
+So a tap still disabled on the tick *after* an enable attempt is torn down, and the existing
+`tapPort == nil` branch installs a replacement on the next tick. The flag resets in `tearDownTap` and
+whenever the tap is observed healthy, so an ordinary timeout still costs one cheap re-enable and no
+rebuild — the escalation only fires when the enable was ignored. Two seconds is the worst-case
+recovery, against the previous never.
+
+**On merge:** low risk. The branch sits inside a body upstream rarely touches, and if upstream ever
+rewrites either watchdog, take its version and re-apply the escalation — the flag is four lines and
+carries no state anyone else reads.
 
 ---
 

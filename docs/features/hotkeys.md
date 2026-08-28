@@ -115,7 +115,8 @@ details are load-bearing:
   chord and correctly reads as "not a lone modifier" — the left-side twin still double-taps.
 - Like every keyboard tap it needs the **Accessibility** grant, and it never prompts for it. The
   binding records regardless; the recorder shows an inline warning that opens System Settings, and the
-  one-second health timer installs the tap the moment the grant lands.
+  one-second health timer installs the tap the moment the grant lands — and recreates it if the system
+  ever stops honouring it, per [Lifecycle](#lifecycle) below.
 
 ⇧ is bindable this way even though `KeyShortcut` rejects a bare ⇧ combo: a double-_tap_ is unambiguous
 where a bare ⇧ combo would shadow typing.
@@ -191,7 +192,13 @@ there, so the toggle cannot move without a chord to mean.
 
 Like every keyboard tap it needs the **Accessibility** grant and never prompts for it. A one-second
 watchdog runs while a key is configured: it retries installation until the grant lands, notices
-revocation, revives a tap the system disabled on timeout or user input, and clears a stuck hold. On
+revocation, revives a tap the system disabled on timeout or user input, and clears a stuck hold.
+
+**A disabled tap escalates to a rebuild**, in this watchdog and in `DoubleTapMonitor`'s. `CGEvent.tapEnable`
+is not a guaranteed revival: a port the window server has stopped honouring stays disabled however
+often it is asked, so a tap still disabled on the tick after an enable attempt is torn down and a
+fresh one created on the next tick. Retrying the enable alone is what let a dead double-tap survive
+across a day and a half of one-second retries. On
 fast user switching another session owns the keyboard, so half-held state is dropped and rewriting
 stops until this session is active again. The HID remap outlives the process, so
 `applicationWillTerminate` hands the key back to the system before exiting.

@@ -48,6 +48,7 @@ final class DoubleTapMonitor: HealthCheckable {
     @ObservationIgnored private var sessionTokens: [NotificationToken] = []
     private var sessionActive = true
     private var loggedTapFailure = false
+    @ObservationIgnored private var reviveAttempted = false
 
     @ObservationIgnored weak var healthTicker: HealthTicker?
 
@@ -180,6 +181,7 @@ final class DoubleTapMonitor: HealthCheckable {
 
     private func tearDownTap() {
         detector.reset()
+        reviveAttempted = false
         if let runLoopSource {
             CFRunLoopRemoveSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
             self.runLoopSource = nil
@@ -206,7 +208,15 @@ final class DoubleTapMonitor: HealthCheckable {
             tearDownTap()
             needsAccessibility = true
         } else if let tapPort, !CGEvent.tapIsEnabled(tap: tapPort) {
-            CGEvent.tapEnable(tap: tapPort, enable: true)
+            // An enable the system drops stays dropped, so a second failure earns a fresh port.
+            if reviveAttempted {
+                tearDownTap()
+            } else {
+                reviveAttempted = true
+                CGEvent.tapEnable(tap: tapPort, enable: true)
+            }
+        } else {
+            reviveAttempted = false
         }
     }
 }
