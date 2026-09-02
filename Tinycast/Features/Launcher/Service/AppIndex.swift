@@ -162,8 +162,11 @@ struct AppEntry: Identifiable, Hashable, Sendable {
     }
 
     /// The launcher list's answer instead: a row wears its scope's glyph as well as its colour, so
-    /// results read as categories — owner's call, docs/ui.md#category-tiles.
+    /// results read as categories — owner's call, docs/ui.md#category-tiles. Applications are the
+    /// exception: a red grid tells every app apart from every other app equally, so it is the app's
+    /// own icon that carries the information — reverted, FORK.md divergence 4.
     @MainActor var categoryIconSource: EntryIcon {
+        if kind == .application || kind == .systemSettings { return iconSource }
         guard let symbol = ScopeCatalog.symbol(for: kind), let tint = tileTint else {
             return iconSource
         }

@@ -225,7 +225,10 @@ tinted branch of `IconCache.symbolIcon(named:tint:)`, all documented in
 appearance, which is why it is an `adaptive` pair rather than a `ramp`. The rows a scope reveals wear the whole tile too: `AppEntry.categoryIconSource`
 gives the launcher list the scope's glyph as well as its tint, while `iconSource` keeps the per-entry
 answer everywhere an entry stands for itself, with `AppIconView`'s `source:` parameter carrying the
-choice.
+choice. Applications and System Settings are the one exception: `categoryIconSource` falls back to
+`iconSource` for those two kinds, so a launcher row still draws the app's own icon rather than the
+red grid tile — a red square tells every app apart from every other app equally, which is exactly
+the information an icon exists to carry. Owner's call, reverting part of the tile-everything change.
 
 This is the divergence most worth offering upstream — it is additive, it invents no new architecture,
 and the grammar is pure and tested. Until then, the conflict surface is what it touches: `AppIndex`
