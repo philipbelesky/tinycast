@@ -1,6 +1,6 @@
 import AppKit
 
-/// Opens a Linear view, in the desktop app or the browser. See docs/features/linear.md.
+/// Opens a Linear destination or issue in the desktop app or browser. See docs/features/linear.md.
 @MainActor
 final class LinearCoordinator {
     private let store: LinearStore

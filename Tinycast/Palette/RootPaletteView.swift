@@ -240,6 +240,7 @@ struct RootPaletteView: View {
             vm.selection = 0
             scroll = ScrollIntent(kind: .top)
             refreshSuggestions()
+            refreshLinearIssueSearch()
             if vm.mode == .fileSearch { fileSearch.search(vm.query) }
             // A command that took over the search text filters its own list.
             if vm.mode == .extensionCommand, let handler = extensionScreen.searchTextHandler {
@@ -251,7 +252,10 @@ struct RootPaletteView: View {
             vm.selection = 0
             scroll = ScrollIntent(kind: .top)
         }
-        .onChange(of: vm.scope) { refreshSuggestions() }
+        .onChange(of: vm.scope) {
+            refreshSuggestions()
+            refreshLinearIssueSearch()
+        }
         .onChange(of: vm.mode) {
             vm.selection = 0
             vm.clipboardFilter = .all
@@ -269,6 +273,7 @@ struct RootPaletteView: View {
             if vm.mode != .customCommandArguments {
                 core.customCommandCoordinator.cancelCustomCommandArguments()
             }
+            refreshLinearIssueSearch()
         }
         // `prepare` may change nothing, so this intent still snaps the scroll to the origin.
         .onChange(of: vm.resetToken) {
@@ -927,6 +932,17 @@ struct RootPaletteView: View {
             return
         }
         core.searchSuggestions.update(engine: engine, query: vm.query)
+    }
+
+    /// Ticket lookup follows only the live Linear scope and cancels as soon as that scope leaves.
+    private func refreshLinearIssueSearch() {
+        guard vm.mode == .launcher, let scope = vm.scope,
+            ScopeCatalog.target(for: scope, settings: settings) == .linear
+        else {
+            core.linear.clearIssueSearch()
+            return
+        }
+        core.linear.updateIssueSearch(vm.query)
     }
 
     private func activateSelection() {

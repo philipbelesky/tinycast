@@ -36,7 +36,7 @@ themselves are in [AGENTS.md](AGENTS.md#non-negotiables). This file covers only 
 | 5 | [herdr opener](#5--herdr-opener) | Medium — the same `AppEntry.Kind` surface as 4 | Unlikely — niche third-party tool |
 | 6 | [VS Code project opener](#6--vs-code-project-opener) | Medium — the same `AppEntry.Kind` surface as 4 | Yes, as a feature |
 | 7 | [Replace-on-import for quicklinks](#7--replace-on-import-for-quicklinks) | Low — one button, one method | Yes, small |
-| 8 | [Linear view opener](#8--linear-view-opener) | Medium — the same `AppEntry.Kind` surface as 4 | Unlikely — niche, and networked |
+| 8 | [Linear opener and ticket lookup](#8--linear-opener-and-ticket-lookup) | Medium — the same `AppEntry.Kind` surface as 4 | Unlikely — niche, and networked |
 | 9 | [Header-clearing edge dissolve](#9--header-clearing-edge-dissolve) | **High** — rewrites the top half of a file upstream calls off-limits | Yes — it fixes a real artifact |
 | 10 | [iCloud settings sync](#10--icloud-settings-sync) | Medium — `project.yml` ids/entitlements, `AppCore`, a `SettingsBackup` split | No — needs provisioning upstream refuses |
 | 11 | [SwiftUI previews](#11--swiftui-previews) | Low — 22 files, every edit an append at EOF | Yes, wholesale |
@@ -315,7 +315,7 @@ unreadable file from costing a library.
 
 ---
 
-## 8 — Linear view opener
+## 8 — Linear opener and ticket lookup
 
 **Touches:** a new `Features/Linear/` (two pure models with a harness, a client, a switchable store, a
 coordinator, a settings pane), plus the same hook set as divergences 5 and 6 —
@@ -323,7 +323,8 @@ coordinator, a settings pane), plus the same hook set as divergences 5 and 6 —
 `PaletteCoordinator.onShow`, `AppCore` wiring, `SettingsTab` and the settings/backup registries.
 
 `l payments` lists every workspace's Linear sidebar — saved views, projects, initiatives; ↵ opens
-one. It is
+one. A number, full identifier or title inside that scope also searches issues across every logged-in
+workspace, with exact number searches including archived issues and title searches excluding them. It is
 the **second networked feature** in the app and the first the fork added, so it copies
 `CurrencyRateStore` rather than inventing a second shape: flag on the store, three guards,
 re-checked across the await, cache deleted when it is turned off. **Divergence 15 later deleted this
@@ -534,7 +535,7 @@ network clause, and the feature docs that stated the old shape.
 Upstream ships every networked feature **off** behind a sheet naming the provider, the cadence and
 what leaves the machine, and `AGENTS.md` said in terms that "only my machines" was not an argument
 against that. **This fork now defaults currency rates, iCloud settings sync, search suggestions,
-quicklinks and Linear views to on, and deletes all four consent sheets** — an explicit owner's
+quicklinks and the Linear integration to on, and deletes all four consent sheets** — an explicit owner's
 decision about the owner's own data on the owner's own Macs, which is the one argument the old rule
 refused and the only one available here. It is written down rather than assumed so the next departure
 has to be argued too.
@@ -551,12 +552,13 @@ fetches on a private `.ephemeral`, `urlCache = nil` session. `snippetsEnabled` s
 **Snippets is the one gate left**, because enabling it grants keyword expansion over every keystroke
 in every app — a different question from whether a feature may fetch.
 
-Linear was the closest call and went with the rest. The sheet's own text is why: it said Tinycast
-never sees an API token, because the `linear` CLI holds the credentials and this app only reads
-`workspaces` out of `credentials.toml`. A feature that holds no secret and reads no issue contents is
-asking permission to list view *names*, which is not a question worth a modal. On a Mac with no CLI
-installed or none logged in, on is inert — `refresh` returns a failure string the pane shows, nothing
-publishes, and `AppCore` drops the scope.
+Linear was the closest call and went with the rest. Tinycast never sees an API token: the `linear` CLI
+holds the credentials and this app reads only workspace slugs from its config. Sidebar refreshes send
+no typed text; ticket lookup does send the explicit query after the user enters the Linear scope, then
+keeps the returned issue metadata in memory for five minutes and never writes it to disk. That is a
+meaningful privacy cost, but on these known-owner Macs a permanent Settings disclosure is more useful
+than a one-time modal. On a Mac with no CLI installed or none logged in, on is inert — requests fail
+closed, nothing publishes, and the unusable scope is removed.
 
 **Two consequences worth knowing.** Sync's first-contact sheet — which side wins when iCloud already
 holds a differing envelope — can no longer fire on a first launch, because nothing calls
@@ -626,7 +628,7 @@ new private helpers — plus a `wordOrder()` section in `Tests/fuzz-test.swift` 
 Upstream matches the query as one string in the order typed, so `pr terminal` finds nothing named
 `Terminal PRs`: neither the substring pass nor the subsequence walk can go backwards. That suits app
 names, which are short and which people type from the front. It suits none of the entry kinds this
-fork added — quicklinks, herdr workspaces, VS Code projects, Linear views — whose names are phrases the
+fork added — quicklinks, herdr workspaces, VS Code projects, Linear destinations — whose names are phrases the
 owner wrote (`Work / Terminal PRs`) and recalls by content rather than by order.
 
 `FuzzyMatch.Query` now folds every reordering of a two- or three-word query alongside the order typed,

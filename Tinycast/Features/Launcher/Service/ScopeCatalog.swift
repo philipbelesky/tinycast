@@ -8,6 +8,8 @@ enum ScopeTarget: Equatable, Sendable {
     /// Switches screen instead of filtering; that screen carries its own header, so no chip.
     case mode(PaletteMode)
     case webSearch(WebSearchEngine)
+    /// Keeps cached destinations local while a typed query also searches Linear tickets.
+    case linear
 }
 
 /// The scope registry: keyword → id → target. See docs/features/palette.md#scope-keywords.
@@ -65,7 +67,7 @@ enum ScopeCatalog {
             definition: ScopeDefinition(
                 keyword: "l", id: linear, title: "Linear", symbol: "line.3.horizontal.decrease.circle",
                 tint: .indigo),
-            target: .kinds([.linearTarget]))
+            target: .linear)
     ]
 
     private static let modes: [Entry] = [

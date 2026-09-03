@@ -1,67 +1,46 @@
-# Linear views
+# Linear
 
-`l payments` lists what is in the sidebar of every Linear workspace the `linear` CLI is logged in to;
-↵ opens one in the desktop app or the browser. Four kinds of target: **saved views**, **projects** and
-**initiatives**, all from Linear, plus the fixed pages every workspace has — Inbox, My Issues,
-Projects, Initiatives, Settings — which are added locally and can be switched off.
+The `l` scope combines cached Linear destinations with on-demand ticket lookup across every workspace the `linear` CLI is logged in to. An empty or ordinary local query filters saved views, projects, initiatives and fixed workspace pages; a ticket query adds matching issues above those destinations. ↵ opens either kind of result in the Linear app or the browser.
 
-Issues are deliberately absent. This feature opens destinations, not records.
+Ticket query grammar is deliberately narrow:
+
+- `861` finds that exact issue number across every team and workspace, including archived issues.
+- `PC-861` finds that exact team key and issue number across every workspace, including archived issues.
+- `claim editor` searches titles once the trimmed query is at least three characters and excludes archived issues.
 
 ## Invariants
 
-- **This is a networked feature and it ships on** ([FORK.md](../../FORK.md) divergence 15). The flag
-  lives on `LinearStore`, **never** in `AppSettings`, so no settings import can move it either way
-  ([AGENTS.md](../../AGENTS.md#non-negotiables)). `linearShowInLauncher` and `linearDestination` are
-  ordinary settings and are backed up; neither can turn the network on.
-- **Tinycast never sees a Linear token.** Every request goes through the `linear` CLI, which holds the
-  credentials in the system keyring. The only file read directly is `~/.config/linear/credentials.toml`,
-  and only for its `workspaces` list — `LinearCredentials.parse` reads exactly two keys by name, so a
-  migrated plaintext token in that file is never touched, which `linear-test` pins.
-- **A spawned tool gets `SubprocessEnvironment.inherited`, never the raw environment.** Xcode
-  injects debugging dylibs into a Debug run and children inherit them, which breaks any tool that
-  reads its own executable — `linear` is Deno-compiled and exits 1 with "Did not find magic
-  bytes". The symptom is vicious: the feature works from a terminal and from a released build,
-  and fails only while debugging. See [development.md](../development.md#spawning-a-tool).
-- **`Model/LinearTarget.swift` and `Model/LinearCredentials.swift` are Foundation-only and pure**, so
-  `linear-test` compiles the shipped parser, URL builder and icon map.
-- **`linear api` answers HTTP 200 with an `errors` array**, so a failed query is not a thrown error.
-  `LinearTarget.parse` returns an empty array for anything it cannot read, and the store treats an empty
-  fetch as a failure to report rather than a list to publish — a bad refresh never blanks the cache.
-- **A target id carries its workspace.** Two workspaces can hold a view of the same name — this
-  machine has two called `Terminal` — so the id is `<urlKey>/<path>` and the row reads
-  `philipb › Timekept`.
-- **A project's path comes from Linear's own `url`, never from its id.** The url carries a name slug
-  (`project/tvtunes-d4539ca85332`) that no client could reconstruct. A url that does not sit under
-  this workspace is dropped rather than opened, so a redirect can never be followed blindly. Saved
-  views are the opposite case: `CustomView` exposes no `url`, so their path *is* built, from `slugId`.
+- **This is a networked feature and it ships on** ([FORK.md](../../FORK.md) divergence 15). Its enable flag belongs to the Linear store, never general settings, so importing settings cannot turn the network on. Show-in-launcher and destination preferences can be backed up because neither can enable a request.
+- **Tinycast never sees a Linear token.** Every request goes through the `linear` CLI, which holds credentials in the system keyring. Tinycast reads only the configured workspace slugs from the CLI's credentials file, and the parser ignores every other key.
+- **A selected CLI workspace wins over an ambient API key.** Tinycast removes `LINEAR_API_KEY` from the otherwise-sanitised inherited subprocess environment. Without this, a developer shell's key makes `--workspace` fail or silently changes the identity being queried.
+- **Disabling is structural.** A disabled store does not read the destination cache, publish rows or fetch. The flag is re-checked after every await, so disabling or leaving the scope while a request is running prevents that response from landing.
+- **Ticket text and results are transient.** Completed ticket lookups are cached only in memory for five minutes. They are never written to the destination cache, settings, backups or learned launcher ranking, and cannot become favourites or hotkeys.
+- **A result URL must belong to the workspace that answered.** Projects, initiatives and issues use Linear's returned URL because it contains a slug clients cannot safely reconstruct; a URL outside the answering workspace is dropped.
+- **A target identity carries its workspace.** Two workspaces may contain identically named views or the same issue number, so identity includes the workspace URL key and destination path.
+- **GraphQL errors live in successful CLI output.** Linear can answer HTTP 200 with an `errors` array, so the client checks both process status and response content. A failed destination refresh never replaces the last good disk cache.
 
-## The switch and the cadence
+## The switch and the two cadences
 
-`LinearStore` is shaped after `CurrencyRateStore` and keeps its three guards: a disabled feature
-does not read its own cache at startup, does not publish rows, and does not fetch. The flag is
-re-checked on the far side of the fetch too, so a toggle flipped off mid-refresh discards the result
-rather than publishing something the user has just declined.
+Sidebar destinations change rarely. Tinycast refreshes them at most every six hours and only when the palette opens, with one request per workspace. The last good list is cached on disk so relaunching does not require a request; disabling Linear deletes it.
 
-**On with no `linear` CLI installed, or none logged in, is inert rather than broken.** `refresh`
-comes back with a failure string that the pane shows verbatim, `targets` stays empty, and
-`AppCore` drops the scope because no kind has published entries — so a Mac without the tool shows no
-Linear anything, without an error anyone has to dismiss.
+Ticket lookup is query-driven. Once the Linear scope has a valid number, identifier or title, Tinycast waits 200 ms and queries all configured workspaces concurrently. Each workspace returns at most 12 issues ordered by most recently updated; results are interleaved by workspace and capped at 24 so the first configured workspace cannot consume the whole palette. A superseded lookup cancels its CLI processes, and each request times out after eight seconds.
 
-The cadence is **at most every six hours, and only when the palette opens** — never on a keystroke and
-never on a timer of its own. Each refresh is one request per workspace. The list is cached in
-`AppPaths.caches()/linear-views.json` so a relaunch costs nothing, and turning the feature off deletes
-that file.
+Completed full-success lookups, including empty ones, are retained in a 20-entry memory cache for five minutes. Partial results may still appear when one workspace fails, but partial responses are not cached. Leaving the Linear scope clears visible issue state while retaining that short repeat cache.
 
-## Where a view comes from
+On with no CLI installed, or with no authenticated workspace, is inert rather than fatal. Settings reports the configuration problem and the launcher exposes no unusable scope.
+
+## Data flow
 
 ```
-palette opens → PaletteCoordinator.onShow → LinearStore.refreshIfStale
+palette opens → stale check → one sidebar query per workspace
+                                      ↓
+                 parse destinations → disk cache → launcher index
+
+Linear scope + valid query → 200 ms debounce → one issue query per workspace
                                                    ↓
-              LinearClient.snapshot — one `linear --workspace <slug> api …` per workspace
-                                                   ↓
-        LinearTarget.parse → LinearStore.views (+ disk cache) → AppIndex.setLinearTargets
-                                                   ↓
-                    ↵ → LinearCoordinator.open → NSWorkspace, app or browser
+                           validate + interleave → memory cache → issue rows
+
+destination or issue row → ↵ → selected Linear app/browser destination
 ```
 
 ## Opening: two URLs for one target
@@ -73,23 +52,12 @@ browser   https://linear.app/philipb/view/c3f94e04a1e5
 desktop   linear://linear.app/philipb/view/c3f94e04a1e5
 ```
 
-**The desktop app declares no URL scheme.** `Linear.app`'s Info.plist has no `CFBundleURLTypes`, and
-it is not a registered handler for `https://linear.app` either — opening the https URL with it
-succeeds and does nothing. It registers `linear://` at *runtime*, the way Electron apps do, so
-LaunchServices only knows the scheme once Linear has been launched at least once on that Mac. That is
-why `LinearCoordinator` checks for a handler and falls back to the browser when there is none, and why
-the pane says to choose Browser until Linear has run.
-
-Linear answers the deep link without raising itself, so the reveal is a separate `activate()` — the
-same focus-then-reveal split [herdr](herdr.md) needs.
+**The desktop app declares no URL scheme.** It registers `linear://` at runtime, so LaunchServices knows the scheme only after Linear has run at least once on that Mac. Tinycast checks for a handler and falls back to the browser when there is none. Linear accepts the deep link without necessarily raising itself, so Tinycast activates it separately.
 
 ## Settings
 
-`Settings → Linear`: the enable switch, show-in-launcher, the destination picker, a built-in pages
-toggle, a Refresh Now button with the last-read count and time, and the
-[scope keyword](palette.md#choosing-your-own).
+`Settings → Linear` contains the network switch, show-in-launcher preference, destination picker, built-in-page toggle, destination refresh status and scope keyword. Its footer discloses the six-hour disk-cached destination cadence and the five-minute memory-only ticket cache.
 
 ## Not here
 
-Issues, documents and teams; creating or tracking anything; per-target hotkeys; and any use of the
-API beyond listing names. The CLI can do all of it — that is not a reason for a launcher to.
+Creating, editing or tracking issues; documents and teams; a full offline issue index; ticket favourites, hotkeys or learned ranking; and ticket lookup outside the explicit Linear scope.

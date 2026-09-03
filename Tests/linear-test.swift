@@ -20,7 +20,28 @@ struct LinearTest {
         workspaces = ["philipb", "platopayments"]
         """
 
-    static func main() {
+    static let issuePayload = """
+        {"data":{"organization":{"urlKey":"platopayments","name":"Plato"},
+        "issues":{"nodes":[
+        {"id":"issue-862","identifier":"PC-862","title":"Archived ticket",
+         "url":"https://linear.app/platopayments/issue/PC-862/archived-ticket",
+         "updatedAt":"2026-09-02T01:02:03.000Z","archivedAt":"2026-09-03T02:03:04.000Z",
+         "state":{"name":"Done","type":"completed"}},
+        {"id":"issue-861","identifier":"PC-861","title":"Repair the claim editor",
+         "url":"https://linear.app/platopayments/issue/PC-861/repair-the-claim-editor",
+         "updatedAt":"2026-09-03T01:02:03.000Z","archivedAt":null,
+         "state":{"name":"In Progress","type":"started"}},
+        {"id":"issue-elsewhere","identifier":"PC-863","title":"Wrong workspace",
+         "url":"https://linear.app/elsewhere/issue/PC-863/wrong-workspace",
+         "updatedAt":"2026-09-01T01:02:03.000Z","archivedAt":null,
+         "state":{"name":"Todo","type":"unstarted"}},
+        {"id":"issue-no-title","identifier":"PC-864","title":"  ",
+         "url":"https://linear.app/platopayments/issue/PC-864/no-title",
+         "updatedAt":"2026-09-01T01:02:03.000Z","archivedAt":null,
+         "state":{"name":"Todo","type":"unstarted"}}]}}}
+        """
+
+    static func main() async {
         var failures = 0
 
         func check(_ description: String, _ condition: @autoclosure () -> Bool) {
@@ -180,6 +201,105 @@ struct LinearTest {
             "a variable that merely contains the prefix is left alone",
             cleaned["MY_DYLD_SETTING"] == "kept")
         check("nothing else is dropped", cleaned.count == 3)
+        let workspaceEnvironment = LinearCredentials.workspaceEnvironment(
+            cleaned.merging(["LINEAR_API_KEY": "lin_api_wrong_identity"]) { _, new in new })
+        check(
+            "an ambient API key cannot override a selected workspace",
+            workspaceEnvironment["LINEAR_API_KEY"] == nil)
+        check(
+            "workspace selection keeps the rest of the safe environment",
+            workspaceEnvironment == cleaned)
+
+        // MARK: - Process lifetime
+
+        let timeoutStarted = Date()
+        let timedOut = await LinearProcessRunner.run(
+            "/bin/sleep", ["2"], timeout: .milliseconds(50))
+        check("a timed-out Linear process is terminated", timedOut?.signalled == true)
+        check(
+            "timeout returns promptly",
+            Date().timeIntervalSince(timeoutStarted) < 1)
+
+        let cancellationStarted = Date()
+        let cancelledTask = Task {
+            await LinearProcessRunner.run("/bin/sleep", ["2"], timeout: .seconds(5))
+        }
+        try? await Task.sleep(for: .milliseconds(50))
+        cancelledTask.cancel()
+        let cancelled = await cancelledTask.value
+        check("a superseded Linear process is terminated", cancelled?.signalled == true)
+        check(
+            "cancellation returns promptly",
+            Date().timeIntervalSince(cancellationStarted) < 1)
+
+        // MARK: - Issue lookup grammar
+
+        check("a bare issue number searches every team", LinearIssueLookup.parse("861") == .number(861))
+        check(
+            "a full identifier narrows by normalized team key",
+            LinearIssueLookup.parse(" pc-861 ") == .identifier(teamKey: "PC", number: 861))
+        check(
+            "a team key can contain a number",
+            LinearIssueLookup.parse("ref2-17") == .identifier(teamKey: "REF2", number: 17))
+        check("issue zero is not a valid lookup", LinearIssueLookup.parse("0") == nil)
+        check("zero padding cannot turn zero into a title", LinearIssueLookup.parse("000") == nil)
+        check("a zero identifier is not a title lookup", LinearIssueLookup.parse("PC-000") == nil)
+        check(
+            "an overflowing issue number is rejected instead of becoming a title",
+            LinearIssueLookup.parse("999999999999999999999999999999") == nil)
+        check("a short title sends no request", LinearIssueLookup.parse("ab") == nil)
+        check(
+            "a title lookup keeps its words after trimming",
+            LinearIssueLookup.parse("  claim editor  ") == .title("claim editor"))
+        check(
+            "mixed digits and words are a title lookup",
+            LinearIssueLookup.parse("861 editor") == .title("861 editor"))
+
+        // MARK: - Issues
+
+        let issues = LinearTarget.parseIssues(Data(issuePayload.utf8), workspaceSlug: "platopayments")
+        check("only openable issue rows are parsed", issues.count == 2)
+        check(
+            "issue rows are ordered by most recently updated",
+            issues.map(\.issueDetails?.identifier) == ["PC-861", "PC-862"])
+        guard let claim = issues.first else {
+            print("FAIL  the issue fixture parsed")
+            exit(1)
+        }
+        check("an issue knows its kind", claim.kind == .issue)
+        check("an issue leads with its identifier", claim.displayName == "PC-861 · Repair the claim editor")
+        check(
+            "an issue identifies its workspace and state",
+            claim.displaySubtitle == "platopayments · In Progress")
+        check(
+            "an issue opens at Linear's own path",
+            claim.url(opening: .browser)?.absoluteString
+                == "https://linear.app/platopayments/issue/PC-861/repair-the-claim-editor")
+        check("an active issue is not archived", claim.issueDetails?.archivedAt == nil)
+        check("an archived issue stays distinguishable", issues.last?.issueDetails?.archivedAt != nil)
+        check(
+            "an archived issue says so in the launcher",
+            issues.last?.displaySubtitle == "platopayments · Done · Archived")
+        check(
+            "a foreign issue URL is dropped",
+            !issues.contains { $0.issueDetails?.identifier == "PC-863" })
+
+        // MARK: - Memory-only issue cache
+
+        let lookup = LinearIssueLookup.number(861)
+        let fetchedAt = Date(timeIntervalSince1970: 1_000)
+        var cache = LinearIssueSearchCache()
+        cache.store(issues, for: lookup, fetchedAt: fetchedAt)
+        check(
+            "an issue lookup is reused inside five minutes",
+            cache.targets(for: lookup, now: fetchedAt.addingTimeInterval(299)) == issues)
+        check(
+            "an issue lookup expires at five minutes",
+            cache.targets(for: lookup, now: fetchedAt.addingTimeInterval(300)) == nil)
+        cache.removeAll()
+        check(
+            "clearing the memory cache forgets every issue", cache.targets(for: lookup, now: fetchedAt) == nil
+        )
 
         print(failures == 0 ? "\nALL PASSED" : "\n\(failures) FAILED")
         exit(failures == 0 ? 0 : 1)

@@ -311,6 +311,9 @@ run herdr-test             Tinycast/Features/Herdr/Model/HerdrTarget.swift \
 run vscode-test            Tinycast/Features/VSCode/Model/VSCodeProject.swift
 run linear-test            Tinycast/Features/Linear/Model/LinearTarget.swift \
                            Tinycast/Features/Linear/Model/LinearCredentials.swift \
+                           Tinycast/Features/Linear/Model/LinearIssueLookup.swift \
+                           Tinycast/Features/Linear/Model/LinearIssueSearchCache.swift \
+                           Tinycast/Features/Linear/Service/LinearProcessRunner.swift \
                            Tinycast/Platform/SubprocessEnvironment.swift
 run sync-test              Tinycast/Features/Sync/Model/SyncEnvelope.swift \
                            Tinycast/Features/Sync/Model/SyncPlan.swift \

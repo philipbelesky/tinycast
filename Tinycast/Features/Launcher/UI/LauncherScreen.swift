@@ -23,6 +23,8 @@ struct LauncherScreen: PaletteScreen {
     private let webSearch: WebSearchEngine?
     /// What the engine offers for the query, beneath that row; consent-gated by the store.
     private let suggestions: [String]
+    /// True when cached destinations share the list with on-demand Linear ticket results.
+    private let isLinearScope: Bool
     /// Sections stand in for the ranked Results list, which a typed query collapses to.
     private let showSections: Bool
     /// Only the empty query pins favorites — a category shows its sections without one of its own.
@@ -54,9 +56,13 @@ struct LauncherScreen: PaletteScreen {
         let target = vm.scope.flatMap { ScopeCatalog.target(for: $0, settings: core.settings) }
         var kinds: Set<AppEntry.Kind>?
         var engine: WebSearchEngine?
+        var isLinearScope = false
         switch target {
         case .kinds(let scoped): kinds = scoped
         case .webSearch(let scoped): engine = scoped
+        case .linear:
+            kinds = [.linearTarget]
+            isLinearScope = true
         // A mode scope never reaches here: adopting one switches screen instead of setting a scope.
         case .mode, nil: break
         }
@@ -66,15 +72,21 @@ struct LauncherScreen: PaletteScreen {
                 query: vm.query, visibility: visibility, favorites: favorites,
                 scope: vm.scope, kinds: kinds)
             : []
+        if isLinearScope {
+            let issues = AppIndex.linearEntries(for: core.linear.issueTargets(for: vm.query))
+            let issueIDs = Set(issues.map(\.id))
+            results = issues + results.filter { !issueIDs.contains($0.id) }
+        }
         // A typed web address leads, unless a scope has already said what the query may match.
         if vm.scope == nil, let browser = CommandCatalog.openInBrowser(for: vm.query),
             visibility.isVisible(browser)
         {
             results.insert(browser, at: 0)
         }
-        // A web scope owns the whole query, so a bare number in it is a search, not a sum.
+        // A remote scope owns the whole query, so a bare issue number is never a calculation.
         let calc =
-            engine == nil ? CalcMemo.evaluate(vm.query, rates: currencyRates.source) : nil
+            engine == nil && !isLinearScope
+            ? CalcMemo.evaluate(vm.query, rates: currencyRates.source) : nil
         // Scoped for the same reason: the section widens a query a scope has just narrowed.
         let fallbacks = vm.scope == nil ? core.fallbackCoordinator.entries(for: vm.query) : []
         let entries = results.map(Row.entry) + fallbacks.map { Row.fallback($0.fallback, $0.entry) }
@@ -87,12 +99,14 @@ struct LauncherScreen: PaletteScreen {
         self.results = results
         self.calc = calc
         self.webSearch = engine
+        self.isLinearScope = isLinearScope
         // Empty until the query's own reply lands, and empty forever without consent.
         let suggestions = engine == nil ? [] : core.searchSuggestions.suggestions(for: vm.query)
         self.suggestions = suggestions
         self.fallbacks = fallbacks
         self.showSections =
-            engine == nil && (pinsFavorites || AppEntry.Kind.named(by: vm.query) != nil)
+            engine == nil && !isLinearScope
+            && (pinsFavorites || AppEntry.Kind.named(by: vm.query) != nil)
         self.pinsFavorites = pinsFavorites
         self.favoriteCount = pinsFavorites ? results.prefix(while: favorites.isFavorite).count : 0
         if let engine {
@@ -215,6 +229,7 @@ struct LauncherScreen: PaletteScreen {
         case .meeting(let meeting):
             return MeetingActionsMenu.content(meeting: meeting, core: core)
         case .entry(let app):
+            if isLinearIssue(app) { return nil }
             return AppActionsMenu.content(
                 app: app, searchQuery: vm.query, core: core, running: running,
                 favorites: favoriteActions(for: app, at: selection),
@@ -283,7 +298,9 @@ struct LauncherScreen: PaletteScreen {
 
     /// The highlight stays in Favorites: the top on add, the neighbour above on remove.
     func toggleFavorite(at selection: Int) -> Bool {
-        guard let app = entry(at: selection), !CommandCatalog.isQueryDriven(app) else { return false }
+        guard let app = entry(at: selection), !CommandCatalog.isQueryDriven(app),
+            !isLinearIssue(app)
+        else { return false }
         let removed = favoriteIndex(of: app)
         favorites.toggle(app)
         // A typed query pins no favorites, so nothing moved and the highlight stays.
@@ -373,44 +390,71 @@ struct LauncherScreen: PaletteScreen {
 
     @ViewBuilder
     private func content(selection: Int, scroll: ScrollIntent) -> some View {
-        LauncherList(
-            results: results,
-            selectedRowID: row(at: selection)?.id,
-            favoriteCount: favoriteCount,
-            showSections: showSections,
-            scroll: scroll,
-            card: leadCard,
-            cardSelected: isCardSelected(selection),
-            onActivateCard: {
-                vm.selection = 0
-                activate(at: 0)
-            },
-            onCardActions: {
-                guard hasPrimaryAction(at: 0) else { return }
-                vm.selection = 0
-                openActions()
-            },
-            webSearch: webSearch.map {
-                LauncherList.WebSearchPrompt(
-                    id: $0.entryID,
-                    title: core.webSearchCoordinator.rowTitle(engine: $0, query: vm.query),
-                    symbol: $0.symbol,
-                    sectionTitle: AppEntry.Kind.webSearch.descriptor.sectionTitle)
-            },
-            suggestions: suggestions,
-            onActivateWebSearch: { activate(at: 0) },
-            onActivateSuggestion: { text in
-                guard let index = rows.firstIndex(of: .suggestion(text)) else { return }
-                vm.selection = index
-                activate(at: index)
-            },
-            onActivate: { core.launcherCoordinator.launch($0, searchQuery: vm.query) },
-            onActions: { app in
-                if let index = rows.firstIndex(of: .entry(app)) { vm.selection = index }
-                openActions()
-            },
-            fallbacks: fallbackSection
-        )
+        if isLinearScope, results.isEmpty {
+            EmptyResults(text: linearEmptyResultsText)
+        } else {
+            LauncherList(
+                results: results,
+                selectedRowID: row(at: selection)?.id,
+                favoriteCount: favoriteCount,
+                showSections: showSections,
+                scroll: scroll,
+                card: leadCard,
+                cardSelected: isCardSelected(selection),
+                onActivateCard: {
+                    vm.selection = 0
+                    activate(at: 0)
+                },
+                onCardActions: {
+                    guard hasPrimaryAction(at: 0) else { return }
+                    vm.selection = 0
+                    openActions()
+                },
+                webSearch: webSearch.map {
+                    LauncherList.WebSearchPrompt(
+                        id: $0.entryID,
+                        title: core.webSearchCoordinator.rowTitle(engine: $0, query: vm.query),
+                        symbol: $0.symbol,
+                        sectionTitle: AppEntry.Kind.webSearch.descriptor.sectionTitle)
+                },
+                suggestions: suggestions,
+                onActivateWebSearch: { activate(at: 0) },
+                onActivateSuggestion: { text in
+                    guard let index = rows.firstIndex(of: .suggestion(text)) else { return }
+                    vm.selection = index
+                    activate(at: index)
+                },
+                onActivate: { core.launcherCoordinator.launch($0, searchQuery: vm.query) },
+                onActions: { app in
+                    if let index = rows.firstIndex(of: .entry(app)) { vm.selection = index }
+                    openActions()
+                },
+                fallbacks: fallbackSection
+            )
+        }
+    }
+
+    private var linearEmptyResultsText: String {
+        let query = vm.query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return "Type a ticket number, key, or title" }
+        guard LinearIssueLookup.parse(query) != nil else {
+            return "Type a valid ticket number, key, or at least 3 title characters"
+        }
+        switch core.linear.issueSearchState {
+        case .idle: return "Type a ticket number, key, or title"
+        case .searching: return "Searching Linear…"
+        case .ready:
+            return core.linear.issueSearchError == nil
+                ? "No Linear matches" : "Some Linear workspaces were unavailable"
+        case .failed: return "Linear search is unavailable"
+        }
+    }
+
+    private func isLinearIssue(_ app: AppEntry) -> Bool {
+        guard app.kind == .linearTarget, let id = LinearTarget.id(fromEntryID: app.id) else {
+            return false
+        }
+        return core.linear.isIssueTarget(id: id)
     }
 
     /// Nil when nothing is typed, which is the one state the section has no input for.

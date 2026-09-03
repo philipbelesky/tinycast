@@ -234,7 +234,10 @@ final class AppCore {
             applyScopePresence()
             herdr.onChange = { [weak self] _ in self?.herdrCoordinator.applyHerdrPresence() }
             vsCode.onChange = { [weak self] _ in self?.vsCodeCoordinator.applyVSCodePresence() }
-            linear.onChange = { [weak self] _ in self?.linearCoordinator.applyLinearPresence() }
+            linear.onChange = { [weak self] _ in
+                self?.linearCoordinator.applyLinearPresence()
+                self?.applyScopePresence()
+            }
             // Linear is the only slice restored from disk, so it has rows before any refresh.
             linearCoordinator.applyLinearPresence()
             // Both mirror something outside the app, so both re-read on the palette's own trigger.
@@ -527,12 +530,12 @@ final class AppCore {
     /// The scope rows, which lead the launcher's empty query. See docs/features/palette.md.
     private func applyScopePresence() {
         let offered = ScopeCatalog.launcherDefinitions(settings: settings).filter { definition in
-            // A filter scope with nothing behind it would open an empty list; a mode scope is a
-            // screen and always has something to show. This is what keeps a feature that is off —
-            // or merely unconsented, which no setting records — from advertising a scope.
-            guard case .kinds(let kinds)? = ScopeCatalog.target(for: definition, settings: settings)
-            else { return true }
-            return appIndex.hasEntries(ofAnyKind: kinds)
+            // A filter needs published rows; Linear can instead offer authenticated ticket lookup.
+            switch ScopeCatalog.target(for: definition, settings: settings) {
+            case .kinds(let kinds): return appIndex.hasEntries(ofAnyKind: kinds)
+            case .linear: return linear.isEnabled && linear.isAvailable && linear.workspaceCount > 0
+            case .mode, .webSearch, nil: return true
+            }
         }
         appIndex.setScopes(offered)
     }

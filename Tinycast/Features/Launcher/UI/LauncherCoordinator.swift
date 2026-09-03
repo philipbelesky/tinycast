@@ -56,9 +56,12 @@ final class LauncherCoordinator {
     func launch(
         _ app: AppEntry, searchQuery: String? = nil, arguments: [String: String] = [:]
     ) {
+        let isTransientLinearIssue =
+            app.kind == .linearTarget
+            && LinearTarget.id(fromEntryID: app.id).map(core.linear.isIssueTarget(id:)) == true
         // A category listing is no search: learning it would rank the row under "s".
         if let searchQuery, AppEntry.Kind.named(by: searchQuery) == nil,
-            !CommandCatalog.isQueryDriven(app)
+            !CommandCatalog.isQueryDriven(app), !isTransientLinearIssue
         {
             ranking.record(itemKey: app.preferenceKey, query: searchQuery)
         }

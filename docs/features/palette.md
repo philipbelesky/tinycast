@@ -261,7 +261,7 @@ pane, and the table is what a fresh install reads.
 | `w` | Window Management | `.windowCommand` + `.systemAction` | yes |
 | `h` | herdr | `.herdrTarget` | yes |
 | `p` | VS Code | `.vsCodeProject` | yes |
-| `l` | Linear | `.linearTarget` | yes |
+| `l` | Linear | cached destinations + on-demand ticket lookup | yes |
 | `g` `d` `b` `k` | Google / DuckDuckGo / Bing / Kagi | [web search](web-search.md) | yes |
 | `e` | Emoji & Symbols | `PaletteMode.emoji` | no |
 | `v` | Clipboard | `PaletteMode.clipboard` | no |
@@ -308,9 +308,9 @@ scope — and the rows that scope reveals wear the same tile, glyph and colour b
 the herdr row that leads to it read as one category. See [ui.md](../ui.md#category-tiles).
 
 A scope is only offered when something is actually behind it: `AppCore` drops any filter scope whose
-kinds have no published entries. That is what stops a feature which is off — or, like Linear without
-its CLI, on but unable to publish anything — from advertising a scope that opens an empty list. Mode scopes are screens
-and always qualify.
+kinds have no published entries. Linear is the exception because ticket lookup can be useful with no
+cached destinations; its scope requires the feature, CLI and at least one authenticated workspace.
+Mode scopes are screens and always qualify.
 
 Those rows are published **first**, so they lead the launcher's empty query ahead of applications:
 opening the palette on nothing now shows what the search can be narrowed *to*, which is the one list

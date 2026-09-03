@@ -15,6 +15,13 @@ enum LinearCredentials {
             workspaces: (value(of: "workspaces", in: toml).map(list) ?? []))
     }
 
+    /// Uses the CLI's selected workspace credential rather than one ambient API key for every call.
+    static func workspaceEnvironment(_ inherited: [String: String]) -> [String: String] {
+        var environment = inherited
+        environment.removeValue(forKey: "LINEAR_API_KEY")
+        return environment
+    }
+
     private static func value(of key: String, in toml: String) -> String? {
         for line in toml.split(separator: "\n", omittingEmptySubsequences: true) {
             let parts = line.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)

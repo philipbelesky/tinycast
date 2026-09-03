@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Linear's own pane. See docs/features/linear.md#the-switch-and-the-cadence.
+/// Linear's own pane. See docs/features/linear.md#the-switch-and-the-two-cadences.
 struct LinearSettingsView: View {
     @Environment(AppCore.self) private var core
     @Environment(AppSettings.self) private var settings
@@ -12,27 +12,27 @@ struct LinearSettingsView: View {
         return Form {
             LauncherItemsSection(
                 kind: .linearTarget,
-                header: "Linear",
+                anchor: .linearLinear,
                 searchPrompt: "Search views…")
 
             Section {
                 Toggle(
                     isOn: Binding(get: { store.isEnabled }, set: { store.setEnabled($0) })
                 ) {
-                    Text("Enable Linear views")
+                    SettingsRowTitle(.linearLinear, "Enable Linear")
                     Text(status)
                 }
                 Toggle(isOn: $settings.linearShowInLauncher) {
                     Text("Show in launcher")
-                    Text("Find your views in launcher search.")
+                    Text("Find views and search tickets from the Linear scope.")
                 }
                 .settingsEnabled(store.isEnabled)
             } header: {
-                Text("Linear")
+                SettingsSectionHeader(.linearLinear)
             }
 
             Section {
-                Picker("Open views in", selection: $settings.linearDestination) {
+                Picker("Open Linear in", selection: $settings.linearDestination) {
                     ForEach(LinearDestination.allCases) { destination in
                         Text(destination.title).tag(destination)
                     }
@@ -59,8 +59,11 @@ struct LinearSettingsView: View {
             } footer: {
                 Text(
                     "Views are re-read at most every six hours, and only when you open the palette. "
-                    + "The Linear app has to have been launched once before it can answer a link; "
-                    + "until then, choose Browser."
+                        + "Ticket numbers, keys and title text are sent to every logged-in workspace "
+                        + "after a short pause; results stay in memory for five minutes and are never "
+                        + "written to disk. "
+                        + "The Linear app has to have been launched once before it can answer a link; "
+                        + "until then, choose Browser."
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -70,9 +73,10 @@ struct LinearSettingsView: View {
             ScopeKeywordSection(
                 scopeID: ScopeCatalog.linear,
                 explanation:
-                    "Type it, then a space, to search Linear views only.")
+                    "Type it, then a space, to search Linear views and tickets.")
         }
         .formStyle(.grouped)
+        .settingsScrollTarget(.linear)
     }
 
     private var status: String {

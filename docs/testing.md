@@ -111,7 +111,7 @@ If a change touches anything in the right column, the harness on the left is man
 | `websearch-test` | `WebSearch/Model/WebSearchEngine.swift`, `SearchSuggestions.swift` |
 | `herdr-test` | `Herdr/Model/HerdrTarget.swift`, `HerdrHost.swift` |
 | `vscode-test` | `VSCode/Model/VSCodeProject.swift` |
-| `linear-test` | `Linear/Model/LinearTarget.swift`, `LinearCredentials.swift` |
+| `linear-test` | Linear destination/issue models, credentials and cancellable process runner |
 
 The two harnesses that need a server to talk to bring their own: `Tests/ai-fixtures/codex-stub.js`
 and `mcp-stub.js`, each copied into a scratch directory and put in front of PATH so the locator finds
@@ -307,6 +307,15 @@ caches, TCC grants and login item, so this cannot disturb an installed copy.
 - `{selection}` falls back per the Settings choice
 - Pin, duplicate, delete and Open with Default all behave; import and export round-trip
 - Display order is pinned first by pin time, then by name
+
+### Linear
+
+- The `l` scope shows cached destinations without making a ticket request; `861` finds that exact number across authenticated workspaces, and `PC-861` narrows it by team key
+- A three-character title query returns current issue matches, while one or two characters make no request; number and full-identifier lookup can return an archived issue
+- Results identify their workspace and state, open in the configured app or browser, and expose no favourite, hotkey, ranking-reset or Finder actions
+- Replacing a query rapidly never lets the older response land; leaving the scope cancels the lookup, and repeating a completed query within five minutes uses the memory cache
+- Turning Linear off during a lookup clears destinations and issue rows, cancels the request and deletes the disk cache; turning it back on republishes cached destinations immediately
+- With one authenticated workspace unavailable, successful workspace results still appear but are not cached; with every workspace unavailable, the palette reports that search is unavailable
 
 ### File Search
 

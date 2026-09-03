@@ -398,18 +398,25 @@ final class AppIndex {
 
     /// Replaces the Linear slice. Empty without consent, which the store enforces rather than this.
     func setLinearTargets(_ views: [LinearTarget]) {
-        let entries = views.map { view in
-            AppEntry(
-                id: view.entryID, name: view.displayName,
-                url: URL(string: "tinycast://linear/" + view.kind.rawValue)!,
-                bundleID: nil, kind: .linearTarget,
-                // So the workspace name alone finds everything in it.
-                matchAliases: [view.workspaceURLKey, view.name],
-                symbolName: view.symbol)
-        }
+        let entries = Self.linearEntries(for: views)
         guard entries != linearEntries else { return }
         linearEntries = entries
         publishEntries()
+    }
+
+    /// Maps cached destinations and transient ticket results into the launcher's shared row shape.
+    static func linearEntries(for targets: [LinearTarget]) -> [AppEntry] {
+        targets.map { target in
+            AppEntry(
+                id: target.entryID, name: target.displayName,
+                url: URL(string: "tinycast://linear/" + target.kind.rawValue)!,
+                bundleID: nil, kind: .linearTarget,
+                // Workspace, title and issue identifier should each retrieve the same destination.
+                subtitle: target.displaySubtitle,
+                matchAliases: [target.workspaceURLKey, target.name]
+                    + [target.issueDetails?.identifier].compactMap { $0 },
+                symbolName: target.symbol)
+        }
     }
 
     /// Replaces the VS Code slice, already ordered most recently opened first — that order is the

@@ -16,8 +16,7 @@ enum LinearDestination: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-/// One thing in a Linear sidebar worth opening: a saved view, a project, an initiative, or one
-/// of the fixed pages every workspace has.
+/// One Linear destination worth opening, from a sidebar route or an on-demand ticket lookup.
 /// See docs/features/linear.md.
 struct LinearTarget: Identifiable, Hashable, Sendable {
     enum Kind: String, Sendable {
@@ -25,6 +24,7 @@ struct LinearTarget: Identifiable, Hashable, Sendable {
         case builtIn
         case project
         case initiative
+        case issue
 
         var label: String {
             switch self {
@@ -32,6 +32,7 @@ struct LinearTarget: Identifiable, Hashable, Sendable {
             case .builtIn: return "Linear"
             case .project: return "Linear Project"
             case .initiative: return "Linear Initiative"
+            case .issue: return "Linear Issue"
             }
         }
 
@@ -39,9 +40,17 @@ struct LinearTarget: Identifiable, Hashable, Sendable {
             switch self {
             case .project: return "square.stack.3d.up"
             case .initiative: return "flag"
+            case .issue: return "circle"
             case .saved, .builtIn: return LinearTarget.defaultSymbol
             }
         }
+    }
+
+    struct IssueDetails: Hashable, Sendable {
+        let identifier: String
+        let stateName: String
+        let updatedAt: Date
+        let archivedAt: Date?
     }
 
     /// The workspace slug the CLI knows, which is not always the url key the web app uses.
@@ -52,6 +61,20 @@ struct LinearTarget: Identifiable, Hashable, Sendable {
     let path: String
     let kind: Kind
     let symbol: String
+    let issueDetails: IssueDetails?
+
+    init(
+        workspaceSlug: String, workspaceURLKey: String, name: String, path: String, kind: Kind,
+        symbol: String, issueDetails: IssueDetails? = nil
+    ) {
+        self.workspaceSlug = workspaceSlug
+        self.workspaceURLKey = workspaceURLKey
+        self.name = name
+        self.path = path
+        self.kind = kind
+        self.symbol = symbol
+        self.issueDetails = issueDetails
+    }
 
     /// Unique across workspaces, which matters: two of them can hold a view of the same name.
     var id: String { workspaceURLKey + "/" + path }
@@ -66,8 +89,17 @@ struct LinearTarget: Identifiable, Hashable, Sendable {
         return String(entryID.dropFirst(entryIDPrefix.count))
     }
 
-    /// The workspace leads, so one glance separates two views that share a name.
-    var displayName: String { workspaceURLKey + " › " + name }
+    /// Sidebar rows lead with workspace; issue rows lead with the identifier used to retrieve them.
+    var displayName: String {
+        issueDetails.map { $0.identifier + " · " + name } ?? workspaceURLKey + " › " + name
+    }
+
+    var displaySubtitle: String? {
+        issueDetails.map { details in
+            workspaceURLKey + " · " + details.stateName
+                + (details.archivedAt == nil ? "" : " · Archived")
+        }
+    }
 
     func url(opening destination: LinearDestination) -> URL? {
         let base = destination == .app ? "linear://linear.app/" : "https://linear.app/"
@@ -114,6 +146,36 @@ struct LinearTarget: Identifiable, Hashable, Sendable {
             .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 
+    /// Parses the bounded issue connection returned by an on-demand Linear ticket lookup.
+    static func parseIssues(_ payload: Data, workspaceSlug: String) -> [LinearTarget] {
+        guard let root = try? JSONSerialization.jsonObject(with: payload) as? [String: Any],
+            let data = root["data"] as? [String: Any],
+            let organization = data["organization"] as? [String: Any],
+            let urlKey = (organization["urlKey"] as? String)?.nilIfBlank,
+            let nodes = (data["issues"] as? [String: Any])?["nodes"] as? [[String: Any]]
+        else { return [] }
+        return nodes.compactMap { node -> LinearTarget? in
+            guard let identifier = (node["identifier"] as? String)?.nilIfBlank,
+                let title = (node["title"] as? String)?.nilIfBlank,
+                let address = (node["url"] as? String)?.nilIfBlank,
+                let path = path(inWorkspace: urlKey, of: address),
+                let updatedAt = date(from: node["updatedAt"]),
+                let state = node["state"] as? [String: Any],
+                let stateName = (state["name"] as? String)?.nilIfBlank
+            else { return nil }
+            return LinearTarget(
+                workspaceSlug: workspaceSlug, workspaceURLKey: urlKey, name: title, path: path,
+                kind: .issue, symbol: Kind.issue.symbol,
+                issueDetails: IssueDetails(
+                    identifier: identifier, stateName: stateName, updatedAt: updatedAt,
+                    archivedAt: date(from: node["archivedAt"])))
+        }
+        .sorted {
+            guard let left = $0.issueDetails, let right = $1.issueDetails else { return false }
+            return left.updatedAt > right.updatedAt
+        }
+    }
+
     /// Projects and initiatives sit beside the saved views in the sidebar and are just as worth
     /// opening. Linear returns a full url for each — with a name slug no client could reconstruct —
     /// so the path is taken from that rather than built from an id.
@@ -158,6 +220,11 @@ struct LinearTarget: Identifiable, Hashable, Sendable {
         case "Labels", "Tag": return "tag"
         default: return defaultSymbol
         }
+    }
+
+    private static func date(from value: Any?) -> Date? {
+        guard let text = value as? String else { return nil }
+        return try? Date.ISO8601FormatStyle(includingFractionalSeconds: true).parse(text)
     }
 }
 

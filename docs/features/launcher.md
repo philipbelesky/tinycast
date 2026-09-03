@@ -382,12 +382,13 @@ the empty query. Activating one arms the scope rather than opening anything — 
 search row, and the same code path a typed keyword takes. See
 [palette.md](palette.md#scopes-are-rows-too).
 
-## Linear views
+## Linear
 
 `AppEntry.Kind.linearTarget` publishes what is in every logged-in Linear workspace's sidebar — saved
 views, projects, initiatives — plus each one's built-in pages. Its switch lives on `LinearStore` rather
 than `AppSettings`, so no settings import can move it; the slice is simply empty on a Mac where the
-`linear` CLI is missing or logged out. See [linear.md](linear.md).
+`linear` CLI is missing or logged out. Inside its scope, transient issue results are prepended to this
+local slice and deliberately excluded from favourites, hotkeys and learned ranking. See [linear.md](linear.md).
 
 ## Web search
 
