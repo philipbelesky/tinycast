@@ -2,8 +2,7 @@ import AppKit
 import Foundation
 import Observation
 
-/// Owns the private Codex app-server: its lifecycle, the ChatGPT login, and what the account can use.
-/// Generation itself is `CodexTurnRunner`'s; this type only says whether a turn may start.
+/// Owns the private Codex app-server and the ChatGPT login; it only says whether a turn may start.
 @MainActor
 @Observable
 final class ChatGPTSubscriptionManager {
@@ -60,8 +59,7 @@ final class ChatGPTSubscriptionManager {
     func connect(openURL: @escaping (URL) -> Bool = { NSWorkspace.shared.open($0) }) {
         runOperation { [weak self] in
             guard let self else { return }
-            // A sign-in can fail, or be abandoned in the browser and never come back. Arming on
-            // every outcome is what keeps a Connect from leaving the server resident for good.
+            // A sign-in can fail or be abandoned in the browser, so arm on every outcome.
             defer { self.scheduleIdleShutdown() }
             self.phase = .starting
             do {
@@ -101,8 +99,7 @@ final class ChatGPTSubscriptionManager {
         }
     }
 
-    /// Releases the process, the timers and the observable state alike: a check cancelled here would
-    /// otherwise spin on for good, and `.idle` is what lets the next visit check again.
+    /// Releases process, timers and state alike; `.idle` lets the next visit check again.
     func stop() {
         operationTask?.cancel()
         // Interrupting a live turn re-arms idle shutdown, so forgetting must precede the cancel.
@@ -215,7 +212,7 @@ final class ChatGPTSubscriptionManager {
         }
     }
 
-    private func usageWindow(_ value: CodexValue?) -> ChatGPTSubscription.UsageWindow? {
+    private func usageWindow(_ value: JSONValue?) -> ChatGPTSubscription.UsageWindow? {
         guard let raw = value?.objectValue, let used = raw["usedPercent"]?.intValue else {
             return nil
         }
@@ -242,7 +239,7 @@ final class ChatGPTSubscriptionManager {
         return true
     }
 
-    private func handleNotification(method: String, params: [String: CodexValue]) {
+    private func handleNotification(method: String, params: [String: JSONValue]) {
         switch method {
         case "account/login/completed":
             if params["success"]?.boolValue == true {

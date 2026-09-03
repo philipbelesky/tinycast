@@ -9,6 +9,8 @@ verifying a change is [testing.md](testing.md).
 - Xcode 26 — it provides the SwiftUI macro plugin and the SDK.
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen), and for linting:
   `brew install swiftlint`.
+- Node, for the generators and for the two stub servers `run-tests.sh` drives. It is the only
+  scripting runtime here — building the app still needs none of it.
 
 ## First-time setup
 
@@ -48,11 +50,17 @@ project settings in `project.yml`, run `xcodegen generate` and commit the result
 
 Debug builds are a separate channel: **`Tinycast Dev.app`**, bundle id `com.belesky.tinycast.dev`. Every
 persisted thing is keyed by bundle id — `~/Library/Preferences/<id>.plist` (settings and hotkey
-bindings), `~/Library/Caches/<id>/` (clipboard history, calculator history, exchange rates, frequent
-emoji), `~/Library/Application Support/<id>/` (the onboarding marker, Notes and snippets), the iCloud
-key-value store (its entitlement identifier embeds the bundle id), the `SMAppService` login item, and
-the Accessibility / Input Monitoring (TCC) grants — so a local build can neither read nor clobber an
+bindings), `~/Library/Application Support/<id>/` (the onboarding marker, Notes, snippets, quicklinks,
+clipboard history, calculator history, launch ranking and frequent emoji),
+`~/Library/Caches/<id>/` (exchange rates, the update check, staged downloads), the iCloud key-value
+store (its entitlement identifier embeds the bundle id), the `SMAppService` login item, and the
+Accessibility / Input Monitoring (TCC) grants — so a local build can neither read nor clobber an
 installed app's state, and both run side by side.
+
+**What earns a place in Caches is refetchable, and nothing else.** Anything the user would notice the
+loss of goes in Application Support: `~/Library/Caches` is excluded from Time Machine and the system
+reclaims it under disk pressure without saying so. `Tinycast/Migration/StorageRelocation.swift` moves
+an older layout across on first launch, and is deleted on 2026-09-05.
 
 Consequences worth knowing:
 

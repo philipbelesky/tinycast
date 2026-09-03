@@ -11,14 +11,14 @@ struct ClipboardSettingsView: View {
         @Bindable var settings = settings
         return Form {
             Section {
-                SettingsRow(title: "Clipboard History") {
-                    ShortcutRecorder(action: .toggleClipboard)
+                SettingsRow(title: "Clipboard History", anchor: .clipboardGlobalShortcuts) {
+                    ShortcutRecorder(action: .command(.clipboardHistory))
                 }
                 SettingsRow(title: "Clipboard History (second shortcut)") {
                     ShortcutRecorder(action: .toggleClipboardAlternate)
                 }
             } header: {
-                Text("Global Shortcuts")
+                SettingsSectionHeader(.clipboardGlobalShortcuts)
             } footer: {
                 Text(
                     "Open the clipboard history browser. Either shortcut opens it, so two keyboards "
@@ -33,14 +33,14 @@ struct ClipboardSettingsView: View {
                         Text(retention.title).tag(retention)
                     }
                 } label: {
-                    Text("Keep history for")
+                    SettingsRowTitle(.clipboardHistory, "Keep history for")
                     Text("Entries older than this are deleted automatically.")
                 }
                 .onChange(of: settings.clipboardRetention) {
                     core.clipboardCoordinator.applyRetention(settings.clipboardRetention)
                 }
             } header: {
-                Text("History")
+                SettingsSectionHeader(.clipboardHistory)
             }
 
             Section {
@@ -58,7 +58,7 @@ struct ClipboardSettingsView: View {
                         }
                     }
             } header: {
-                Text("Disabled Applications")
+                SettingsSectionHeader(.clipboardDisabledApplications)
             } footer: {
                 Text("Clipboard changes from these apps won't be recorded.")
                     .font(.caption)
@@ -69,7 +69,7 @@ struct ClipboardSettingsView: View {
                 LabeledContent {
                     Button("Clear…", role: .destructive) { confirmingClear = true }
                 } label: {
-                    Text("Clear history")
+                    SettingsRowTitle(.clipboardDisabledApplications, "Clear history")
                     Text("Permanently remove every saved clip and image.")
                 }
             }
@@ -80,6 +80,7 @@ struct ClipboardSettingsView: View {
                     "Type it, then a space, to jump straight to clipboard history.")
         }
         .formStyle(.grouped)
+        .settingsScrollTarget(.clipboard)
         .confirmationDialog(
             "Clear clipboard history?",
             isPresented: $confirmingClear,

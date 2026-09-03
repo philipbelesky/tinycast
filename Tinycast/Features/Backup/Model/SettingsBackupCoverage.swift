@@ -46,9 +46,12 @@ enum SettingsBackupCoverage {
         "linearDestination": .linearDestination,
         "extensionsShowInLauncher": .extensionsShowInLauncher,
         "calendarShowInLauncher": .calendarShowInLauncher,
+        "calendarLauncherLimit": .calendarLauncherLimit,
+        "calendarIncludesTomorrow": .calendarIncludesTomorrow,
         "joinWindowMinutes": .joinWindowMinutes,
         "autoJoinConfirms": .autoJoinConfirms,
         "menuBarEvents": .menuBarEvents,
+        "calendarMenuBarDisplay": .calendarMenuBarDisplay,
         "menuBarLinkedEventsOnly": .menuBarLinkedEventsOnly,
         "hideCurrentEvent": .hideCurrentEvent,
         "supportReminders": .supportReminders
@@ -97,6 +100,34 @@ enum SettingsBackupCoverage {
             + "import must not carry them onto another Mac unseen.",
         AppSettingsKey.aiSystemPromptEnabled.rawValue:
             "Governs whether a turn carries standing instructions at all, so it changes every answer "
-            + "the same way the prompt it gates does."
+            + "the same way the prompt it gates does.",
+        AppSettingsKey.aiRetention.rawValue:
+            "How long conversations survive is a decision about the chats on this Mac, and an import "
+            + "must never arrive carrying an instruction to delete them.",
+        AppSettingsKey.aiOpensTo.rawValue:
+            "Whether chat reopens on an existing conversation depends on the history this Mac holds, "
+            + "which no other Mac has.",
+        AppSettingsKey.aiNewChatAfter.rawValue:
+            "Paces the same decision as the setting it accompanies, against conversations that stay "
+            + "on the Mac that had them.",
+        AppSettingsKey.mcpEnabled.rawValue:
+            "Doubles as consent to run third-party MCP servers, one of which is a local process; a "
+            + "flag that grants a capability is never carried by a backup.",
+        AppSettingsKey.mcpServers.rawValue:
+            "An MCP server is a source of executable code and a destination for chat context, and "
+            + "it is meaningless without the machine-local Keychain secrets it describes.",
+        AppSettingsKey.quickActionsEnabled.rawValue:
+            "Grants keystroke delivery into other apps through the Accessibility permission, and a "
+            + "flag that grants a capability is never carried by a backup.",
+        AppSettingsKey.quickActionModel.rawValue:
+            "Names an external AI destination for text taken from whatever app is frontmost; an "
+            + "import must not choose one.",
+        AppSettingsKey.quickActionPreviews.rawValue:
+            "Says which actions may rewrite a document without showing the result first, which is a "
+            + "decision each Mac makes about its own text.",
+        AppSettingsKey.quickActionInstructions.rawValue:
+            "Custom model instructions change transformed results and must not move unseen.",
+        AppSettingsKey.quickActionLanguage.rawValue:
+            "Follows the language the person at this Mac reads, not the one who wrote the backup."
     ]
 }

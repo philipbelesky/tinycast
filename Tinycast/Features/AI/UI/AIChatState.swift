@@ -12,9 +12,7 @@ final class AIChatState {
     /// Images staged for the next message; they go out with whatever is typed next.
     private(set) var pendingImages: [ChatAttachment] = []
 
-    /// Staging outlives the keystroke that began it, so a decode still in flight has to be able to
-    /// tell that the message it was picked for has gone. Every path that consumes or drops the
-    /// staged images moves this on; the counter lives beside them so a new one cannot forget to.
+    /// Every path that consumes or drops the staged images moves this on, so a late decode knows
     @ObservationIgnored private(set) var stagingGeneration = 0
 
     private let history: ChatHistoryStore
@@ -34,7 +32,7 @@ final class AIChatState {
     @discardableResult
     func send(
         _ input: String, using provider: any AIProvider, webSearch: Bool = false,
-        instructions: String? = nil
+        instructions: String? = nil, contextBudget: Int = ChatSession.defaultTextBudget
     ) -> Bool {
         let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty || !pendingImages.isEmpty, !isStreaming else { return false }
@@ -42,7 +40,8 @@ final class AIChatState {
         session.append(ChatMessage(role: .user, text: text, images: pendingImages.map(\.image)))
         clearStaging()
         let request = AIRequest(
-            instructions: instructions, messages: session.requestMessages, webSearch: webSearch)
+            instructions: instructions,
+            messages: session.requestMessages(textBudget: contextBudget), webSearch: webSearch)
         session.append(ChatMessage(role: .assistant, text: "", state: .streaming))
         isStreaming = true
         isThinking = false
@@ -77,8 +76,7 @@ final class AIChatState {
         notice = message
     }
 
-    /// Refused rather than truncated: the composer is the last place an oversized turn can be
-    /// explained, and dropping a picture at send time reads as the app having lost it.
+    /// Refused, not truncated: the composer is the last place an oversized turn can be explained.
     @discardableResult
     func attach(_ attachment: ChatAttachment) -> ChatAttachmentRefusal? {
         guard !pendingImages.contains(where: { $0.image == attachment.image }) else { return nil }
@@ -125,8 +123,7 @@ final class AIChatState {
         clearStaging()
     }
 
-    /// Staged images belong to the composer of the conversation they were picked in, so leaving one
-    /// for another drops them rather than letting them go out with whatever is typed there next.
+    /// Staged images belong to the conversation they were picked in; leaving it drops them.
     @discardableResult
     func open(id: UUID) -> Bool {
         if session.id == id, !session.messages.isEmpty { return true }
@@ -189,6 +186,22 @@ final class AIChatState {
             }
             message.searches = message.searches.map { Self.completed($0) }
             session.replaceLast(with: message)
+        case .toolCall(let id, let origin, let title):
+            flushPendingText()
+            guard var message = session.messages.last, message.role == .assistant else { return }
+            isThinking = false
+            message.toolUses.append(
+                ChatToolUse(
+                    callID: id, origin: origin, title: title, state: .running,
+                    textOffset: message.text.count))
+            session.replaceLast(with: message)
+        case .toolResult(let id, let isError):
+            guard var message = session.messages.last, message.role == .assistant else { return }
+            guard let index = message.toolUses.lastIndex(where: { $0.callID == id }) else { return }
+            message.toolUses[index].state = isError ? .failed : .completed
+            session.replaceLast(with: message)
+        case .toolCallRequested:
+            break
         case .usage(let usage):
             self.usage = usage
         case .finished:
@@ -240,6 +253,8 @@ final class AIChatState {
         }
         message.state = state
         message.searches = message.searches.map { Self.completed($0) }
+        // A call still running when the turn ends never reported back, whatever ended the turn.
+        message.toolUses = message.toolUses.map { Self.settled($0) }
         session.replaceLast(with: message)
         history.save(session)
         isStreaming = false
@@ -253,6 +268,13 @@ extension AIChatState {
         var search = search
         search.isComplete = true
         return search
+    }
+
+    fileprivate static func settled(_ use: ChatToolUse) -> ChatToolUse {
+        guard use.state == .running else { return use }
+        var use = use
+        use.state = .failed
+        return use
     }
 }
 

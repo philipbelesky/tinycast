@@ -83,6 +83,7 @@ If a change touches anything in the right column, the harness on the left is man
 | `palette-selection-test` | `Features/PaletteRowIndex.swift` |
 | `palette-placement-test` | `DesignSystem/Theme.swift`, `Palette/PalettePlacement.swift` |
 | `hotkey-test` | `HotKeys/Model/DoubleTapModifier.swift`, `DoubleTapDetector.swift`, `HyperKey.swift`, `HotKeyAction.swift`, `Service/KeyShortcut.swift`, and the command→action mapping in `Launcher/Model/CommandID.swift` |
+| `fallback-test` | `Launcher/Model/Fallback.swift`, plus the `CommandID` and `Quicklink` ids it is built from |
 | `callout-test` | `DesignSystem/Theme.swift`, `Launcher/Model/ScopeTint.swift`, `HotKeys/UI/CalloutPlacement.swift` |
 | `system-action-test` | `SystemActions/Model/SystemAction.swift` |
 | `volume-test` | `SystemActions/Model/VolumeLevel.swift` |
@@ -93,21 +94,31 @@ If a change touches anything in the right column, the harness on the left is man
 | `snippets-test` | all of `Snippets/Model/` and `Snippets/Service/`, plus `Platform/HealthTicker.swift` |
 | `notes-test` | all of `Notes/Model/` and `Notes/Service/`, plus the real fuzzy matcher and signposts |
 | `notes-editor-test` | the literal Notes editor with real TextKit 2 and AppKit editing objects |
-| `raycast-test` | `Backup/Model/RaycastFormat.swift`, `RaycastV1Decoder.swift`, `Platform/Compression/Zlib.swift` |
+| `raycast-test` | `Backup/Service/RaycastDecoder.swift`, `Scrypt.swift`, `Platform/Compression/Zlib.swift` |
 | `symbols-test` | `Extensions/Service/SymbolCatalog.swift`, against this machine's CoreGlyphs |
 | `ext-store-test` | `Extensions/Model/` — the registry model and both registry APIs' parsers |
 | `ext-test` | the extension runtime end to end — boots a real bundle in JavaScriptCore and renders it |
 | `ext-icon-test` | `Extensions/Service/ExtensionIconCache.swift` — artwork sizing and its fallback |
-| `entry-icon-test` | `EntryIcon` — that each case draws, caches and prints apart from the others |
+| `entry-icon-test` | `EntryIcon` — that each case draws, caches and prints apart from the others, and that a moved `FileIconStamp` retires the bitmap decoded before it |
 | `settings-backup-test` | `Settings/AppSettingsKey.swift`, `Backup/Model/SettingsBackupCoverage.swift` |
+| `backup-archive-test` | all of `Backup/Model/`, plus `Backup/Service/BackupStaging.swift` |
 | `updates-test` | `Updates/Model/` — version precedence, channel filtering, install route, readiness |
 | `support-test` | `Support/Model/` — when the support reminder comes due, and a clock moved backwards |
+| `mcp-test` | `MCP/Model/` and `MCPSettingsStore` — JSON-RPC framing, handles, tool names, output flattening, trust, `@server` addressing |
+| `mcp-stdio-test` | `MCP/Service/` against a stub server — handshake, listing, calling, and every way one can go away |
 | `sync-test` | `Sync/Model/SyncEnvelope.swift`, `SyncPlan.swift`, plus the backup payload it carries |
 | `scope-test` | `Launcher/Model/QueryScope.swift`, `ScopeTint.swift`, `ScopeKeywords.swift` |
 | `websearch-test` | `WebSearch/Model/WebSearchEngine.swift`, `SearchSuggestions.swift` |
 | `herdr-test` | `Herdr/Model/HerdrTarget.swift`, `HerdrHost.swift` |
 | `vscode-test` | `VSCode/Model/VSCodeProject.swift` |
 | `linear-test` | `Linear/Model/LinearTarget.swift`, `LinearCredentials.swift` |
+
+The two harnesses that need a server to talk to bring their own: `Tests/ai-fixtures/codex-stub.js`
+and `mcp-stub.js`, each copied into a scratch directory and put in front of PATH so the locator finds
+it the way it would find a real one. Both read fd 0 synchronously rather than through a stream —
+`codex-stub.js` stalls mid-turn on purpose, and an event loop would read the next line while it is
+still holding — and both write with `fs.writeSync`, so a reply is on the pipe before a mode that
+exits does.
 
 A harness that passed before a change passes after it. There is no "I'll fix it next commit" and no
 commenting out a case. If a change genuinely invalidates an assertion, the assertion is rewritten in the
@@ -168,6 +179,11 @@ SwiftLint owns the rules that catch defects, including the two checkable comment
 100-character cap and the ban on stacked comment lines. Errors block; warnings do not. There is no
 formatter, deliberately — the configuration and the measurements behind that are in
 [development.md](development.md#formatting).
+
+The script then runs `Scripts/check-settings-search.js`, one check SwiftLint can't: every
+`SettingsAnchor` must be claimed by a section, and every row in `SettingsSearchCatalog` must be
+marked by a `SettingsRowTitle`. Either gap compiles and reads fine, and fails only at runtime as a
+search result that navigates and then sits there.
 
 ## Performance measurement
 
@@ -242,7 +258,7 @@ caches, TCC grants and login item, so this cannot disturb an installed copy.
 - With a calculation typed, the calculator card is first and is selected first
 - Section headers appear in order: Favorites, Applications, System Settings, Quicklinks, Snippets,
   System Actions, Window Management, Custom Commands, Commands
-- ⌘K opens the Actions menu; ↑/↓ move it, ↵ activates, Escape closes the menu rather than the palette
+- With a non-ASCII input source active, ⌘K opens Actions; ↑/↓ move it, ↵ activates, Escape closes it
 - While a menu is open, typing does **not** change the query and the caret is hidden
 - Tab toggles launcher ↔ clipboard; bare Backspace on an empty query backs out of a sub-screen
 - Launching an app focuses it; escaping the palette returns focus to the app you came from
@@ -326,7 +342,10 @@ caches, TCC grants and login item, so this cannot disturb an installed copy.
   creates
 - Empty switcher search reads the complete recent list; title and body searches rank correctly and a
   superseded query never publishes
-- Inline rename updates the Markdown filename without changing source; collisions receive a suffix
+- An Untitled note titles itself from its first line as it is typed, in the title bar and — after the
+  autosave — in the browse list; naming it replaces that, and clearing the name brings it back
+- Inline rename updates the Markdown filename without changing source, and starts from that filename
+  even where the row shows a derived title; collisions receive a suffix
 - Delete confirms through Tinycast, moves the file to Trash, and selecting another note never loses an
   unsaved edit
 - An existing `Floating Note.md` appears as an ordinary note without conversion
@@ -385,12 +404,16 @@ caches, TCC grants and login item, so this cannot disturb an installed copy.
 - Adding or deleting an event in Calendar.app updates an open palette without a reopen
 - A meeting with no link is listed and searchable, and answers Open in Calendar rather than Join
 - Import a backup taken with Calendar on: it comes back **off**, and no calendar toggle travels
-- Menu bar on Never: the item is the plain icon; on 5 minutes the title and countdown appear at T-5
-  and step on the minute boundary, not on a keystroke
+- Calendar in Menu Bar on Disabled: the calendar item is gone and Tinycast's own item is unaffected;
+  turning `Show in menu bar` off leaves an enabled calendar item in place, and both off leaves neither
+- On Meeting Title with Show Upcoming Events at 5 minutes, the title and countdown appear at T-5 and
+  step on the minute boundary, not on a keystroke
 - `Only show events with meetings` hides a linkless event and shows it again when unchecked
 - Hide Current Event on Automatically clears the entry at the start and hands the space to the next
   event inside its lead time; on 5 minutes it lingers counting up, then clears
-- Clicking the menu bar item opens the menu with `Join <title>` on top — a bare click never joins
+- Clicking the calendar item opens `Join <title>`, `Open in Calendar...`, `My Schedule` and
+  `Calendar Settings...` and nothing else; the second opens that event in Calendar.app, while a bare
+  click never joins
 - Camera Preview on: ↵ on the join card opens the panel **already showing live video** — no black
   frame, no blank mid-preview; ↵ joins, Esc drops the join; the camera light goes out with the
   panel, and the first run prompts once, before any panel appears
@@ -421,8 +444,14 @@ caches, TCC grants and login item, so this cannot disturb an installed copy.
 
 - Every pane renders and the sidebar switches without flicker
 - A feature switch takes effect in the launcher immediately; every setting survives relaunch
-- Export produces a file; import applies it and reports a sensible summary
+- Export produces a `.tinycast`; import applies it and reports a per-category summary
+- Untick a category on export, and the import picker greys that row out rather than offering it
+- Untick a category on **import** and confirm it did not arrive, while the ticked ones did
+- An image clip round-trips and still renders; the archive can then be deleted without breaking it
+- A file whose `manifest.json` `format` was hand-edited is refused **with a message naming it**
+- Cancelling the save panel leaves nothing in `~/Library/Caches/com.tinycast.app.dev/backup-staging/`
 - **`snippetsEnabled` is not in the exported file**, and importing does not enable snippets
+- Nothing in the extracted tree names a Keychain item, an extension, or an AI conversation
 
 ### Clean install
 

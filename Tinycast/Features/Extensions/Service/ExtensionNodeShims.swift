@@ -1,11 +1,7 @@
 import CryptoKit
 import Foundation
 
-/// Services the JS Node shims call *synchronously*. Safe to answer inline because none of this needs
-/// the main actor: it all runs on `ExtensionRuntime`'s private JS queue, so a blocking answer can
-/// never deadlock against the UI. Binary payloads cross as base64.
-///
-/// `@unchecked Sendable`: stateless apart from `FileManager.default`, which is thread-safe.
+/// Answered inline on the JS queue, so a blocking answer can never deadlock the UI.
 final class ExtensionNodeShims: @unchecked Sendable {
     private let fileManager = FileManager.default
 
@@ -83,6 +79,18 @@ final class ExtensionNodeShims: @unchecked Sendable {
             }
             return nil
 
+        // `createReadStream` walks a file a chunk at a time rather than materialising all of it.
+        case "readRange":
+            let target = try path(0)
+            let offset = max(0, (arguments[safe: 1] as? NSNumber)?.intValue ?? 0)
+            let count = max(0, (arguments[safe: 2] as? NSNumber)?.intValue ?? 0)
+            guard let handle = FileHandle(forReadingAtPath: target) else {
+                throw ShimError.noEntry(target, "open")
+            }
+            defer { try? handle.close() }
+            try handle.seek(toOffset: UInt64(offset))
+            return (try handle.read(upToCount: count) ?? Data()).base64EncodedString()
+
         case "exists":
             return fileManager.fileExists(atPath: try path(0))
 
@@ -147,6 +155,17 @@ final class ExtensionNodeShims: @unchecked Sendable {
                 throw ShimError.noEntry(target, "realpath")
             }
             return URL(fileURLWithPath: target).resolvingSymlinksInPath().path
+
+        case "chmod":
+            let target = try path(0)
+            guard let mode = arguments[safe: 1] as? NSNumber else {
+                throw ShimError.failed("fs.chmod needs a mode.", "EINVAL")
+            }
+            guard fileManager.fileExists(atPath: target) else {
+                throw ShimError.noEntry(target, "chmod")
+            }
+            try fileManager.setAttributes([.posixPermissions: mode], ofItemAtPath: target)
+            return nil
 
         case "mkdtemp":
             // Node's contract: the prefix already includes the parent directory.

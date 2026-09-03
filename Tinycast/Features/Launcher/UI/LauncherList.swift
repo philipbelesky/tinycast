@@ -2,7 +2,8 @@ import SwiftUI
 
 struct LauncherList: View {
     let results: [AppEntry]
-    let selectedID: AppEntry.ID?
+    /// The flat row id the screen has selected, not an entry id: a fallback can repeat a result.
+    let selectedRowID: String?
     let favoriteCount: Int
     let showSections: Bool
     /// Changes only when the list should scroll, so mouse selection never yanks it.
@@ -20,10 +21,20 @@ struct LauncherList: View {
     var onActivateSuggestion: (String) -> Void = { _ in }
     let onActivate: (AppEntry) -> Void
     let onActions: (AppEntry) -> Void
+    /// The `Use "…" with` section, always last; nil when nothing is typed.
+    var fallbacks: FallbackSection?
     @Environment(RunningAppsMonitor.self) private var runningApps
 
-    /// The calculator answers a typed query and the join card an empty one, so they cannot both
-    /// lead — which is what keeps the flat selection index a single-row offset.
+    /// What the fallback section draws and where its rows go, addressed by position.
+    struct FallbackSection {
+        let title: String
+        let entries: [AppEntry]
+        let onActivate: (Int) -> Void
+        let onActions: (Int) -> Void
+        let onConfigure: () -> Void
+    }
+
+    /// Calc answers a typed query and the card an empty one, so only one ever leads.
     enum LeadCard: Equatable {
         case calc(CalcResult)
         case meeting(MeetingEvent, now: Date)
@@ -54,31 +65,38 @@ struct LauncherList: View {
 
     private enum Row: Identifiable {
         case header(String)
+        /// Its own case, because only this header carries a gear.
+        case fallbackHeader(String)
         case card(LeadCard)
         case webSearch(WebSearchPrompt)
         case suggestion(String)
-        /// `slot` is the row's ⌘-digit, carried from the section build so no row has to search for it.
+        /// `slot` is the row's ⌘-digit, carried from the section build rather than searched.
         case app(AppEntry, slot: Character?)
+        case fallback(AppEntry, index: Int)
         var id: String {
             switch self {
             case .header(let title): return "header-" + title
+            case .fallbackHeader: return "fallback-header"
             case .card(let card): return card.rowID
             case .webSearch(let prompt): return prompt.id
             case .suggestion(let text): return SearchSuggestions.rowID(text)
             case .app(let app, _): return app.id
+            case .fallback(let app, _): return "fallback-" + app.id
             }
         }
     }
 
-    /// Scroll target for the current selection.
-    private var selectedRowID: String? {
-        cardSelected ? card?.rowID : selectedID
-    }
-
     /// Whether the selection sits on flat index 0: the search row, the card, else the first result.
     private var firstRowSelected: Bool {
-        if let webSearch { return selectedID == webSearch.id }
-        return card != nil ? cardSelected : selectedID != nil && selectedID == results.first?.id
+        if let webSearch { return selectedRowID == webSearch.id }
+        return card != nil ? cardSelected : selectedRowID != nil && selectedRowID == results.first?.id
+    }
+
+    /// Every row the fallback section contributes, always after the results.
+    private var fallbackRows: [Row] {
+        guard let fallbacks else { return [] }
+        return [.fallbackHeader(fallbacks.title)]
+            + fallbacks.entries.enumerated().map { Row.fallback($1, index: $0) }
     }
 
     private var rows: [Row] {
@@ -90,8 +108,9 @@ struct LauncherList: View {
         var cardRows: [Row] = []
         if let card { cardRows = [.header(card.sectionTitle), .card(card)] }
         guard showSections else {
-            guard !results.isEmpty else { return cardRows }
+            guard !results.isEmpty else { return cardRows + fallbackRows }
             return cardRows + [.header("Results")] + results.map { .app($0, slot: nil) }
+                + fallbackRows
         }
         var rows: [Row] = cardRows
         let favorites = results.prefix(favoriteCount)
@@ -117,19 +136,18 @@ struct LauncherList: View {
             rows.append(.header(kind.descriptor.sectionTitle))
             rows.append(contentsOf: group.map { .app($0, slot: nil) })
         }
-        // A kind missing from `kinds` doesn't just hide its rows — every row after it in the flat
-        // index would then activate its neighbour. Cheap to assert, silent and confusing to debug.
+        // A missing kind would make every later row activate its neighbour: assert instead.
         assert(
             grouped.keys.allSatisfy(kinds.contains),
             "kind missing from the launcher's section order: "
                 + grouped.keys.filter { !kinds.contains($0) }.map(\.rawValue).joined(separator: ", "))
-        return rows
+        return rows + fallbackRows
     }
 
     var body: some View {
         let rows = rows
         return Group {
-            if results.isEmpty && card == nil && webSearch == nil {
+            if results.isEmpty && card == nil && webSearch == nil && fallbacks == nil {
                 EmptyResults(text: "No apps found")
             } else {
                 ScrollViewReader { proxy in
@@ -139,6 +157,11 @@ struct LauncherList: View {
                                 switch row {
                                 case .header(let title):
                                     SectionHeader(title: title, isFirst: row.id == rows.first?.id)
+                                case .fallbackHeader(let title):
+                                    SectionHeader(
+                                        title: title, isFirst: row.id == rows.first?.id,
+                                        configure: fallbacks?.onConfigure,
+                                        configureHelp: "Configure Fallbacks…")
                                 case .card(let card):
                                     LeadCardView(card: card, selected: cardSelected)
                                         .contentShape(Rectangle())
@@ -147,29 +170,38 @@ struct LauncherList: View {
                                         .padding(.bottom, Theme.Spacing.xs)
                                         .selectionFrame(cardSelected)
                                 case .webSearch(let prompt):
-                                    WebSearchRow(prompt: prompt, selected: selectedID == prompt.id)
+                                    WebSearchRow(prompt: prompt, selected: selectedRowID == prompt.id)
                                         .contentShape(Rectangle())
                                         .onTapGesture(perform: onActivateWebSearch)
-                                        .selectionFrame(selectedID == prompt.id)
+                                        .selectionFrame(selectedRowID == prompt.id)
                                 case .suggestion(let text):
                                     SuggestionRow(
                                         text: text, symbol: webSearch?.symbol ?? "magnifyingglass",
-                                        selected: selectedID == SearchSuggestions.rowID(text)
+                                        selected: selectedRowID == SearchSuggestions.rowID(text)
                                     )
                                     .contentShape(Rectangle())
                                     .onTapGesture { onActivateSuggestion(text) }
-                                    .selectionFrame(selectedID == SearchSuggestions.rowID(text))
+                                    .selectionFrame(selectedRowID == SearchSuggestions.rowID(text))
                                 case .app(let app, let slot):
                                     AppRow(
                                         app: app,
-                                        selected: app.id == selectedID,
+                                        selected: app.id == selectedRowID,
                                         running: runningApps.isRunning(app),
                                         slot: slot
                                     )
                                     .contentShape(Rectangle())
                                     .onTapGesture { onActivate(app) }
                                     .onRightClick { onActions(app) }
-                                    .selectionFrame(app.id == selectedID)
+                                    .selectionFrame(app.id == selectedRowID)
+                                case .fallback(let app, let index):
+                                    AppRow(
+                                        app: app, selected: row.id == selectedRowID, running: false,
+                                        slot: nil
+                                    )
+                                    .contentShape(Rectangle())
+                                    .onTapGesture { fallbacks?.onActivate(index) }
+                                    .onRightClick { fallbacks?.onActions(index) }
+                                    .selectionFrame(row.id == selectedRowID)
                                 }
                             }
                         }
@@ -317,6 +349,12 @@ private struct AppRow: View {
             Text(app.name)
                 .font(Theme.Typography.rowTitle)
                 .lineLimit(1)
+            if let subtitle = app.subtitle {
+                Text(subtitle)
+                    .font(Theme.Typography.rowTrailing)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
             if let alias = aliases.alias(for: app.preferenceKey) {
                 Text(alias)
                     .font(Theme.Typography.rowTrailing)
@@ -363,7 +401,7 @@ private struct AppRow: View {
     #Preview("Launcher · sections") {
         LauncherList(
             results: PreviewData.launcherResults,
-            selectedID: PreviewData.notes.id,
+            selectedRowID: PreviewData.notes.id,
             favoriteCount: PreviewData.launcherFavoriteCount,
             showSections: true,
             scroll: ScrollIntent(kind: .top),
@@ -376,7 +414,7 @@ private struct AppRow: View {
     #Preview("Launcher · results with a calc card") {
         LauncherList(
             results: PreviewData.launcherResults,
-            selectedID: nil,
+            selectedRowID: nil,
             favoriteCount: 0,
             showSections: false,
             scroll: ScrollIntent(kind: .top),
@@ -392,7 +430,7 @@ private struct AppRow: View {
     #Preview("Launcher · web scope") {
         LauncherList(
             results: [],
-            selectedID: "web-search:google",
+            selectedRowID: "web-search:google",
             favoriteCount: 0,
             showSections: false,
             scroll: ScrollIntent(kind: .top),
@@ -409,7 +447,7 @@ private struct AppRow: View {
     #Preview("Launcher · empty") {
         LauncherList(
             results: [],
-            selectedID: nil,
+            selectedRowID: nil,
             favoriteCount: 0,
             showSections: true,
             scroll: ScrollIntent(kind: .top),

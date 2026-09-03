@@ -73,7 +73,7 @@ struct AppEntry: Identifiable, Hashable, Sendable {
                     label: "Scope", sectionTitle: "Search Scopes",
                     openVerb: "Narrow the Search", canRevealInFinder: false, isSymbolIcon: true)
             case .extensionCommand:
-                // The label is per-entry (the owning extension's title), so this is only the fallback.
+                // The label is per-entry, the owning extension's title; this is the fallback.
                 return KindDescriptor(
                     label: "Extension", sectionTitle: "Extensions",
                     openVerb: "Run Command", canRevealInFinder: false, isSymbolIcon: true)
@@ -99,6 +99,8 @@ struct AppEntry: Identifiable, Hashable, Sendable {
     let url: URL
     let bundleID: String?
     let kind: Kind
+    /// Secondary label beside the name, for an entry whose name alone can't say what it acts on.
+    var subtitle: String?
     /// Extra strings matching as strongly as the name; empty for every kind but snippets.
     var matchAliases: [String] = []
     /// Per-item symbol, for the one kind whose glyph is the user's choice. Nil elsewhere.
@@ -109,21 +111,23 @@ struct AppEntry: Identifiable, Hashable, Sendable {
     var alternateNames: [String] = []
     /// `CFBundleExecutable`, matched literally as a last resort. Applications only.
     var executableName: String?
+    /// Moves when the bundle's icon changes on disk, retiring the cached bitmap. Applications only.
+    var iconStamp: Int = 0
     /// Set by the feature that produced the entry when its glyph isn't derivable from `kind`.
     var iconOverride: EntryIcon?
-    /// A per-entry label where the kind's own reads too flat — an extension's title, say.
-    var labelOverride: String?
+    /// What this entry comes from — an extension's title. Labels the row, and matches weakly.
+    var ownerName: String?
 
     /// Stable identity for learned ranking, favorites, and other per-entry preferences.
     var preferenceKey: String { bundleID ?? id }
 
     var searchFields: SearchFields {
         SearchFields(
-            names: [name] + matchAliases, alternateNames: alternateNames,
+            names: [name] + matchAliases, alternateNames: alternateNames, ownerName: ownerName,
             bundleID: bundleID, executableName: executableName)
     }
 
-    var kindLabel: String { labelOverride ?? kind.descriptor.label }
+    var kindLabel: String { ownerName ?? kind.descriptor.label }
 
     /// The hotkey action for this entry, or nil when the entry has no addressable action.
     var hotKeyAction: HotKeyAction? {
@@ -155,7 +159,7 @@ struct AppEntry: Identifiable, Hashable, Sendable {
     /// What this row draws where the entry stands for itself — Settings lists, pickers, favorites.
     @MainActor var iconSource: EntryIcon {
         if let iconOverride { return iconOverride }
-        guard kind.descriptor.isSymbolIcon else { return .file }
+        guard kind.descriptor.isSymbolIcon else { return .file(stamp: iconStamp) }
         let name = symbolName ?? kindSymbol
         guard let tint = tileTint else { return .symbol(name) }
         return tile(name, tint)
@@ -205,6 +209,18 @@ struct AppEntry: Identifiable, Hashable, Sendable {
     @MainActor var icon: NSImage {
         IconCache.observeStyle()
         return IconCache.icon(for: iconSource, fileURL: url)
+    }
+}
+
+extension AppEntry {
+    /// The one row a quicklink draws, wherever it is offered from.
+    init(_ quicklink: Quicklink) {
+        self.init(
+            id: quicklink.entryID, name: quicklink.name,
+            url: URL(string: "tinycast://quicklink/" + quicklink.id.uuidString)!,
+            bundleID: nil, kind: .quicklink,
+            symbolName: quicklink.iconSymbol
+                ?? QuicklinkDestination.detect(quicklink.link)?.defaultSymbol)
     }
 }
 
@@ -305,7 +321,12 @@ final class AppIndex {
         }
     }
 
-    /// A feature's commands leave the Commands slice when the feature is off; `visible` restores them.
+    /// Whether the feature behind a command is on, which is what its shortcut has to obey too.
+    func isCommandEnabled(_ command: CommandID) -> Bool {
+        !hiddenCommands.contains(command)
+    }
+
+    /// A feature's commands leave the Commands slice when it is off; `visible` restores them.
     func setCommandsVisible(_ commands: Set<CommandID>, _ visible: Bool) {
         let updated = visible ? hiddenCommands.subtracting(commands) : hiddenCommands.union(commands)
         guard updated != hiddenCommands else { return }
@@ -315,11 +336,11 @@ final class AppIndex {
 
     /// Replaces the command slice without rescanning, so Settings edits land at once.
     func setCustomCommands(_ commands: [CustomCommand]) {
-        let entries = commands.map { command in
+        let entries = commands.filter(\.isEnabled).map { command in
             AppEntry(
                 id: command.entryID, name: command.name,
                 url: URL(string: "tinycast://custom-command/" + command.id.uuidString)!,
-                bundleID: nil, kind: .customCommand)
+                bundleID: nil, kind: .customCommand, symbolName: command.iconSymbol)
         }
         .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         guard entries != customCommandEntries else { return }
@@ -331,31 +352,22 @@ final class AppIndex {
     func setQuicklinks(_ quicklinks: [Quicklink]) {
         let entries =
             quicklinks
-            .filter(\.showsInRootSearch)
+            .filter { $0.isEnabled && $0.showsInRootSearch }
             .sorted(by: Quicklink.precedes)
-            .map { quicklink in
-                AppEntry(
-                    id: quicklink.entryID, name: quicklink.name,
-                    url: URL(string: "tinycast://quicklink/" + quicklink.id.uuidString)!,
-                    bundleID: nil, kind: .quicklink,
-                    symbolName: quicklink.iconSymbol
-                        ?? QuicklinkDestination.detect(quicklink.link)?.defaultSymbol)
-            }
+            .map(AppEntry.init)
         guard entries != quicklinkEntries else { return }
         quicklinkEntries = entries
         publishEntries()
     }
 
-    /// Replaces the meeting slice. Events move on their own, so this is called from the store's
-    /// change hook rather than from a user edit.
+    /// Events move on their own, so this comes from the store's change hook, not an edit.
     func setMeetings(_ entries: [AppEntry]) {
         guard entries != meetingEntries else { return }
         meetingEntries = entries
         publishEntries()
     }
 
-    /// Replaces the extension-command slice. Called by `ExtensionManager` whenever the installed set,
-    /// or an extension's chosen appearance, changes.
+    /// Called by `ExtensionManager` when the installed set or a chosen appearance changes.
     func setExtensionCommands(_ entries: [AppEntry]) {
         guard entries != extensionEntries else { return }
         extensionEntries = entries
@@ -549,7 +561,7 @@ final class AppIndex {
                         // A binary named after the app adds nothing the display name lacks.
                         executableName: executable.flatMap {
                             $0.caseInsensitiveCompare(name) == .orderedSame ? nil : $0
-                        }))
+                        }, iconStamp: FileIconStamp.value(for: url)))
             }
             // Slice order is section order, so the flat selection maps 1:1 onto rows.
             let apps = result.sorted {
@@ -586,8 +598,7 @@ final class AppIndex {
         }
     }
 
-    /// A whole category, plus any entry the query names outright — `System Settings` is both. Slice
-    /// order is section order, so filtering alone keeps the sections and the flat selection aligned.
+    /// Slice order is section order, so filtering keeps sections and selection aligned.
     private func categoryListing(_ kind: AppEntry.Kind, query: String) -> [AppEntry] {
         apps.filter { $0.kind == kind || $0.name.caseInsensitiveCompare(query) == .orderedSame }
     }

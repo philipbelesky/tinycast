@@ -30,9 +30,166 @@ struct AIProviderTests {
         codexProtocolFramesRoundTrip()
         settingsPersistAndRepairSelections()
         subscriptionSelectionsReconcile()
+        onDeviceSelectionsRoundTripAndLead()
+        conversationSettingsPersistAndDecide()
+        toolCatalogsAndTurnsEncodePerProvider()
+        toolArgumentsSurviveArrivingInFragments()
+        toolCapabilitiesFollowTheRoute()
 
         print("\(passes) passed, \(failures) failed")
         if failures > 0 { exit(1) }
+    }
+
+    /// Both providers stream a call's arguments in pieces; a half-parsed call would be uncallable.
+    static func toolArgumentsSurviveArrivingInFragments() {
+        var openAI = AIStreamDecoder(shape: .openAICompatible)
+        let openAIData = Data(
+            """
+            data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_1",\
+            "function":{"name":"fs__read","arguments":"{\\"pa"}}]}}]}
+
+            data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"th\\":\\"/tmp\\"}"}}]}}]}
+
+            data: {"choices":[{"delta":{},"finish_reason":"tool_calls"}]}
+
+            data: [DONE]
+
+            """.utf8)
+        var events = (try? openAI.feed(openAIData)) ?? []
+        events += (try? openAI.finish()) ?? []
+        expect(
+            events.contains(
+                .toolCallRequested(
+                    AIToolCall(id: "call_1", name: "fs__read", arguments: #"{"path":"/tmp"}"#))),
+            "OpenAI fragments reassemble into one whole call before it leaves the decoder")
+        expect(events.last == .finished, "and the stream still terminates")
+
+        var anthropic = AIStreamDecoder(shape: .anthropic)
+        let anthropicData = Data(
+            """
+            data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_1","name":"fs__read"}}
+
+            data: {"type":"content_block_delta","index":1,"delta":{"type":"input_json_delta","partial_json":"{\\"path"}}
+
+            data: {"type":"content_block_delta","index":1,"delta":{"type":"input_json_delta","partial_json":"\\":\\"/tmp\\"}"}}
+
+            data: {"type":"message_delta","delta":{"stop_reason":"tool_use"},"usage":{"output_tokens":9}}
+
+            """.utf8)
+        var anthropicEvents = (try? anthropic.feed(anthropicData)) ?? []
+        anthropicEvents += (try? anthropic.finish()) ?? []
+        expect(
+            anthropicEvents.contains(
+                .toolCallRequested(
+                    AIToolCall(id: "toolu_1", name: "fs__read", arguments: #"{"path":"/tmp"}"#))),
+            "an Anthropic tool_use block reassembles the same way")
+        expect(
+            !anthropicEvents.contains(.finished),
+            "a tool turn ends without message_stop, so the loop decides whether the turn is over")
+
+        var plain = AIStreamDecoder(shape: .openAICompatible)
+        let none = (try? plain.feed(Data("data: [DONE]\n\n".utf8))) ?? []
+        expect(
+            none == [.finished],
+            "a turn that called nothing emits no tool event at all")
+    }
+
+    /// Only a route that can actually run one is ever offered a tool.
+    static func toolCapabilitiesFollowTheRoute() {
+        let connection = AIConnection(provider: .anthropic, models: ["claude"])
+        expect(
+            connection.capabilities(for: "claude").tools,
+            "both HTTP shapes speak tool calling natively")
+        expect(
+            !AIModelCapabilities.appleIntelligence.tools,
+            "the on-device model reaches nothing, so it is offered nothing to reach with")
+        expect(
+            !AIModelCapabilities.chatGPT.tools,
+            "and the Codex route declines tools by design, so it is never handed any")
+        expect(!AIModelCapabilities.none.tools, "an unconfigured route offers nothing either")
+
+        expect(
+            AIRequest(messages: []).tools.isEmpty,
+            "a request carries no tools unless a caller put them there")
+    }
+
+    /// Every provider 400s on a call without its result, or a result without its call.
+    static func toolCatalogsAndTurnsEncodePerProvider() {
+        let tool = AITool(
+            name: "fs__read", description: "Reads a file.",
+            parameters: .object(["type": .string("object")]), origin: "Files", title: "read")
+        let call = AIToolCall(id: "c1", name: "fs__read", arguments: #"{"path":"/tmp"}"#)
+        let turn = AIRequest(
+            messages: [
+                AIMessage(role: .user, text: "read it"),
+                AIMessage(role: .assistant, text: "", toolCalls: [call]),
+                AIMessage(
+                    role: .tool, text: "",
+                    toolResult: AIToolResult(callID: "c1", content: "hi", isError: false)),
+                AIMessage(
+                    role: .tool, text: "",
+                    toolResult: AIToolResult(callID: "c2", content: "no", isError: true))
+            ],
+            tools: [tool])
+
+        let openAI = AIRequestBody.make(
+            turn,
+            configuration: AIHTTPConfiguration(
+                provider: .openAI, baseURL: URL(string: "https://api.openai.com/v1")!,
+                model: "gpt-5"))
+        let catalog = (openAI["tools"] as? [[String: Any]])?.first
+        expect(
+            catalog?["type"] as? String == "function",
+            "OpenAI takes a tool wrapped as a function")
+        expect(
+            (catalog?["function"] as? [String: Any])?["parameters"] is [String: Any],
+            "and the server's own schema is handed through as the parameters, unrewritten")
+        let openAIMessages = openAI["messages"] as? [[String: Any]] ?? []
+        let assistant = openAIMessages.first { $0["tool_calls"] != nil }
+        expect(
+            ((assistant?["tool_calls"] as? [[String: Any]])?.first?["id"] as? String) == "c1",
+            "the assistant turn keeps the id its result has to quote")
+        let results = openAIMessages.filter { $0["role"] as? String == "tool" }
+        expect(results.count == 2, "each result is its own tool turn")
+        expect(
+            results.first?["tool_call_id"] as? String == "c1",
+            "addressed by the call it answers")
+
+        let anthropic = AIRequestBody.make(
+            turn,
+            configuration: AIHTTPConfiguration(
+                provider: .anthropic, baseURL: URL(string: "https://api.anthropic.com")!,
+                model: "claude"))
+        let anthropicTool = (anthropic["tools"] as? [[String: Any]])?.first
+        expect(
+            anthropicTool?["input_schema"] != nil && anthropicTool?["type"] == nil,
+            "Anthropic names the same schema input_schema and takes no wrapper")
+        let anthropicMessages = anthropic["messages"] as? [[String: Any]] ?? []
+        let use =
+            (anthropicMessages.first { $0["role"] as? String == "assistant" }?["content"]
+            as? [[String: Any]])?.first
+        expect(use?["type"] as? String == "tool_use", "a call is a content block, not a field")
+        expect(
+            (use?["input"] as? [String: Any])?["path"] as? String == "/tmp",
+            "and its arguments are parsed back into the object Anthropic expects")
+        let resultBlocks =
+            anthropicMessages.last?["content"] as? [[String: Any]] ?? []
+        expect(
+            anthropicMessages.last?["role"] as? String == "user",
+            "Anthropic takes results as a user turn")
+        expect(
+            resultBlocks.count == 2,
+            "and a run of them arrives as one turn, because two would be rejected")
+        expect(
+            resultBlocks.last?["is_error"] as? Bool == true,
+            "a tool's own failure stays marked so the model can work around it")
+
+        let plain = AIRequestBody.make(
+            AIRequest(messages: [AIMessage(role: .user, text: "hi")]),
+            configuration: AIHTTPConfiguration(
+                provider: .openAI, baseURL: URL(string: "https://api.openai.com/v1")!,
+                model: "gpt-5"))
+        expect(plain["tools"] == nil, "a turn with no tools sends no tools key at all")
     }
 
     static func providerPresetsResolveEndpoints() {
@@ -426,6 +583,116 @@ struct AIProviderTests {
         }
     }
 
+    static func conversationSettingsPersistAndDecide() {
+        let now = Date(timeIntervalSince1970: 1_000_000)
+        func decide(
+            _ opensTo: AIOpensTo, _ after: AINewChatAfter, idle: TimeInterval?
+        )
+            -> AIConversationOpenPolicy.Decision
+        {
+            AIConversationOpenPolicy.decide(
+                opensTo: opensTo, newAfter: after,
+                lastActiveAt: idle.map { now.addingTimeInterval(-$0) }, now: now)
+        }
+
+        expect(
+            decide(.newConversation, .never, idle: 0) == .startNew,
+            "A New Conversation always starts fresh")
+        expect(
+            decide(.recent, .never, idle: 400 * 86_400) == .resume,
+            "Never means no amount of idling starts a new chat")
+        expect(decide(.recent, .fiveMinutes, idle: nil) == .startNew, "nothing to resume is new")
+        expect(
+            decide(.recent, .fiveMinutes, idle: 299) == .resume,
+            "inside the window the conversation resumes")
+        expect(
+            decide(.recent, .fiveMinutes, idle: 301) == .startNew,
+            "past the window the next summon starts fresh")
+        expect(
+            decide(.recent, .fiveMinutes, idle: 300) == .startNew,
+            "the boundary itself starts fresh, so the window is exclusive at its end")
+        // A backwards clock yields a negative interval; it must not strand a reader in a chat.
+        expect(
+            decide(.recent, .twoMinutes, idle: -3_600) == .resume,
+            "a clock that moved backwards resumes rather than misreading the idle time")
+
+        expect(
+            AIRetention.allCases.allSatisfy { !$0.title.isEmpty },
+            "every retention names itself")
+        expect(
+            AIRetention.week.cutoff(from: now) == now.addingTimeInterval(-7 * 86_400),
+            "a week's cutoff is seven days back")
+        expect(
+            AINewChatAfter.allCases.filter { $0.rawValue == 0 }.isEmpty,
+            "no timeout uses 0, which an unset key would swallow before the default applied")
+
+        let suite = "AIProviderTests.conversations"
+        let defaults = isolatedDefaults(suite)
+        defer { discardSuite(suite, defaults) }
+
+        let fresh = AISettingsStore(defaults: defaults)
+        expect(fresh.retention == .forever, "retention defaults to Forever, so upgrading deletes nothing")
+        expect(fresh.opensTo == .recent, "chat reopens on the recent conversation by default")
+        expect(fresh.newChatAfter == .fiveMinutes, "the idle window defaults to five minutes")
+
+        fresh.retention = .week
+        fresh.opensTo = .newConversation
+        fresh.newChatAfter = .never
+        let reopened = AISettingsStore(defaults: defaults)
+        expect(reopened.retention == .week, "retention persists")
+        expect(reopened.opensTo == .newConversation, "the open policy persists")
+        expect(reopened.newChatAfter == .never, "Never persists rather than reading as the default")
+    }
+
+    static func onDeviceSelectionsRoundTripAndLead() {
+        let encoded = try? JSONEncoder().encode(AIModelSelection.appleIntelligence)
+        let decoded = encoded.flatMap { try? JSONDecoder().decode(AIModelSelection.self, from: $0) }
+        expect(decoded == .appleIntelligence, "the on-device selection survives a round trip")
+        expect(
+            AIModelSelection.appleIntelligence.model == AppleIntelligence.modelID,
+            "the on-device selection reports a stable model id")
+        expect(
+            AIModelSelection.appleIntelligence.source == .appleIntelligence,
+            "the on-device selection is its own source")
+        expect(
+            AIModelSelection.appleIntelligence.isOnDevice
+                && !AIModelSelection.chatGPT(model: "gpt-5", effort: nil).isOnDevice,
+            "only the on-device selection reads as on device")
+
+        // Data written before this route existed decodes to nothing; there is no migration.
+        let suite = "AIProviderTests.onDevice"
+        let defaults = isolatedDefaults(suite)
+        defer { discardSuite(suite, defaults) }
+
+        let store = AISettingsStore(defaults: defaults, isAppleIntelligenceAvailable: { true })
+        expect(store.defaultModel == nil, "a fresh store chooses nothing on its own")
+        store.resolveDefaultModel()
+        expect(
+            store.defaultModel == .appleIntelligence,
+            "the on-device route is what an unconfigured Mac resolves to")
+
+        // A configured connection must not be displaced by resolution running a second time.
+        let connectionID = UUID()
+        store.save(AIConnection(id: connectionID, name: "Local", models: ["m"]))
+        store.select(.api(connection: connectionID, model: "m"))
+        store.resolveDefaultModel()
+        expect(
+            store.defaultModel == .api(connection: connectionID, model: "m"),
+            "resolution never overrides a selection the reader made")
+
+        // A removed connection falls forward to the route that is always configured.
+        store.removeConnection(id: connectionID)
+        expect(
+            store.defaultModel == .appleIntelligence,
+            "a removed connection falls forward to the on-device route")
+
+        let without = AISettingsStore(defaults: defaults, isAppleIntelligenceAvailable: { false })
+        without.resolveDefaultModel()
+        expect(
+            without.defaultModel == .appleIntelligence,
+            "an unavailable model does not silently reroute a stored on-device selection")
+    }
+
     static func settingsPersistAndRepairSelections() {
         let suite = "AIProviderTests.persistence"
         let defaults = isolatedDefaults(suite)
@@ -489,7 +756,7 @@ private func discardSuite(_ name: String, _ defaults: UserDefaults) {
             .appendingPathComponent("Library/Preferences/\(name).plist"))
 }
 
-/// A fixed suite name stops cfprefsd accumulating a plist per run; the domain is cleared at both ends.
+/// A fixed suite name stops cfprefsd accumulating a plist per run.
 private func isolatedDefaults(_ name: String) -> UserDefaults {
     let defaults = UserDefaults(suiteName: name)!
     defaults.removePersistentDomain(forName: name)

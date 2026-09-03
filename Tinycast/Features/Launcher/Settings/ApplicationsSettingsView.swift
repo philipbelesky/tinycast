@@ -8,7 +8,7 @@ struct ApplicationsSettingsView: View {
 
             LauncherItemsSection(
                 kind: .application,
-                header: "Applications",
+                anchor: .applicationsApplications,
                 searchPrompt: "Search applications…")
 
             ScopeKeywordSection(
@@ -17,6 +17,7 @@ struct ApplicationsSettingsView: View {
                     "Type it, then a space, to search applications and System Settings panes only.")
         }
         .formStyle(.grouped)
+        .settingsScrollTarget(.applications)
         .releasesFocusOnOutsideClick()
     }
 }

@@ -7,8 +7,7 @@ final class DialogController: NSObject, NSWindowDelegate {
     private var panel: DialogPanel?
     private var continuation: CheckedContinuation<Int, Never>?
 
-    /// True while a question is on screen and unanswered — the palette reads this so its own dialog
-    /// taking key doesn't read as a click-away.
+    /// The palette reads this so its own dialog taking key isn't a click-away.
     var isPresenting: Bool { continuation != nil }
 
     func confirm(
@@ -23,6 +22,17 @@ final class DialogController: NSObject, NSWindowDelegate {
             ],
             defaultIndex: 0, cancelIndex: 1)
         return await present(request) == 0
+    }
+
+    /// More than two ways forward; `options` is in dispatch order and the last one is the cancel.
+    func choose(
+        title: String, message: String?, symbol: String?, tone: DialogTone,
+        options: [DialogAction], defaultIndex: Int
+    ) async -> Int {
+        let request = DialogRequest(
+            title: title, message: message, symbol: symbol, tone: tone, actions: options,
+            defaultIndex: defaultIndex, cancelIndex: options.count - 1)
+        return await present(request)
     }
 
     func notice(title: String, message: String, symbol: String, tone: DialogTone) async {
@@ -116,8 +126,7 @@ final class DialogController: NSObject, NSWindowDelegate {
         }
     }
 
-    /// An accessory can refuse its own dialog's primary action; the dialog then simply stays up,
-    /// which is what a greyed-out button would say if `DialogAction` could carry one.
+    /// A refused primary action leaves the dialog up, as a greyed-out button would.
     private static func accepts(_ index: Int, for request: DialogRequest) -> Bool {
         guard index == request.defaultIndex, case .eventDraft(let state) = request.accessory else {
             return true

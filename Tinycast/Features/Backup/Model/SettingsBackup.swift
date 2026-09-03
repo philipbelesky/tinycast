@@ -2,7 +2,7 @@ import Foundation
 
 /// A readable configuration snapshot; every field is optional, so an import merges.
 struct SettingsBackup: Codable {
-    var version = 4
+
     var settings: SettingsData?
     var hotkeys: HotkeyBackup?
     var customCommands: [CustomCommand]?
@@ -68,30 +68,28 @@ struct SettingsBackup: Codable {
         var linearDestination: String?
         // `calendarEnabled` is absent: an import must not grant calendar access.
         var calendarShowInLauncher: Bool?
+        var calendarLauncherLimit: Int?
+        // Carried: it narrows what is read rather than widening what may be reached.
+        var calendarIncludesTomorrow: Bool?
         var joinWindowMinutes: Int?
         // `autoJoinMeetings` and `cameraPreview` are absent: an import must arm neither.
         var autoJoinConfirms: Bool?
         var menuBarEvents: Int?
+        var calendarMenuBarDisplay: Int?
         var menuBarLinkedEventsOnly: Bool?
         var hideCurrentEvent: Int?
         // Safe to carry: it silences a prompt rather than granting anything.
         var supportReminders: Bool?
     }
 
-    /// Combos keep the legacy shape, so older files import. docs/features/hotkeys.md#persistence
+    /// One entry per bindable action. docs/features/hotkeys.md#persistence
     struct HotkeyBackup: Codable {
+        /// Named apart from `commands`: the launcher toggle is the one action with no command row.
         var togglePalette: HotKeyBinding?
         var togglePaletteAlternate: HotKeyBinding?
-        var toggleClipboard: HotKeyBinding?
-        var toggleClipboardAlternate: HotKeyBinding?
-        var toggleEmoji: HotKeyBinding?
-        var showNotes: HotKeyBinding?
-        var createNote: HotKeyBinding?
-        var searchNotes: HotKeyBinding?
-        var searchFiles: HotKeyBinding?
-        var joinNextMeeting: HotKeyBinding?
-        var mySchedule: HotKeyBinding?
-        var createEvent: HotKeyBinding?
+        var commands: [String: HotKeyBinding]?
+        /// Keyed the same way, so a second chord travels with the command it belongs to.
+        var commandAlternates: [String: HotKeyBinding]?
         var apps: [String: HotKeyBinding]?
         var panes: [String: HotKeyBinding]?
         var customCommands: [String: HotKeyBinding]?

@@ -13,7 +13,7 @@ struct QuicklinksSettingsView: View {
         @Bindable var settings = settings
         return Form {
             FeatureSwitchSection(
-                header: "Quicklinks",
+                anchor: .quicklinksQuicklinks,
                 enableTitle: "Enable quicklinks",
                 enableSubtitle:
                     "Open saved destinations from the launcher, a shortcut, or Search Quicklinks.",
@@ -35,6 +35,7 @@ struct QuicklinksSettingsView: View {
                     "Type it, then a space, to search quicklinks only.")
         }
         .formStyle(.grouped)
+        .settingsScrollTarget(.quicklinks)
         // Presented from the pane, so "Create Quicklink" can open it from the palette.
         .sheet(item: $core.pendingQuicklinkEdit) { request in
             QuicklinkEditorSheet(quicklink: request.quicklink)
@@ -82,13 +83,22 @@ struct QuicklinksSettingsView: View {
                 ForEach(results) { quicklink in
                     QuicklinkSettingsRow(
                         quicklink: quicklink,
+                        isEnabled: Binding(
+                            get: { quicklink.isEnabled },
+                            set: {
+                                core.quicklinkCoordinator.setQuicklinkEnabled($0, id: quicklink.id)
+                            }),
                         onEdit: { core.quicklinkCoordinator.editQuicklink(quicklink) },
                         onDelete: { pendingDeletion = quicklink })
                 }
             }
-            Button("Add Quicklink…") { core.quicklinkCoordinator.editQuicklink(nil) }
+            Button {
+                core.quicklinkCoordinator.editQuicklink(nil)
+            } label: {
+                SettingsRowTitle(.quicklinksQuicklinks, "Add Quicklink")
+            }
         } footer: {
-            Text("Name it, paste a link, then give it a shortcut if you want one.")
+            Text("Name it, paste a link, then add an alias or a shortcut if you want one.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -98,7 +108,7 @@ struct QuicklinksSettingsView: View {
         @Bindable var settings = settings
         return Section {
             Toggle(isOn: $settings.quicklinkOpensNewWindow) {
-                Text("Open in a new window")
+                SettingsRowTitle(.quicklinksBehaviour, "Open in a new window")
                 Text(
                     "Ask the handler for a new window instead of reusing its frontmost tab. "
                         + "Only apps that accept a new-window argument can honour this.")
@@ -108,15 +118,15 @@ struct QuicklinksSettingsView: View {
                     Text(option.title).tag(option)
                 }
             } label: {
-                Text("When there's no selected text")
+                SettingsRowTitle(.quicklinksBehaviour, "When there's no selected text")
                 Text("What {selection} does when the app in front exposes nothing to read.")
             }
             Toggle(isOn: $settings.quicklinkConfirmsBeforeDelete) {
-                Text("Confirm before deleting")
+                SettingsRowTitle(.quicklinksBehaviour, "Confirm before deleting")
                 Text("Ask first when deleting a quicklink from the launcher's Actions menu.")
             }
         } header: {
-            Text("Behaviour")
+            SettingsSectionHeader(.quicklinksBehaviour)
         }
     }
 
@@ -125,7 +135,7 @@ struct QuicklinksSettingsView: View {
             LabeledContent {
                 Button("Import…") { Task { await core.quicklinkCoordinator.importQuicklinks() } }
             } label: {
-                Text("Import quicklinks")
+                SettingsRowTitle(.quicklinksImportExport, "Import quicklinks")
                 Text("Add quicklinks from a JSON file, skipping any you already have.")
             }
             LabeledContent {
@@ -140,11 +150,11 @@ struct QuicklinksSettingsView: View {
                 Button("Export…") { Task { await core.quicklinkCoordinator.exportQuicklinks() } }
                     .disabled(store.quicklinks.isEmpty)
             } label: {
-                Text("Export quicklinks")
+                SettingsRowTitle(.quicklinksImportExport, "Export quicklinks")
                 Text("Write your whole library to a JSON file.")
             }
         } header: {
-            Text("Import & Export")
+            SettingsSectionHeader(.quicklinksImportExport)
         }
     }
 
@@ -161,6 +171,7 @@ struct QuicklinksSettingsView: View {
 
 private struct QuicklinkSettingsRow: View {
     let quicklink: Quicklink
+    @Binding var isEnabled: Bool
     let onEdit: () -> Void
     let onDelete: () -> Void
 
@@ -179,7 +190,13 @@ private struct QuicklinkSettingsRow: View {
                     .help("Hidden from root search")
             }
 
+            // An alias only reaches the ranker through the root-search slice, so it dims with it.
+            AliasField(key: quicklink.entryID, name: quicklink.name)
+                .settingsEnabled(quicklink.isEnabled && quicklink.showsInRootSearch)
+
+            // A disabled quicklink's shortcut fires into the funnel's refusal, so it dims too.
             ShortcutRecorder(action: .quicklink(id: quicklink.id))
+                .settingsEnabled(quicklink.isEnabled)
 
             Button(action: onEdit) {
                 Image(systemName: "pencil")
@@ -195,6 +212,12 @@ private struct QuicklinkSettingsRow: View {
             .buttonStyle(.plain)
             .help("Delete Quicklink")
             .accessibilityLabel("Delete \(quicklink.name)")
+
+            Toggle("", isOn: $isEnabled)
+                .labelsHidden()
+                .toggleStyle(.checkbox)
+                .help("Enabled")
+                .accessibilityLabel("Enable \(quicklink.name)")
         }
     }
 

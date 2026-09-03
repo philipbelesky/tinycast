@@ -53,9 +53,12 @@ extension SettingsBackup {
             linearShowInLauncher: s.linearShowInLauncher,
             linearDestination: s.linearDestination.rawValue,
             calendarShowInLauncher: s.calendarShowInLauncher,
+            calendarLauncherLimit: s.calendarLauncherLimit.rawValue,
+            calendarIncludesTomorrow: s.calendarIncludesTomorrow,
             joinWindowMinutes: s.joinWindowMinutes.rawValue,
             autoJoinConfirms: s.autoJoinConfirms,
             menuBarEvents: s.menuBarEvents.rawValue,
+            calendarMenuBarDisplay: s.calendarMenuBarDisplay.rawValue,
             menuBarLinkedEventsOnly: s.menuBarLinkedEventsOnly,
             hideCurrentEvent: s.hideCurrentEvent.rawValue,
             supportReminders: s.supportRemindersEnabled)
@@ -64,16 +67,14 @@ extension SettingsBackup {
         var hotkeys = HotkeyBackup()
         hotkeys.togglePalette = hk.binding(for: .togglePalette)
         hotkeys.togglePaletteAlternate = hk.binding(for: .togglePaletteAlternate)
-        hotkeys.toggleClipboard = hk.binding(for: .toggleClipboard)
-        hotkeys.toggleClipboardAlternate = hk.binding(for: .toggleClipboardAlternate)
-        hotkeys.toggleEmoji = hk.binding(for: .toggleEmoji)
-        hotkeys.showNotes = hk.binding(for: .showNotes)
-        hotkeys.createNote = hk.binding(for: .createNote)
-        hotkeys.searchNotes = hk.binding(for: .searchNotes)
-        hotkeys.searchFiles = hk.binding(for: .searchFiles)
-        hotkeys.joinNextMeeting = hk.binding(for: .joinNextMeeting)
-        hotkeys.mySchedule = hk.binding(for: .mySchedule)
-        hotkeys.createEvent = hk.binding(for: .createEvent)
+        hotkeys.commands = Dictionary(
+            uniqueKeysWithValues: CommandID.allCases.compactMap { id in
+                id.hotKeyAction.flatMap(hk.binding(for:)).map { (id.rawValue, $0) }
+            })
+        hotkeys.commandAlternates = Dictionary(
+            uniqueKeysWithValues: HotKeyAction.alternateChordCommands.compactMap { id in
+                hk.binding(for: .commandAlternate(id)).map { (id.rawValue, $0) }
+            })
         hotkeys.apps = Dictionary(
             uniqueKeysWithValues: hk.boundBundleIDs.compactMap { id in
                 hk.binding(for: .app(bundleID: id)).map { (id, $0) }
@@ -318,6 +319,14 @@ extension SettingsBackup {
             settings.calendarShowInLauncher = flag
             count += 1
         }
+        if let raw = s.calendarLauncherLimit, let limit = CalendarLauncherLimit(rawValue: raw) {
+            settings.calendarLauncherLimit = limit
+            count += 1
+        }
+        if let flag = s.calendarIncludesTomorrow {
+            settings.calendarIncludesTomorrow = flag
+            count += 1
+        }
         if let raw = s.joinWindowMinutes, let window = JoinWindow(rawValue: raw) {
             settings.joinWindowMinutes = window
             count += 1
@@ -328,6 +337,12 @@ extension SettingsBackup {
         }
         if let raw = s.menuBarEvents, let lead = MenuBarEvents(rawValue: raw) {
             settings.menuBarEvents = lead
+            count += 1
+        }
+        if let raw = s.calendarMenuBarDisplay,
+            let display = CalendarMenuBarDisplay(rawValue: raw)
+        {
+            settings.calendarMenuBarDisplay = display
             count += 1
         }
         if let flag = s.menuBarLinkedEventsOnly {
@@ -360,16 +375,16 @@ extension SettingsBackup {
         }
         if let b = hotkeys.togglePalette { apply(b, .togglePalette) }
         if let b = hotkeys.togglePaletteAlternate { apply(b, .togglePaletteAlternate) }
-        if let b = hotkeys.toggleClipboard { apply(b, .toggleClipboard) }
-        if let b = hotkeys.toggleClipboardAlternate { apply(b, .toggleClipboardAlternate) }
-        if let b = hotkeys.toggleEmoji { apply(b, .toggleEmoji) }
-        if let b = hotkeys.showNotes { apply(b, .showNotes) }
-        if let b = hotkeys.createNote { apply(b, .createNote) }
-        if let b = hotkeys.searchNotes { apply(b, .searchNotes) }
-        if let b = hotkeys.searchFiles { apply(b, .searchFiles) }
-        if let b = hotkeys.joinNextMeeting { apply(b, .joinNextMeeting) }
-        if let b = hotkeys.mySchedule { apply(b, .mySchedule) }
-        if let b = hotkeys.createEvent { apply(b, .createEvent) }
+        for (rawID, b) in hotkeys.commands ?? [:] {
+            guard let action = CommandID(rawValue: rawID)?.hotKeyAction else { continue }
+            apply(b, action)
+        }
+        for (rawID, b) in hotkeys.commandAlternates ?? [:] {
+            guard let id = CommandID(rawValue: rawID),
+                HotKeyAction.alternateChordCommands.contains(id)
+            else { continue }
+            apply(b, .commandAlternate(id))
+        }
         for (id, b) in hotkeys.apps ?? [:] { apply(b, .app(bundleID: id)) }
         for (id, b) in hotkeys.panes ?? [:] { apply(b, .settingsPane(bundleID: id)) }
         for (rawID, b) in hotkeys.customCommands ?? [:] {
