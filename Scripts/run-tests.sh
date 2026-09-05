@@ -24,7 +24,16 @@ if [ "${1:-}" = "--exec" ]; then
         : > "$BIN/$name.failed"
         exit 0
     fi
-    if ! "$BIN/$name" > "$BIN/$name.log" 2>&1; then
+    # Run the harness in its own session, with no controlling terminal. custom-command-test spawns
+    # `/bin/zsh -ilc ...`; an interactive shell in a background process group that touches the
+    # terminal takes SIGTTOU and stops (state T), and the harness then waits forever on a child that
+    # will never run again -- the whole suite hangs with no output, which reads as a slow test. The
+    # shipped app never hits this, because a GUI process has no controlling terminal to begin with;
+    # this restores the environment the code actually runs in. Redirecting stdin alone does not do
+    # it (the terminal is still reachable through /dev/tty), and neither bash nor macOS provides
+    # setsid, hence borrowing the system python for the one syscall before exec.
+    if ! /usr/bin/python3 -c 'import os, sys; os.setsid(); os.execv(sys.argv[1], sys.argv[1:])' \
+            "$BIN/$name" < /dev/null > "$BIN/$name.log" 2>&1; then
         printf '\033[31mFAIL\033[0m  %-22s assertion failed\n' "$name"
         : > "$BIN/$name.failed"
         exit 0

@@ -46,6 +46,9 @@ themselves are in [AGENTS.md](AGENTS.md#non-negotiables). This file covers only 
 | 16 | [Second chords for the palette and the clipboard history](#16--second-chords-for-the-palette-and-the-clipboard-history) | Medium — two new `HotKeyAction` cases, so every exhaustive switch over them | Yes, small — but it only pays off with sync |
 | 17 | [Word-order-independent matching](#17--word-order-independent-matching) | Medium — reshapes `FuzzyMatch.Query` and `match`, which upstream is actively editing | Yes, as a feature |
 | 18 | [Event-tap watchdogs rebuild, not retry](#18--event-tap-watchdogs-rebuild-not-retry) | Low — one branch inside two `healthCheck()` bodies | Yes — it fixes a tap that stays dead |
+| 19 | [Expired storage relocation removed](#19--expired-storage-relocation-removed) | Low — a deletion upstream will likely make too | Yes — the migration had expired |
+| 20 | [Extension helper harness waits for completion](#20--extension-helper-harness-waits-for-completion) | Low — one harness's timing | Yes — it fixes a test that fails under load |
+| 21 | [Harnesses run in their own session](#21--harnesses-run-in-their-own-session) | Low — one line in the `--exec` worker | Yes — it fixes a suite that hangs in any terminal |
 
 Keep each divergence as **its own commit**, never squashed together. Rebasing `philip` onto a new
 `origin/main` then replays them one at a time, and a divergence that upstream has since made redundant
@@ -706,6 +709,39 @@ The one-time move from Caches to Application Support was removed on its schedule
 The extension helper harness waits for a rendered result with a ten-second deadline instead of assuming the chmod, process launch and render finish within 1.2 seconds. It also surfaces asynchronous spawn errors in the result. The fixed delay passed in isolation but failed under the parallel suite's load; runtime behavior is unchanged.
 
 **On merge:** keep the bounded completion wait unless upstream supplies an equivalent fix.
+
+## 21 — Harnesses run in their own session
+
+**Touches:** `Scripts/run-tests.sh` — the one line in the `--exec` worker that runs a compiled
+harness. Nothing else; the fix is invisible to anyone invoking the suite.
+
+Upstream runs each harness as `"$BIN/$name" > log 2>&1`, inheriting whatever terminal the suite was
+started from. That is fine in CI, which has no controlling terminal, and fine for every harness that
+only computes. It is not fine for `custom-command-test`, which spawns a real `/bin/zsh -ilc` to prove
+that custom commands reach the user's shell. An interactive shell in a background process group that
+touches the terminal takes `SIGTTOU` and stops; the harness then waits on a child that will never run
+again, and the suite hangs with no output at all — which reads as a slow test, not a deadlock.
+
+Observed directly: with the suite started from a terminal, `ps` shows
+`/bin/zsh -ilc tinycast_probe tinycast` in state `T` while the run sits there indefinitely. Nobody
+sees this in CI, and nobody sees it when a single fast harness is run by name, which is why it
+survived: it only appears when a human runs the whole suite from a real terminal, and it looks like
+the suite being slow.
+
+Redirecting stdin is not the fix — that was tried, and the shell still stops, because the controlling
+terminal remains reachable through `/dev/tty` regardless of where stdin points. The process has to
+leave the session. Neither bash nor macOS ships `setsid`, so the worker borrows the system Python for
+the single `setsid()` call before `exec`. The script itself stays in the caller's session and remains
+interruptible; only the harness processes are detached.
+
+This also restores the environment the code actually ships into. Tinycast is a GUI app with no
+controlling terminal, so the shells it spawns can never take `SIGTTOU` in the first place — the test
+was the only place the situation arose, and it arose from the test rig rather than from the code
+under test. `PseudoTerminal.swift` already spawns with `POSIX_SPAWN_SETSID` for the same reason.
+
+**If upstream rewrites the worker**, keep the detach. The one-line shape is deliberate so that a
+conflict here is trivial to resolve: it is a wrapper around the harness invocation, not a change to
+how harnesses are selected, queued, or reported.
 
 ## Merging upstream
 
