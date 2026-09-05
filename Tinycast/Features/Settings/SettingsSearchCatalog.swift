@@ -111,7 +111,7 @@ enum SettingsSearchCatalog {
         general + applications + systemSettings
         + systemActions + commands + quicklinks + fallbacks + ai + quickActions + fileSearch + notes
         + snippets + windowManagement + clipboard + emoji + calendar + extensions + permissions
-        + backup + about
+        + backup + about + webSearch + herdr + vsCode + linear + miscellaneous
 
     private static let general: [SettingsSearchEntry] = [
         .init(pane: .general, keywords: ["preferences", "settings"]),
@@ -484,6 +484,44 @@ enum SettingsSearchCatalog {
         .init(
             .backupImportFromRaycast, "Raycast Export",
             keywords: ["migrate", "rayconfig", "passphrase"])
+    ]
+
+    // Fork-local panes — FORK.md divergences 4, 5, 6 and 8.
+    private static let webSearch: [SettingsSearchEntry] = [
+        .init(pane: .webSearch, keywords: ["google", "duckduckgo", "engine", "keyword", "query"]),
+        .init(
+            .webSearchWebSearch, "Enable web search",
+            keywords: ["engine", "browser", "query"]),
+        .init(
+            .webSearchSuggestions, "Search suggestions",
+            keywords: ["autocomplete", "completions", "network", "privacy"]),
+        .init(
+            group: .webSearchKeywords, "Keywords",
+            keywords: ["prefix", "trigger", "scope", "engine"])
+    ]
+
+    private static let herdr: [SettingsSearchEntry] = [
+        .init(pane: .herdr, keywords: ["terminal", "multiplexer", "tabs", "workspace"]),
+        .init(.herdrHerdr, "Enable herdr", keywords: ["terminal", "tabs", "socket"])
+    ]
+
+    private static let vsCode: [SettingsSearchEntry] = [
+        .init(pane: .vsCode, keywords: ["visual studio code", "editor", "projects", "folders"]),
+        .init(
+            .vsCodeVSCode, "Enable VS Code Projects",
+            keywords: ["visual studio code", "editor", "workspace"])
+    ]
+
+    private static let linear: [SettingsSearchEntry] = [
+        .init(pane: .linear, keywords: ["issues", "views", "tickets", "workspace"]),
+        .init(.linearLinear, "Enable Linear", keywords: ["issues", "views", "tickets"])
+    ]
+
+    private static let miscellaneous: [SettingsSearchEntry] = [
+        .init(pane: .miscellaneous, keywords: ["currency", "exchange", "rates", "other"]),
+        .init(
+            .miscellaneousCalculator, "Currency Conversion",
+            keywords: ["exchange", "rates", "money", "usd", "eur"])
     ]
 
     private static let about: [SettingsSearchEntry] = [

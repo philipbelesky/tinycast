@@ -15,7 +15,7 @@ struct MiscellaneousSettingsView: View {
                         get: { currencyRates.isEnabled },
                         set: { currencyRates.setEnabled($0) })
                 ) {
-                    Text("Currency Conversion")
+                    SettingsRowTitle(.miscellaneousCalculator, "Currency Conversion")
                     Text(conversionStatus)
                 }
 
@@ -36,10 +36,11 @@ struct MiscellaneousSettingsView: View {
                     }
                 }
             } header: {
-                Text("Calculator")
+                SettingsSectionHeader(.miscellaneousCalculator)
             }
         }
         .formStyle(.grouped)
+        .settingsScrollTarget(.miscellaneous)
     }
 
     /// The off state still promises silence, so the subtitle keeps saying so.

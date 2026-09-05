@@ -64,12 +64,13 @@ extension DialogTone {
 }
 
 #if DEBUG
-    /// All three tones at once: here the trailing glyph *is* the tone, unlike a dialog.
+    /// All three tones and the spinner: here the trailing mark *is* the tone, unlike a dialog.
     #Preview("Message pill") {
         VStack(spacing: Theme.Spacing.xl) {
-            MessageHUDView(message: "Trash Emptied", tone: .success)
-            MessageHUDView(message: "Trash Is Already Empty", tone: .neutral)
-            MessageHUDView(message: "Couldn't Reach herdr", tone: .danger)
+            MessageHUDView(message: "Trash Emptied", accessory: .tone(.success))
+            MessageHUDView(message: "Trash Is Already Empty", accessory: .tone(.neutral))
+            MessageHUDView(message: "Couldn't Reach herdr", accessory: .tone(.danger))
+            MessageHUDView(message: "Exporting Backup", accessory: .progress)
         }
         .previewOnDesktop()
     }

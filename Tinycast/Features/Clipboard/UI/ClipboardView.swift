@@ -246,7 +246,7 @@ struct ClipboardPreview: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 ClipboardInfoSection(item: item, imageURL: store.imageURL(for: item))
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, Theme.Spacing.xl)
         } else {
             Color.clear
         }

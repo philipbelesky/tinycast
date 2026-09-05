@@ -33,7 +33,7 @@ struct FallbackTests {
         for builtin in Fallback.Builtin.allCases {
             let fallback = Fallback.builtin(builtin)
             check(
-                "\(builtin.rawValue) is its command's id", fallback.id == builtin.command.rawValue,
+                "\(builtin.rawValue) uses its entry id", fallback.id == builtin.entryID,
                 "got \(fallback.id)")
             check(
                 "\(builtin.rawValue) round-trips", Fallback(id: fallback.id) == fallback,
@@ -51,6 +51,9 @@ struct FallbackTests {
         // Every built-in's id must be distinct, or one would silently take another's stored slot.
         let ids = Set(Fallback.Builtin.allCases.map { Fallback.builtin($0).id })
         check("built-in ids are distinct", ids.count == Fallback.Builtin.allCases.count)
+        check(
+            "Google search uses the web search entry id",
+            Fallback.builtin(.googleSearch).id == "web-search:google")
 
         // A command with no fallback of its own must not resolve to one.
         check("a plain command is not a fallback", Fallback(id: CommandID.about.rawValue) == nil)

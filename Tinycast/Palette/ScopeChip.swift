@@ -18,15 +18,16 @@ struct ScopeChip: View {
             Button(action: onClear) {
                 Image(systemName: "xmark")
                     .font(Theme.Typography.compactKeyCap)
-                    .foregroundStyle(hovered ? .primary : .secondary)
+                    .foregroundStyle(Color.white.opacity(hovered ? 1 : 0.65))
             }
             .buttonStyle(.plain)
         }
+        .foregroundStyle(.white)
         .padding(.horizontal, Theme.Spacing.sm)
         .padding(.vertical, Theme.Spacing.xs)
         .background(
             RoundedRectangle(cornerRadius: Theme.Radius.menu, style: .continuous)
-                .fill(Theme.Colors.controlSurface)
+                .fill(Color(nsColor: Theme.Colors.tile(scope.tint)))
         )
         .fixedSize()
         .armedHover($hovered)

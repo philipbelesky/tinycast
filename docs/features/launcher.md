@@ -167,7 +167,7 @@ A **fallback** is the other half of the query-driven idea: a command the query i
 offered under a `Use “…” with…` header **below every result**, whatever the query says. A contextual
 row leads because it recognised the query; a fallback trails because nothing did.
 
-`Fallback` (`Launcher/Model/`) is the whole vocabulary — `.builtin(Builtin)` for the three shipped
+`Fallback` (`Launcher/Model/`) is the whole vocabulary — `.builtin(Builtin)` for the four shipped
 destinations and `.quicklink(UUID)` for a user's own. `Builtin` exists rather than a bare `CommandID`
 so `FallbackCoordinator.run` is **exhaustive**: a fourth built-in cannot compile without saying where
 its query goes. `Fallback.id` is deliberately the row's own `AppEntry.id`, which is what lets a stored
@@ -177,6 +177,7 @@ order name a live row across a rename or a reinstall.
 | --- | --- | --- |
 | AI Chat | a fresh chat, question already sent (`AIChatCoordinator.ask`) | `aiEnabled` |
 | Search Files | the file-search screen, already narrowed | `fileSearchEnabled` |
+| Google Search | a Google search in the default browser | `webSearchEnabled` |
 | Run Shell Command | `/bin/zsh`, streamed into the Command Output window | always |
 | a quicklink | its first `{argument}` | `quicklinksEnabled`, and the link has a placeholder |
 

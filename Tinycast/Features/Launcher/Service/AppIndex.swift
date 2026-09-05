@@ -213,6 +213,14 @@ struct AppEntry: Identifiable, Hashable, Sendable {
 }
 
 extension AppEntry {
+    /// The one row a web search engine draws, including when Google is offered as a fallback.
+    init(_ webSearchEngine: WebSearchEngine) {
+        self.init(
+            id: webSearchEngine.entryID, name: webSearchEngine.name,
+            url: URL(string: "tinycast://web-search/" + webSearchEngine.id)!,
+            bundleID: nil, kind: .webSearch, symbolName: webSearchEngine.symbol)
+    }
+
     /// The one row a quicklink draws, wherever it is offered from.
     init(_ quicklink: Quicklink) {
         self.init(
@@ -457,15 +465,7 @@ final class AppIndex {
 
     /// Shows or hides the web-search slice; the engines themselves are static.
     func setWebSearchVisible(_ visible: Bool) {
-        let entries =
-            visible
-            ? WebSearchEngine.builtIn.map { engine in
-                AppEntry(
-                    id: engine.entryID, name: engine.name,
-                    url: URL(string: "tinycast://web-search/" + engine.id)!,
-                    bundleID: nil, kind: .webSearch, symbolName: engine.symbol)
-            }
-            : []
+        let entries = visible ? WebSearchEngine.builtIn.map(AppEntry.init) : []
         guard entries != webSearchEntries else { return }
         webSearchEntries = entries
         publishEntries()

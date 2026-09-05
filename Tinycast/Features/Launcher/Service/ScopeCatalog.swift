@@ -113,8 +113,12 @@ enum ScopeCatalog {
     /// whether its keyword is live.
     private static func filterDefinition(for kind: AppEntry.Kind) -> ScopeDefinition? {
         filters.first { entry in
-            guard case .kinds(let kinds) = entry.target else { return false }
-            return kinds.contains(kind)
+            switch entry.target {
+            case .kinds(let kinds): kinds.contains(kind)
+            // Linear narrows by API rather than by kind, but its rows are still its category.
+            case .linear: kind == .linearTarget
+            case .mode, .webSearch: false
+            }
         }?.definition
     }
 
@@ -124,8 +128,9 @@ enum ScopeCatalog {
     }
 
     /// The glyph the launcher list gives a kind's rows: the scope's own, inherited literally.
+    /// Withheld from Linear, whose destinations each carry a glyph one scope symbol would flatten.
     static func symbol(for kind: AppEntry.Kind) -> String? {
-        filterDefinition(for: kind)?.symbol
+        kind == .linearTarget ? nil : filterDefinition(for: kind)?.symbol
     }
 
     /// Only the scopes that can currently do something: a disabled feature offers no keyword.

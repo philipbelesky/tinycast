@@ -27,9 +27,9 @@ Mac, and each machine is driven by whichever one is free there. The cost is that
 still registered locally, claimed from whatever else holds it, so pick alternates no machine needs.
 
 Persistence and conflicts are unchanged — the alternate is its own `HotKeyAction` case under
-`hotkey.toggleClipboard.alternate`, so it conflicts with other actions like any binding and rides
-`SettingsBackup.HotkeyBackup` like any other. An envelope written by a Mac still on an older build
-simply carries no alternate, which `sync-test` pins.
+`hotkey.command:clipboard-history.alternate`, so it conflicts with other actions like any binding and
+rides `SettingsBackup.HotkeyBackup`'s `commandAlternates` map like any other. An envelope written by a
+Mac still on an older build simply carries no alternates, which `sync-test` pins.
 
 ## Poll-based capture
 

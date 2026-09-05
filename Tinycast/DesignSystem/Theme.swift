@@ -258,7 +258,7 @@ enum Theme {
         static let dialogTitle = scaled(.headline, .bold)
         /// The oversized glyph an empty list or a missing thumbnail stands in with.
         static let emptyGlyph = scaled(.largeTitle)
-        /// The clipboard preview pane: monospaced content, then its metadata rows.
+        /// A preview pane — clipboard, snippets: monospaced content, then its metadata rows.
         static let previewBody = scaled(.subheadline, .regular, .monospaced)
         static let previewDetail = scaled(.callout)
         /// The name above an argument's field in a prompt.

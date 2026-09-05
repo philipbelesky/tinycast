@@ -111,10 +111,10 @@ struct ShortcutRecorder: View {
                     ShortcutRecorder(action: .togglePalette)
                 }
                 SettingsRow(title: "Clipboard History", subtitle: "Opens straight to the history") {
-                    ShortcutRecorder(action: .toggleClipboard)
+                    ShortcutRecorder(action: .command(.clipboardHistory))
                 }
                 SettingsRow(title: "Emoji Picker") {
-                    ShortcutRecorder(action: .toggleEmoji)
+                    ShortcutRecorder(action: .command(.searchEmoji))
                 }
             } header: {
                 Text("Shortcuts")

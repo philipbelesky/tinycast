@@ -10,11 +10,11 @@ struct HerdrSettingsView: View {
         return Form {
             LauncherItemsSection(
                 kind: .herdrTarget,
-                header: "herdr",
+                anchor: .herdrHerdr,
                 searchPrompt: "Search herdr targets…")
 
             FeatureSwitchSection(
-                header: "herdr",
+                anchor: .herdrHerdr,
                 enableTitle: "Enable herdr",
                 enableSubtitle:
                     "Lists the tabs of the running herdr session, read over its local socket. "
@@ -63,6 +63,7 @@ struct HerdrSettingsView: View {
                     "Type it, then a space, to search herdr tabs only.")
         }
         .formStyle(.grouped)
+        .settingsScrollTarget(.herdr)
         .task { await store.refresh() }
     }
 }

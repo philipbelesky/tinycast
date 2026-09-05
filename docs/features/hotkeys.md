@@ -73,17 +73,21 @@ re-check their feature switches before opening; see [file-search.md](file-search
 disabling the feature does. `SettingsBackup.HotkeyBackup` carries them as one `commands` map keyed by
 `CommandID` raw value.
 
-`hotkey.togglePalette.alternate` and `hotkey.toggleClipboard.alternate` are **second chords** for the
-palette and the clipboard history, and they show the shape a second binding has to take here: each is
-its own `HotKeyAction` case, because one action holds exactly one `HotKeyBinding` and `defaultsKey` is
+`hotkey.togglePalette.alternate`, `hotkey.togglePalette.third` and
+`hotkey.command:clipboard-history.alternate` are **extra chords** for the palette and the clipboard
+history, and they show the shape an extra binding has to take here: each is its own `HotKeyAction`
+case — `togglePaletteAlternate` and `togglePaletteThird`, and `commandAlternate(CommandID)` for
+the commands `alternateChordCommands` names — because one action holds exactly one `HotKeyBinding` and
+`defaultsKey` is
 simultaneously the registration id — a plural `[HotKeyBinding]` would break both. Being a real action
 is also what earns each one conflict detection, Hyper re-pointing and a `HotkeyBackup` field for free;
-`perform` is the only place a pair converges, where both cases call the primary's callback. Neither
-`displayName` repeats its primary's — each carries a "(second shortcut)" suffix — or a chord recorded
-on both rows would report a conflict against a name identical to its own row's. They exist because
+`perform` is the only place they converge, where every case calls the primary's callback. No
+`displayName` repeats its primary's — each carries a "(second shortcut)" or "(third shortcut)" suffix —
+or a chord recorded on two rows would report a conflict against a name identical to its own row's. They
+exist because
 iCloud sync carries one envelope to Macs with different keyboards — see [sync.md](sync.md) — so the fix
-is two chords that both work rather than a per-device override. Both chords register on every Mac, so
-an alternate is claimed even where it isn't wanted; that is the price of not inventing per-device
+is several chords that all work rather than a per-device override. Every chord registers on every Mac,
+so an extra one is claimed even where it isn't wanted; that is the price of not inventing per-device
 settings ([clipboard.md](clipboard.md#two-chords-for-one-action)).
 
 System actions and window commands are the fixed-catalog case: they persist under

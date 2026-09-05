@@ -6,6 +6,8 @@ enum HotKeyAction: Hashable, Sendable {
     case togglePalette
     /// A second chord for the palette, so one synced settings envelope can suit two keyboards.
     case togglePaletteAlternate
+    /// And a third, for the Mac whose keyboard has neither of the others free.
+    case togglePaletteThird
     /// Parameterised over the catalog, so a new built-in command is bindable with no case here.
     case command(CommandID)
     /// The same second chord, for the commands in `alternateChordCommands`.
@@ -24,6 +26,7 @@ enum HotKeyAction: Hashable, Sendable {
         switch self {
         case .togglePalette: "hotkey.togglePalette"
         case .togglePaletteAlternate: "hotkey.togglePalette.alternate"
+        case .togglePaletteThird: "hotkey.togglePalette.third"
         case .command(let id): "hotkey." + id.rawValue
         case .commandAlternate(let id): "hotkey." + id.rawValue + ".alternate"
         case .app(let bundleID): "hotkey.app." + bundleID
@@ -38,7 +41,8 @@ enum HotKeyAction: Hashable, Sendable {
 
     /// The fixed actions every install can bind; the per-item catalogs extend them at launch.
     static let builtInActions: [HotKeyAction] =
-        [.togglePalette, .togglePaletteAlternate] + CommandID.allCases.compactMap(\.hotKeyAction)
+        [.togglePalette, .togglePaletteAlternate, .togglePaletteThird]
+        + CommandID.allCases.compactMap(\.hotKeyAction)
         + alternateChordCommands.map(HotKeyAction.commandAlternate)
 
     /// Only the everyday one earns a second recorder in Settings — FORK.md divergence 16.

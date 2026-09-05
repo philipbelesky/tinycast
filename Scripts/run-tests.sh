@@ -149,7 +149,6 @@ run ext-icon-test          Tinycast/Platform/Appearance.swift \
                            $L/ScopeTint.swift \
                            Tinycast/Platform/Images/IconCache.swift \
                            Tinycast/Platform/Compression/Zlib.swift \
-                           Tinycast/DesignSystem/Theme.swift \
                            Tinycast/Features/Extensions/Model/ExtensionBootConfig.swift \
                            Tinycast/Features/Extensions/Model/ExtensionManifest.swift \
                            Tinycast/Features/Extensions/Model/RenderNode.swift \
@@ -321,22 +320,13 @@ run sync-test              Tinycast/Features/Sync/Model/SyncEnvelope.swift \
                            Tinycast/Features/HotKeys/Model/HotKeyBinding.swift \
                            Tinycast/Features/HotKeys/Model/DoubleTapModifier.swift \
                            Tinycast/Features/HotKeys/Model/HyperKey.swift \
-                           Tinycast/Features/HotKeys/Service/KeyShortcut.swift
-
-if [ "$emit_db" -eq 1 ]; then
-    printf ']\n' >> "$DB"
-    [ -f .compile ] || echo '[]' > .compile
-    node -e '
-const fs = require("node:fs");
-const [comp, db] = process.argv.slice(1);
-const existing = JSON.parse(fs.readFileSync(comp, "utf8"));
-const harnesses = JSON.parse(fs.readFileSync(db, "utf8"));
-const kept = existing.filter((e) => !(e.files || []).some((f) => f.includes("/Tests/")));
-fs.writeFileSync(comp, JSON.stringify([...kept, ...harnesses], null, 1));
-console.log(harnesses.length + " harness entries indexed into .compile");
-' .compile "$DB"
-    exit 0
-fi
+                           Tinycast/Platform/ASCIIKeyboardLayout.swift \
+                           Tinycast/Features/HotKeys/Service/KeyShortcut.swift \
+                           Tinycast/Features/Launcher/Model/CommandID.swift \
+                           Tinycast/Features/QuickActions/Model/QuickAction.swift \
+                           Tinycast/Features/HotKeys/Model/HotKeyAction.swift \
+                           Tinycast/Features/SystemActions/Model/SystemAction.swift \
+                           Tinycast/Features/WindowManagement/WindowCommand.swift
 
 if [ "$ran" -eq 0 ]; then
     echo "No harness named '$only'." >&2

@@ -34,10 +34,13 @@ struct GeneralSettingsView: View {
                 SettingsRow(title: "App Launcher (second shortcut)") {
                     ShortcutRecorder(action: .togglePaletteAlternate)
                 }
+                SettingsRow(title: "App Launcher (third shortcut)") {
+                    ShortcutRecorder(action: .togglePaletteThird)
+                }
             } header: {
                 SettingsSectionHeader(.generalGlobalShortcuts)
             } footer: {
-                Text("Summon the fuzzy app launcher. Either shortcut opens it, so two keyboards can each have one that fits.")
+                Text("Summon the fuzzy app launcher. Any of the three opens it, so every keyboard can have one that fits.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -184,7 +187,7 @@ struct GeneralSettingsView: View {
 
             LauncherItemsSection(
                 kind: .scope,
-                header: "Search Scopes",
+                anchor: .generalSearchScopes,
                 searchPrompt: "Search scopes…")
         }
         .formStyle(.grouped)

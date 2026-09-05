@@ -297,7 +297,7 @@ different undo story.
 
 A keyword is only half the affordance: nobody discovers `p` by guessing. Every scope also publishes a
 launcher row of kind `.scope`, and **activating one is exactly typing its keyword and a space** —
-`PaletteState.scope` is armed, the query clears, the chip appears. A mode scope switches screen
+`PaletteState.scope` is armed, the query clears, and the chip repeats the scope row's colour. A mode scope switches screen
 instead, the same as adopting one by typing. The keyword rides along as a match alias, so typing `l`
 finds the Linear row as readily as typing the word does.
 
@@ -305,7 +305,10 @@ Each row carries its keyword as a keycap, in the same slot a bound hotkey's keyc
 from the catalog at render rather than baked onto the entry, so a keyword edited in Settings is never
 shown stale. Its icon is a coloured category tile rather than the ordinary inked one, one hue per
 scope — and the rows that scope reveals wear the same tile, glyph and colour both, so a herdr tab and
-the herdr row that leads to it read as one category. See [ui.md](../ui.md#category-tiles).
+the herdr row that leads to it read as one category. Linear inherits the colour but not the glyph:
+`ScopeCatalog.symbol(for:)` withholds it there, because each destination already has a mark of its
+own — a saved view, an assignee, a ticket — that the one scope symbol would flatten to sameness. See
+[ui.md](../ui.md#category-tiles).
 
 A scope is only offered when something is actually behind it: `AppCore` drops any filter scope whose
 kinds have no published entries. Linear is the exception because ticket lookup can be useful with no

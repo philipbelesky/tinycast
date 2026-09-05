@@ -13,6 +13,8 @@ extension SettingsAnchor {
     static let generalHyperKey = Self(tab: .general, title: "Hyper Key")
     static let generalAppearance = Self(tab: .general, title: "Appearance")
     static let generalGeneral = Self(tab: .general, title: "General")
+    /// Fork-local: scope rows are a launcher category of their own. FORK.md divergence 4.
+    static let generalSearchScopes = Self(tab: .general, title: "Search Scopes")
 
     static let applicationsSearchScopes = Self(tab: .applications, title: "Search Scopes")
     static let applicationsApplications = Self(tab: .applications, title: "Applications")
@@ -90,6 +92,19 @@ extension SettingsAnchor {
 
     static let aboutAbout = Self(tab: .about, title: "About")
     static let aboutLinks = Self(tab: .about, title: "Links")
+
+    // Fork-local panes — FORK.md divergences 4, 5, 6 and 8.
+    static let webSearchWebSearch = Self(tab: .webSearch, title: "Web Search")
+    static let webSearchSuggestions = Self(tab: .webSearch, title: "Suggestions")
+    static let webSearchKeywords = Self(tab: .webSearch, title: "Keywords")
+
+    static let herdrHerdr = Self(tab: .herdr, title: "herdr")
+
+    static let vsCodeVSCode = Self(tab: .vsCode, title: "VS Code")
+
+    static let linearLinear = Self(tab: .linear, title: "Linear")
+
+    static let miscellaneousCalculator = Self(tab: .miscellaneous, title: "Calculator")
 }
 
 /// Where a search result lands: a whole section, or one row inside it.

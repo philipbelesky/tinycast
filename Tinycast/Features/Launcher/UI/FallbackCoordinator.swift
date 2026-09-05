@@ -6,7 +6,7 @@ final class FallbackCoordinator {
     private let store: FallbackStore
     private let quicklinks: QuicklinkStore
     private let settings: AppSettings
-    /// The four destinations a fallback hands its query to; nothing here is this type's own state.
+    /// The destinations a fallback hands its query to; nothing here is this type's own state.
     private unowned let core: AppCore
 
     init(store: FallbackStore, quicklinks: QuicklinkStore, settings: AppSettings, core: AppCore) {
@@ -30,7 +30,10 @@ final class FallbackCoordinator {
     /// Nil for a quicklink deleted since the order was stored.
     func entry(for fallback: Fallback) -> AppEntry? {
         switch fallback {
-        case .builtin(let builtin): return CommandCatalog.makeEntry(builtin.command)
+        case .builtin(.aiChat): return CommandCatalog.makeEntry(.aiChat)
+        case .builtin(.searchFiles): return CommandCatalog.makeEntry(.searchFiles)
+        case .builtin(.googleSearch): return AppEntry(.google)
+        case .builtin(.runShellCommand): return CommandCatalog.makeEntry(.runShellCommand)
         case .quicklink(let id): return quicklinks.quicklink(id: id).map(AppEntry.init)
         }
     }
@@ -40,6 +43,8 @@ final class FallbackCoordinator {
         switch fallback {
         case .builtin(.aiChat): core.aiChatCoordinator.ask(query)
         case .builtin(.searchFiles): core.fileSearchCoordinator.show(query: query)
+        case .builtin(.googleSearch):
+            core.webSearchCoordinator.search(engine: .google, query: query)
         case .builtin(.runShellCommand): core.customCommandCoordinator.runShellCommand(query)
         case .quicklink(let id): core.quicklinkCoordinator.openQuicklink(id: id, filling: query)
         }
@@ -66,6 +71,7 @@ final class FallbackCoordinator {
         switch builtin {
         case .aiChat: return settings.aiEnabled
         case .searchFiles: return settings.fileSearchEnabled
+        case .googleSearch: return settings.webSearchEnabled
         // Its own capability: this shell is not the custom-command library's switch to hold.
         case .runShellCommand: return true
         }

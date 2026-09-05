@@ -15,7 +15,7 @@ struct ClipboardSettingsView: View {
                     ShortcutRecorder(action: .command(.clipboardHistory))
                 }
                 SettingsRow(title: "Clipboard History (second shortcut)") {
-                    ShortcutRecorder(action: .toggleClipboardAlternate)
+                    ShortcutRecorder(action: .commandAlternate(.clipboardHistory))
                 }
             } header: {
                 SettingsSectionHeader(.clipboardGlobalShortcuts)

@@ -12,11 +12,11 @@ struct WebSearchSettingsView: View {
         return Form {
             LauncherItemsSection(
                 kind: .webSearch,
-                header: "Web Search",
+                anchor: .webSearchWebSearch,
                 searchPrompt: "Search engines…")
 
             FeatureSwitchSection(
-                header: "Web Search",
+                anchor: .webSearchWebSearch,
                 enableTitle: "Enable web search",
                 enableSubtitle:
                     "Type an engine's keyword, a space, then your query. The search opens in your "
@@ -42,11 +42,11 @@ struct WebSearchSettingsView: View {
                 Toggle(
                     isOn: Binding(get: { store.isEnabled }, set: { store.setEnabled($0) })
                 ) {
-                    Text("Search suggestions")
+                    SettingsRowTitle(.webSearchSuggestions, "Search suggestions")
                     Text(suggestionStatus)
                 }
             } header: {
-                Text("Suggestions")
+                SettingsSectionHeader(.webSearchSuggestions)
             } footer: {
                 Text(
                     "This is the one thing Tinycast sends as you type. Nothing is stored: no cache, "
@@ -64,7 +64,7 @@ struct WebSearchSettingsView: View {
                         title: engine.name)
                 }
             } header: {
-                Text("Keywords")
+                SettingsSectionHeader(.webSearchKeywords)
             } footer: {
                 Text(
                     "Type an engine's keyword, then a space, to send the rest of the query to it. "
@@ -76,6 +76,7 @@ struct WebSearchSettingsView: View {
             .settingsEnabled(settings.webSearchEnabled)
         }
         .formStyle(.grouped)
+        .settingsScrollTarget(.webSearch)
     }
 
     private var suggestionStatus: String {

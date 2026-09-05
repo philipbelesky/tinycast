@@ -110,9 +110,11 @@ struct DoubleTapDetectorTests {
                 != HotKeyAction.command(.clipboardHistory).defaultsKey,
             "the alternate clipboard chord persists under a key of its own")
         expect(
-            HotKeyAction.togglePaletteAlternate.defaultsKey
-                != HotKeyAction.togglePalette.defaultsKey,
-            "so does the alternate palette chord")
+            Set(
+                [HotKeyAction.togglePalette, .togglePaletteAlternate, .togglePaletteThird]
+                    .map(\.defaultsKey)
+            ).count == 3,
+            "so does each of the palette's three chords")
     }
 
     static func layoutCharacters() {

@@ -62,7 +62,7 @@ private struct SnippetRow: View {
                 .frame(width: Theme.Size.rowIcon, height: Theme.Size.rowIcon)
                 .overlay(
                     Image(systemName: "curlybraces")
-                        .font(.system(size: 12))
+                        .font(Theme.Typography.tileGlyph)
                         .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(.secondary))
             Text(record.snippet.name)
@@ -94,14 +94,14 @@ struct SnippetPreview: View {
                 // The raw template: expanding here would read the clipboard on every arrow key.
                 ScrollView {
                     Text(record.snippet.text)
-                        .font(.system(.subheadline, design: .monospaced))
+                        .font(Theme.Typography.previewBody)
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 SnippetInfoSection(record: record)
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, Theme.Spacing.xl)
         } else {
             Color.clear
         }

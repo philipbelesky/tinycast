@@ -94,7 +94,7 @@ final class AppCore {
 
     @ObservationIgnored private(set) lazy var webSearchCoordinator = WebSearchCoordinator(
         paletteCoordinator: paletteCoordinator,
-        clipboardHistory: { [unowned self] in self.snippetExpansion.clipboardHistoryForExpansion() })
+        clipboardHistory: { [unowned self] in self.snippetCoordinator.clipboardHistoryForExpansion() })
 
     @ObservationIgnored private(set) lazy var paletteCoordinator = PaletteCoordinator(
         palette: palette, settings: settings, appIndex: appIndex,
@@ -373,8 +373,8 @@ final class AppCore {
             return quicklinks.quicklink(id: id)?.name
         case .extensionCommand(let entryID):
             return appIndex.apps.first { $0.kind == .extensionCommand && $0.id == entryID }?.name
-        case .togglePalette, .togglePaletteAlternate, .command, .commandAlternate, .systemAction,
-            .windowCommand:
+        case .togglePalette, .togglePaletteAlternate, .togglePaletteThird, .command,
+            .commandAlternate, .systemAction, .windowCommand:
             return nil
         }
     }

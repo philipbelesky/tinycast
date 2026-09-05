@@ -198,7 +198,7 @@ struct RootPaletteView: View {
             (count > 0 || vm.mode.isArgumentForm) && screen.hasPrimaryAction(at: sel)
 
         // One header position, so focus survives the swap. See docs/features/palette.md.
-        return Group {
+        let surface = Group {
             if isCollapsed {
                 Color.clear
             } else {
@@ -296,6 +296,12 @@ struct RootPaletteView: View {
         .onChange(of: core.paletteCoordinator.paletteIsCollapsed) {
             core.paletteCoordinator.syncPaletteSize()
         }
+        return keyChords(surface, selection: sel)
+    }
+
+    /// `body`'s key handling, split off so each half stays inside the type-checker's budget.
+    private func keyChords(_ content: some View, selection sel: Int) -> some View {
+        content
         // Repeat included: holding the key keeps stepping, as the bare-key form does.
         .onKeyPress(keys: [.downArrow], phases: [.down, .repeat]) { press in
             if let reorder = moveFavorite(1, modifiers: press.modifiers) { return reorder }
@@ -440,32 +446,32 @@ struct RootPaletteView: View {
             toggleClipboardFilter()
             return .handled
         }
-        // ⇧⌘F mirrors the Add/Remove Favorites row, closing an open menu the way that row does.
-        .onKeyPress(phases: .down) { press in
-            guard press.modifiers.contains(.command), press.modifiers.contains(.shift),
-                ASCIIKeyboardLayout.matches(press.key, character: "f"),
-                !isCollapsed, let launcher = screen as? LauncherScreen
-            else { return .ignored }
-            guard launcher.toggleFavorite(at: selection(in: launcher)) else { return .ignored }
+        // ⇧⌘F, ⌃⇧Q and ⌘R, each mirroring a row of the launcher's own Actions menu.
+        .onKeyPress(phases: .down, action: launcherChord)
+    }
+
+    /// One handler for the three, so `body`'s modifier chain stays inside the type-checker's budget.
+    private func launcherChord(_ press: KeyPress) -> KeyPress.Result {
+        // The compact bar shows no target, and Shift uppercases the key it is held with.
+        guard !isCollapsed, let launcher = screen as? LauncherScreen else { return .ignored }
+        let selection = selection(in: launcher)
+        let modifiers = press.modifiers
+        if modifiers.contains(.command), modifiers.contains(.shift),
+            ASCIIKeyboardLayout.matches(press.key, character: "f")
+        {
+            guard launcher.toggleFavorite(at: selection) else { return .ignored }
             if menuOpen { closeMenus() }
             return .handled
         }
-        // Both cases, Shift uppercasing the key; the compact bar shows no target.
-        .onKeyPress(phases: .down) { press in
-            guard press.modifiers.contains(.control), press.modifiers.contains(.shift),
-                ASCIIKeyboardLayout.matches(press.key, character: "q"),
-                !isCollapsed, let launcher = screen as? LauncherScreen
-            else { return .ignored }
-            return launcher.quit(at: selection(in: launcher)) ? .handled : .ignored
+        if modifiers.contains(.control), modifiers.contains(.shift),
+            ASCIIKeyboardLayout.matches(press.key, character: "q")
+        {
+            return launcher.quit(at: selection) ? .handled : .ignored
         }
-        // ⌘R mirrors the Restart Application row, on the same guard and the same compact-bar skip.
-        .onKeyPress(phases: .down) { press in
-            guard press.modifiers.contains(.command),
-                ASCIIKeyboardLayout.matches(press.key, character: "r"), !isCollapsed,
-                let launcher = screen as? LauncherScreen
-            else { return .ignored }
-            return launcher.restart(at: selection(in: launcher)) ? .handled : .ignored
+        if modifiers.contains(.command), ASCIIKeyboardLayout.matches(press.key, character: "r") {
+            return launcher.restart(at: selection) ? .handled : .ignored
         }
+        return .ignored
     }
 
     /// A thin strip along the top edge for grabbing the window; the Appearance setting gates it.

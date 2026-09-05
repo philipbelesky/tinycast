@@ -10,11 +10,11 @@ struct VSCodeSettingsView: View {
         return Form {
             LauncherItemsSection(
                 kind: .vsCodeProject,
-                header: "VS Code",
+                anchor: .vsCodeVSCode,
                 searchPrompt: "Search projects…")
 
             FeatureSwitchSection(
-                header: "VS Code",
+                anchor: .vsCodeVSCode,
                 enableTitle: "Enable VS Code Projects",
                 enableSubtitle:
                     "Lists the folders and workspaces VS Code has opened, read from its own storage "
@@ -47,6 +47,7 @@ struct VSCodeSettingsView: View {
                     "Type it, then a space, to search VS Code projects only.")
         }
         .formStyle(.grouped)
+        .settingsScrollTarget(.vsCode)
         .task { await store.refresh() }
     }
 }

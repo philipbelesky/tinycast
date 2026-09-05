@@ -87,6 +87,7 @@ struct SettingsBackup: Codable {
         /// Named apart from `commands`: the launcher toggle is the one action with no command row.
         var togglePalette: HotKeyBinding?
         var togglePaletteAlternate: HotKeyBinding?
+        var togglePaletteThird: HotKeyBinding?
         var commands: [String: HotKeyBinding]?
         /// Keyed the same way, so a second chord travels with the command it belongs to.
         var commandAlternates: [String: HotKeyBinding]?

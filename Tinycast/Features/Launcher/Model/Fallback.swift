@@ -6,14 +6,16 @@ enum Fallback: Hashable, Sendable {
     enum Builtin: String, CaseIterable, Sendable {
         case aiChat
         case searchFiles
+        case googleSearch
         case runShellCommand
 
-        /// Where its name and glyph come from, so a fallback row reads like the command it runs.
-        var command: CommandID {
+        /// The row's stable entry id, shared with the command or search engine it runs.
+        var entryID: String {
             switch self {
-            case .aiChat: return .aiChat
-            case .searchFiles: return .searchFiles
-            case .runShellCommand: return .runShellCommand
+            case .aiChat: return CommandID.aiChat.rawValue
+            case .searchFiles: return CommandID.searchFiles.rawValue
+            case .googleSearch: return "web-search:google"
+            case .runShellCommand: return CommandID.runShellCommand.rawValue
             }
         }
     }
@@ -24,15 +26,13 @@ enum Fallback: Hashable, Sendable {
     /// The row's `AppEntry` id, so a stored order outlives a rename and survives a reinstall.
     var id: String {
         switch self {
-        case .builtin(let builtin): return builtin.command.rawValue
+        case .builtin(let builtin): return builtin.entryID
         case .quicklink(let id): return Quicklink.entryIDPrefix + id.uuidString.lowercased()
         }
     }
 
     init?(id: String) {
-        if let command = CommandID(rawValue: id),
-            let builtin = Builtin.allCases.first(where: { $0.command == command })
-        {
+        if let builtin = Builtin.allCases.first(where: { $0.entryID == id }) {
             self = .builtin(builtin)
         } else if let quicklink = Quicklink.id(fromEntryID: id) {
             self = .quicklink(quicklink)
@@ -46,6 +46,7 @@ enum Fallback: Hashable, Sendable {
         switch self {
         case .builtin(.aiChat): return "Ask AI Chat"
         case .builtin(.searchFiles): return "Search Files"
+        case .builtin(.googleSearch): return "Search Google"
         case .builtin(.runShellCommand): return "Run Shell Command"
         case .quicklink: return "Open Quicklink"
         }

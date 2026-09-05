@@ -67,6 +67,7 @@ extension SettingsBackup {
         var hotkeys = HotkeyBackup()
         hotkeys.togglePalette = hk.binding(for: .togglePalette)
         hotkeys.togglePaletteAlternate = hk.binding(for: .togglePaletteAlternate)
+        hotkeys.togglePaletteThird = hk.binding(for: .togglePaletteThird)
         hotkeys.commands = Dictionary(
             uniqueKeysWithValues: CommandID.allCases.compactMap { id in
                 id.hotKeyAction.flatMap(hk.binding(for:)).map { (id.rawValue, $0) }
@@ -375,6 +376,7 @@ extension SettingsBackup {
         }
         if let b = hotkeys.togglePalette { apply(b, .togglePalette) }
         if let b = hotkeys.togglePaletteAlternate { apply(b, .togglePaletteAlternate) }
+        if let b = hotkeys.togglePaletteThird { apply(b, .togglePaletteThird) }
         for (rawID, b) in hotkeys.commands ?? [:] {
             guard let action = CommandID(rawValue: rawID)?.hotKeyAction else { continue }
             apply(b, action)

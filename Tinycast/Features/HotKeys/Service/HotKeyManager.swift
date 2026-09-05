@@ -133,8 +133,8 @@ final class HotKeyManager {
             var set = Set(boundExtensionCommandEntryIDs)
             if binding == nil { set.remove(entryID) } else { set.insert(entryID) }
             UserDefaults.standard.set(Array(set), forKey: boundExtensionCommandKey)
-        case .togglePalette, .togglePaletteAlternate, .command, .commandAlternate, .systemAction,
-            .windowCommand:
+        case .togglePalette, .togglePaletteAlternate, .togglePaletteThird, .command,
+            .commandAlternate, .systemAction, .windowCommand:
             break
         }
         candidateActionsCache = nil
@@ -188,6 +188,8 @@ final class HotKeyManager {
         // Distinct from the primary's name, or a conflict between the two reads as self-conflict.
         case .togglePaletteAlternate:
             return "App Launcher (second shortcut)"
+        case .togglePaletteThird:
+            return "App Launcher (third shortcut)"
         case .command(let id):
             return id.name
         case .commandAlternate(let id):
@@ -229,7 +231,7 @@ final class HotKeyManager {
         // The category switch, the way each feature switch already guards its own funnel.
         guard allowsAction?(action) ?? true else { return }
         switch action {
-        case .togglePalette, .togglePaletteAlternate: onTogglePalette?()
+        case .togglePalette, .togglePaletteAlternate, .togglePaletteThird: onTogglePalette?()
         case .command(let id), .commandAlternate(let id): onRunCommand?(id)
         case .app(let bundleID): AppLauncher.toggle(bundleID: bundleID)
         case .settingsPane(let bundleID): AppLauncher.openSettingsPane(bundleID: bundleID)

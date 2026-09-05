@@ -192,9 +192,10 @@ struct SyncTest {
 
         // MARK: Hotkeys — both clipboard slots ride the synced payload
 
+        let slug = CommandID.clipboardHistory.rawValue
         var hotkeys = SettingsBackup.HotkeyBackup()
-        hotkeys.toggleClipboard = .combo(KeyShortcut(carbonKeyCode: 9, carbonModifiers: 0))
-        hotkeys.toggleClipboardAlternate = .doubleTap(.command)
+        hotkeys.commands = [slug: .combo(KeyShortcut(carbonKeyCode: 9, carbonModifiers: 0))]
+        hotkeys.commandAlternates = [slug: .doubleTap(.command)]
         var bound = SettingsBackup()
         bound.hotkeys = hotkeys
         let boundEnvelope = SyncEnvelope(
@@ -202,22 +203,23 @@ struct SyncTest {
         let roundTripped = (try? boundEnvelope.encoded()).flatMap { try? SyncEnvelope(json: $0) }
         check(
             "the primary clipboard chord survives the envelope round trip",
-            roundTripped?.backup.hotkeys?.toggleClipboard == hotkeys.toggleClipboard)
+            roundTripped?.backup.hotkeys?.commands?[slug] == hotkeys.commands?[slug])
         check(
             "the alternate clipboard chord rides alongside it",
-            roundTripped?.backup.hotkeys?.toggleClipboardAlternate == .doubleTap(.command))
+            roundTripped?.backup.hotkeys?.commandAlternates?[slug] == .doubleTap(.command))
 
-        // A Mac still on the older build writes an envelope with no alternate at all.
+        // A Mac still on the older build writes an envelope with no alternates map at all.
         let priorJSON = Data(
-            (#"{"backup":{"hotkeys":{"toggleClipboard":{"doubleTap":{"_0":"command"}}},"#
-                + #""version":4},"writtenAt":"1970-01-01T00:00:00Z","writtenBy":"B"}"#).utf8)
+            (#"{"backup":{"hotkeys":{"commands":{"command:clipboard-history":"#
+                + #"{"doubleTap":{"_0":"command"}}}}},"#
+                + #""writtenAt":"1970-01-01T00:00:00Z","writtenBy":"B"}"#).utf8)
         let prior = try? SyncEnvelope(json: priorJSON)
         check(
             "an envelope written before the alternate existed still decodes",
-            prior?.backup.hotkeys?.toggleClipboard == .doubleTap(.command))
+            prior?.backup.hotkeys?.commands?[slug] == .doubleTap(.command))
         check(
             "and reads as no alternate rather than failing outright",
-            prior != nil && prior?.backup.hotkeys?.toggleClipboardAlternate == nil)
+            prior != nil && prior?.backup.hotkeys?.commandAlternates == nil)
 
         print(failures == 0 ? "\nALL PASSED" : "\n\(failures) FAILED")
         exit(failures == 0 ? 0 : 1)

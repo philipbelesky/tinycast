@@ -1,10 +1,9 @@
 # Fork
 
-This checkout is a **fork of [`abue-ammar/tinycast`](https://github.com/abue-ammar/tinycast)**, which is
-the `upstream` remote and the mainline this file calls **upstream**; `origin` is the fork itself,
-`philipbelesky/tinycast`. Fork work lives on branch `philip`, which is the only branch either remote
-carries — the stale local `main` mirror was deleted, so compare against `upstream/main` after
-`git fetch upstream`.
+This checkout is a **fork of [`abue-ammar/tinycast`](https://github.com/abue-ammar/tinycast)**. Note
+the remote names, which read backwards: **`origin` is the mainline** this file calls *upstream*, and
+**`My-Fork` is `philipbelesky/tinycast`**. Fork work lives on branch `philip`; compare against
+`origin/main` after `git fetch origin`.
 
 It is a **personal** fork, and a permanent one. It ships to the author's own Macs and nowhere else, so
 nothing here is waiting to become a pull request — the "Upstreamable?" column below is a note on how
@@ -229,6 +228,9 @@ choice. Applications and System Settings are the one exception: `categoryIconSou
 `iconSource` for those two kinds, so a launcher row still draws the app's own icon rather than the
 red grid tile — a red square tells every app apart from every other app equally, which is exactly
 the information an icon exists to carry. Owner's call, reverting part of the tile-everything change.
+Linear splits the difference: `ScopeCatalog.tint(for:)` answers for `.linearTarget` so its rows wear
+the scope's indigo, while `symbol(for:)` withholds the glyph, because a saved view, an assignee and a
+ticket each already carry a mark the one scope symbol would flatten.
 
 This is the divergence most worth offering upstream — it is additive, it invents no new architecture,
 and the grammar is pure and tested. Until then, the conflict surface is what it touches: `AppIndex`
@@ -319,7 +321,7 @@ unreadable file from costing a library.
 
 **Touches:** a new `Features/Linear/` (two pure models with a harness, a client, a switchable store, a
 coordinator, a settings pane), plus the same hook set as divergences 5 and 6 —
-`AppEntry.Kind.linearView`, an `AppIndex` slice, a `LauncherCoordinator` branch, `ScopeCatalog`'s `l`,
+`AppEntry.Kind.linearTarget`, an `AppIndex` slice, a `LauncherCoordinator` branch, `ScopeCatalog`'s `l`,
 `PaletteCoordinator.onShow`, `AppCore` wiring, `SettingsTab` and the settings/backup registries.
 
 `l payments` lists every workspace's Linear sidebar — saved views, projects, initiatives; ↵ opens
@@ -572,26 +574,35 @@ the stores' fetch logic — that is where the real work happens — and re-apply
 initialisers and the three sheet deletions on top. If upstream ever adds a fifth networked feature,
 it arrives off, and whether it joins this list is a fresh decision rather than a default.
 
-## 16 — Second chords for the palette and the clipboard history
+## 16 — Extra chords for the palette and the clipboard history
 
-**Touches:** two `HotKeyAction` cases and their `defaultsKey`s, the four exhaustive switches over it —
+**Touches:** three `HotKeyAction` cases and their `defaultsKey`s, the four exhaustive switches over it —
 `HotKeyManager.setBinding`, `displayName`, `perform`, and `AppCore.hotKeyDisplayName` — plus
 `candidateActions`, `VisibilityStore.allowsHotKey`, `SettingsBackup.HotkeyBackup`, both halves of
-`SettingsBackupApplying`, one row each in `GeneralSettingsView` and `ClipboardSettingsView`, and the
+`SettingsBackupApplying`, two rows in `GeneralSettingsView` and one in `ClipboardSettingsView`, and the
 `hotkey-test` harness line in `run-tests.sh`. It used to touch `LegacyHotKeyRecords.legacyKey` too;
 upstream deleted that scheduled migration in #333 and the fork took the deletion.
 
-Upstream gives every action exactly one global shortcut. This fork adds a second recorder to two of
-them: **`HotKeyAction.togglePaletteAlternate`** under `hotkey.togglePalette.alternate`, and
-**`.toggleClipboardAlternate`** under `hotkey.toggleClipboard.alternate`. Each alternate joins its
-primary in `perform`, so either chord opens the launcher and either opens the clipboard history.
+Upstream gives every action exactly one global shortcut. This fork adds extra recorders to two of
+them: **`HotKeyAction.togglePaletteAlternate`** and **`.togglePaletteThird`** under
+`hotkey.togglePalette.alternate` and `hotkey.togglePalette.third`, and
+**`.commandAlternate(CommandID)`** under `hotkey.<slug>.alternate`, whose one member is named by
+**`HotKeyAction.alternateChordCommands`** — currently `[.clipboardHistory]`. Each extra chord joins its
+primary in `perform`, so any of the palette's three opens the launcher and either clipboard chord opens
+the history.
+
+The command half is parameterised because upstream's #399 collapsed its own per-command cases into
+`.command(CommandID)`; mirroring that shape is what keeps the pair one mechanical edit apart. It is
+not an invitation to grow the list — see **Not a pattern** below, which the `[CommandID]`
+constant now states in code.
 
 The reason is divergence 10. iCloud sync carries **one** settings envelope to every Mac, and the
 author's Macs have different keyboards — a chord that is comfortable on one is awkward or already
-taken on the other. Without a second binding the only fixes are a per-device override, which would
-mean a second notion of "settings that don't sync", or rebinding by hand after every sync. Two chords
-that both work is the cheaper answer, and it is additive: a Mac where only the primary is set behaves
-exactly as before.
+taken on the other. Without an extra binding the only fixes are a per-device override, which would
+mean a second notion of "settings that don't sync", or rebinding by hand after every sync. Several
+chords that all work is the cheaper answer, and it is additive: a Mac where only the primary is set
+behaves exactly as before. The palette earns a third because it is the one chord every Mac must have,
+and three keyboards had no two-way overlap free.
 
 **Why a new action rather than a plural binding.** `HotKeyAction.defaultsKey` is both the UserDefaults
 key and the `HotKeyCenter` registration id, and one action holds one `HotKeyBinding` — an invariant in
@@ -601,21 +612,23 @@ on-disk format and rewritten `conflictOwner`, `syncDoubleTaps`, `retargetHyperBi
 conflict detection, Hyper re-pointing and the backup field by appearing in `candidateActions`. It also
 sidesteps a UI trap: `ShortcutRecorder.isRecording` compares `recordingAction == action`, so two rows
 carrying the same action value would both light up and the callout would anchor to whichever rendered
-first. Each `displayName` carries a "(second shortcut)" suffix for a related reason — identical names
-would make a conflict between the two rows read as a self-conflict.
+first. Each `displayName` carries a "(second shortcut)" or "(third shortcut)" suffix for a related
+reason — identical names would make a conflict between two of the rows read as a self-conflict.
 
-**The cost, which is real.** Both chords sync and both register on every Mac, so the one a given
-machine doesn't want is still claimed there, taken from whatever app would otherwise hold it. This
-buys a spare chord per machine rather than a per-machine binding; the per-machine version would have
-to sit outside the synced payload, which is a different and heavier feature. Pick alternates no
+**The cost, which is real.** Every chord syncs and every one registers on every Mac, so the ones a
+given machine doesn't want are still claimed there, taken from whatever app would otherwise hold them.
+This buys spare chords per machine rather than a per-machine binding; the per-machine version would have
+to sit outside the synced payload, which is a different and heavier feature. Pick extra chords no
 machine needs for something else.
 
-**Two cases, not a pattern.** A third would be: the case-per-slot shape is cheap twice and tedious at
-four, and the plural-binding rewrite above is what it turns into. Nothing else has an alternate, and
-adding one is a decision rather than a default.
+**Not a pattern.** Every extra case is another recorder in Settings and another chord claimed on
+every Mac, and the plural-binding rewrite above is what a long list turns into. Only the palette and
+the clipboard history have one, and adding another is a decision rather than a default — at a fourth,
+rewrite `HotKeyManager` for plural bindings instead of adding a case.
 
 **On merge:** a new `HotKeyAction` case upstream adds is a mechanical conflict in the same four
-switches — take upstream's cases and re-add these two beside them. If upstream ever ships its own
+switches — take upstream's cases and re-add these three beside them; a `.command`/`.commandAlternate`
+pair binds in one `case` arm, so most switches take one line rather than two. If upstream ever ships its own
 second binding, drop this divergence whole rather than reconciling it. Nothing here touches the Carbon
 layer: `HotKeyCenter` already keys registrations by arbitrary string id and has always supported N.
 
@@ -697,12 +710,15 @@ The extension helper harness waits for a rendered result with a ten-second deadl
 ## Merging upstream
 
 ```sh
-git fetch upstream --tags
-git checkout philip && git rebase upstream/main         # replay the divergences
+git fetch origin --tags
+git checkout philip && git rebase origin/main           # replay the divergences
 ```
 
 Rebase rather than merge, so the fork stays a readable stack of the divergences above rather than a
-braid.
+braid. **In practice this has not survived contact:** all three absorptions so far were merges, for
+the reasons recorded below, and `philip` now carries both the pre- and post-rewrite spellings of
+upstream's older history. A rebase today would replay ~126 commits, most of them upstream work already
+in the tree. Assume a merge and budget for one resolution pass.
 
 **The 2026-08-12 absorption of upstream `a0cfc60..ef1e1b5` was a merge commit, not a rebase**, and is
 the one braid in this history. That drop rewrote the palette's hover and scroll model (`HoverArming`,
@@ -711,6 +727,17 @@ high-risk divergences 2, 3, 4 and 9; replaying twenty-four commits through it me
 collision repeatedly, with a silent half-revert the likely outcome. One resolution pass was the safer
 trade. Prefer a rebase again next time — the stack is still readable through the merge — and treat
 this as the precedent for when not to.
+
+**The 2026-09-03 absorption of upstream `d3423b2..3d5cecf` (46 commits) was a merge, and by then the
+merge was the rule rather than the exception.** `d3423b2` was a clean merge base — the fork's own diff
+against it is exactly the divergences — so `git merge origin/main` reported 22 conflicts and no more.
+What that drop cost beyond the conflicts is worth knowing next time: upstream's #399 collapsed its
+per-command `HotKeyAction` cases into `.command(CommandID)` (divergence 16 follows, above), and #439
+added a Settings search whose `SettingsAnchor`/`SettingsSearchCatalog` every pane must now be listed
+in — including the five fork-local ones (divergences 4, 5, 6, 8, and the Miscellaneous pane), which
+`settings-history-test` fails without. `RootPaletteView.body` also stopped type-checking in reasonable
+time once the fork's `ScopeChip` sat on top of upstream's growth; its key handling is now a
+`keyChords(_:selection:)` half, and its three launcher chords one `launcherChord(_:)` handler.
 
 **The 2026-08-20 absorption of rewritten upstream `42eb238..793bb1f` is the second merge exception.**
 Upstream force-rewrote the history that had previously ended at `ef1e1b5`, although `ef1e1b5` and its
@@ -739,6 +766,10 @@ Then, before calling it done — the standard gate from
       upstream harness compiling those needs `$L/ScopeTint.swift` (and sometimes `$L/QueryScope.swift`)
       added to its source list in `Scripts/run-tests.sh` — `palette-placement-test`, `icon-cache-test`
       and `hover-arming-test` all needed it (divergences 3, 4).
+- [ ] **Every fork-local Settings pane is listed in `SettingsSearchCatalog`** — Web Search, herdr,
+      VS Code, Linear and Miscellaneous, each with a `SettingsAnchor` its `Form` claims, or
+      `settings-history-test` fails on *every pane is reachable from Settings search*
+      (divergences 4, 5, 6, 8).
 - [ ] **`PaletteCoordinator.onShow` still fires** — otherwise herdr, VS Code and Linear list stale
       state (divergences 5, 6, 8).
 - [ ] **Linear's flag is still on the store, not in `AppSettings`** (divergences 8, 15).
@@ -749,10 +780,10 @@ Then, before calling it done — the standard gate from
       `grep -rn 'ConsentSheet\|askingConsent' Tinycast/` returns nothing. The two dialogs that
       *should* exist still do: `SyncRemoteChoiceSheet` and snippets' confirming setter
       (divergence 15).
-- [ ] **Both alternate chords survived** — `togglePaletteAlternate` and `toggleClipboardAlternate`
-      still exist, `perform` still routes each to its primary's callback, and
-      `SettingsBackup.HotkeyBackup` still carries both, or one Mac silently loses a shortcut
-      (divergence 16).
+- [ ] **All three extra chords survived** — `togglePaletteAlternate`, `togglePaletteThird` and
+      `commandAlternate(.clipboardHistory)` still exist, `perform` still routes each to its primary's
+      callback, and `SettingsBackup.HotkeyBackup` still carries `togglePaletteThird` and
+      `commandAlternates`, or one Mac silently loses a shortcut (divergence 16).
 - [ ] **Every `#Preview` still compiles**, and the ones whose view upstream changed still render
       something honest (divergence 11).
 - [ ] **`nm -a <Release binary> | grep -c 11PreviewData` returns zero, and the same query against
