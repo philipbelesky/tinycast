@@ -897,6 +897,7 @@ struct ExtensionTests {
                   const child = spawn("\(helper.path)", ["pick"]);
                   const out = [];
                   child.stdout.on("data", (chunk) => out.push(chunk.toString()));
+                  child.on("error", (error) => setState("threw:" + error.message));
                   child.on("exit", (code) => setState(code + ":" + JSON.parse(out.join("")).hex));
                 })().catch((error) => setState("threw:" + error.message));
               }, []);
@@ -906,7 +907,13 @@ struct ExtensionTests {
         await runtime.start(
             session: "sSwift", code: command, file: URL(fileURLWithPath: "/tmp/swift-helper.js"),
             mode: .view, context: launchContext())
-        await settle(1200)
+        let deadline = ContinuousClock.now + .seconds(10)
+        while ContinuousClock.now < deadline {
+            if let markdown = recorder.trees.last?.activeRoot?.string("markdown"),
+                markdown != "pending"
+            { break }
+            await settle(25)
+        }
 
         let mode = (try? FileManager.default.attributesOfItem(atPath: helper.path))
             .flatMap { $0[.posixPermissions] as? NSNumber }

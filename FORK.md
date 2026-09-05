@@ -688,6 +688,12 @@ The one-time move from Caches to Application Support was removed on its schedule
 
 **On merge:** retain the deletion if upstream still carries the expired migration; accept its equivalent cleanup when it arrives.
 
+## 20 — Extension helper harness waits for completion
+
+The extension helper harness waits for a rendered result with a ten-second deadline instead of assuming the chmod, process launch and render finish within 1.2 seconds. It also surfaces asynchronous spawn errors in the result. The fixed delay passed in isolation but failed under the parallel suite's load; runtime behavior is unchanged.
+
+**On merge:** keep the bounded completion wait unless upstream supplies an equivalent fix.
+
 ## Merging upstream
 
 ```sh
