@@ -682,6 +682,12 @@ carries no state anyone else reads.
 
 ---
 
+## 19 — Expired storage relocation removed
+
+The one-time move from Caches to Application Support was removed on its scheduled expiry, 2026-09-05, together with its startup hook and harness. The project was regenerated and the development guidance updated. Durable stores continue to use Application Support; an older cache layout is no longer imported at launch.
+
+**On merge:** retain the deletion if upstream still carries the expired migration; accept its equivalent cleanup when it arrives.
+
 ## Merging upstream
 
 ```sh
