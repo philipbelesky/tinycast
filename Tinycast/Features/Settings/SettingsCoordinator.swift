@@ -49,11 +49,13 @@ final class SettingsCoordinator {
             .environment(core.herdr)
             .environment(core.vsCode)
             .environment(core.linear)
+            .environment(core.windowLayouts)
             .environment(core.calendarStore)
             .environment(core.aiSettings)
             .environment(core.mcpSettings)
             .environment(core.quickActionSettings)
             .environment(core.chatGPTSubscription)
+            .environment(core.installedAI)
             // Propagates down so the window's materials show through, not each list's backing.
             .scrollContentBackground(.hidden)
     }

@@ -346,7 +346,7 @@ All lists share one row grammar so launcher and clipboard look identical:
 
 - `HStack(spacing: lg)`: leading 24pt icon/thumbnail, title (`.body`, `lineLimit(1)`), optional trailing keycaps/kind label, `Spacer`. Insets: `.horizontal md`, `.vertical sm`.
 - **The leading slot is always `Theme.Size.rowIcon`, whatever fills it.** A glyph smaller than an app icon — the uninstall list's 16pt checkbox — is centred _inside_ that 24pt slot rather than sizing the slot to itself. Every list then starts its title at the same x, so switching palette modes doesn't jog the column sideways. The slot doubles as the hit target.
-- Background is a `RoundedRectangle(row, .continuous)` filled by `fill`: **selection → hover → clear**, in that precedence. This `fill` computed property is copy-identical across `AppRow`, `ClipboardRow`, `CalculatorCard` and `UninstallRow` — keep them in sync.
+- Background is a `RoundedRectangle(row, .continuous)` filled by `fill`: **selection → hover → clear**, in that precedence. This `fill` computed property is copy-identical across `AppRow`, `ClipboardRow` and `UninstallRow` — keep them in sync. The launcher's lead cards don't restate it: `.leadCard(selected:)` (`Features/Launcher/UI/LeadCard.swift`) owns their fill and hover, so a card can't answer a selection differently from its siblings.
 - **Hover state lives on the row**, not the list, so a mouse sweep repaints only the rows entering/leaving (a list-level hover rebuilds every row per move — don't do that).
 - **Hover is armed by pointer movement, not by the pointer's position** (`armedHover`, `Palette/HoverArming.swift`). A palette shown under a resting pointer lights nothing, and keys or a scroll drop the highlight until the pointer moves clear of the slop radius around where it stood — a row must never light up because it *slid under* a still pointer. Two measured facts the rule rests on: SwiftUI fires hover phases for rows arriving under a stationary pointer, but **not** for a lit row that merely shifts, so `PaletteState.hoverDisarmToken` clears what is already lit; and a wheel gesture ends with a mouse-moved event carrying no displacement, so *event type is not evidence the pointer moved*. `Tests/hover-arming-test.swift` pins both halves.
 - **Scroll moves only on keyboard nav/reset**, driven by a `ScrollIntent` (`DesignSystem/Scrolling/ScrollIntent.swift`) — mouse selection targets a visible row and never yanks scroll. `.top` scrolls to the origin anchor that `scrollOriginAnchor()` installs — a zero-height overlay applied to the scrolled content _after_ its padding, so it marks offset 0 without joining the layout and the restored origin is exact (targeting the first row instead leaves the top padding hidden under the header); it is restated when the header's inset settles after mount, which moves the resting offset. A `.follow` that lands on flat index 0 restores the origin instead, so that row's section header comes back into view. One intent state serves every mode — they never coexist.
@@ -660,6 +660,38 @@ system-drawn and a pane reads exactly as macOS System Settings does.
   a `LazyVStack` inside one Form row — 400 apps cost 55 ms and 69 views that way against 750 ms and
   2040 eager. Any other unbounded list must do the same.
 
+### The window-layout editor
+
+`Theme.Size.layoutEditorSheet` is **900 × 660, both stated**. The width less
+`layoutInspectorColumn` (300) leaves the preview two thirds of the sheet, and the canvas is greedy
+inside it — a fixed preview box would spend that third on margin. **The height is stated because the
+inspector grows**: picking an app reveals Argument, Size, Offset and Position, and an intrinsic
+sheet would jump out from under the pointer mid-click. The inspector scrolls if it ever overflows.
+
+Every inspector control — text field, dropdown, add button — is one `layoutFieldChrome`: a
+`Radius.barControl` rounded rect at `layoutControlHeight`, `cardFill` on `cardStroke`, accent-stroked
+while focused. A numeric field fills its half of the row rather than sizing to a stated width, so a
+value can never be cropped, and `layoutFieldUnit` keeps "%" and "pt" on one x.
+
+**The entry dropdown is a button and a popover, not a `Menu`**: a menu label stretches an `NSImage`
+out of aspect, which is what made the app icon smear. The rest of the app already picks apps this
+way (`AppPickerPopover`).
+
+In the position grid the **glyph floats in a wider cell** carrying the `contentShape`, so a click
+anywhere in the cell lands — a bare stroke is hittable only on the line itself. Each anchor's block
+takes half a pinned axis and all of a spanned one, which is what makes nine cells nine silhouettes
+rather than nine identical rectangles.
+
+`layoutPreviewGround` is **`adaptive`, never `ramp`**: a drawn display is dark in both appearances,
+and a ramp would invert it in Light. `layoutPreviewWindow` is white in both for the same reason — it
+sits on that always-dark plate. `Radius.glyph` (2) exists because `thumbnail` rounds a 10 pt square
+into a circle.
+
+The Save button draws a `⌘ ↵` cap, which the no-caps-on-buttons rule above otherwise forbids. That
+rule guards against a printed cap drifting from what `DialogPanel.sendEvent` handles separately; here
+the cap and the behaviour come from one `.keyboardShortcut`, so the drift is structurally impossible.
+See [features/window-layouts.md](features/window-layouts.md#the-editor).
+
 ### The shortcut recorder callout
 
 `ShortcutRecorder` is a **120pt** field showing only the binding — a combo's modifiers collapse into
@@ -682,7 +714,7 @@ shortcut"), live held modifiers, and conflict (rejected caps + owner, orange).
 - **`KeyCapChip.Scale`** is `compact` / `standard` / `hero` — three tokenised sizes, no stray frames.
 - `allowsHitTesting(false)`: clicks fall through to the capture session's mouse monitor, which closes it.
 
-The calculator's inline `CalculatorCard` reuses this card language (`cardFill` + `cardStroke`) rather than the row language, since it's a highlighted answer, not a list item. A value answer is a **two-column** layout: a source column (input echo) and a target column (result), separated by a centered `arrow.right` glyph (no divider line). Each column optionally carries a word-name **badge pill** beneath its value (`keyCap` font, `controlSurface` fill, `keyCap` radius) — `Expression`→`Result` for scalar arithmetic, unit or currency names for typed results (`Expression`→`Kilograms`), and moment labels for a date/time calc (`12:18 AM`→`9:00 AM`, `Friday, 24 July`→`Friday, 9 April, 2027`). A trailing operator keeps the last complete result and its badge visible while the next operand is being typed.
+The calculator's inline `CalculatorCard` reuses this card language (`cardFill` + `cardStroke`) rather than the row language, since it's a highlighted answer, not a list item. A value answer is a **two-column** layout: a source column (input echo) and a target column (result), separated by a centered `arrow.right` glyph (no divider line). `LeadCardColumn` is that column, pill included, so the colour card is built from the same part rather than a copy of it. Each column optionally carries a word-name **badge pill** beneath its value (`keyCap` font, `controlSurface` fill, `keyCap` radius) — `Expression`→`Result` for scalar arithmetic, unit or currency names for typed results (`Expression`→`Kilograms`), and moment labels for a date/time calc (`12:18 AM`→`9:00 AM`, `Friday, 24 July`→`Friday, 9 April, 2027`). A trailing operator keeps the last complete result and its badge visible while the next operand is being typed.
 
 ---
 

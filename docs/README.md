@@ -29,6 +29,7 @@ open with an `## Invariants` section; read it before changing anything in that a
 [clipboard](features/clipboard.md) ·
 [calculator](features/calculator.md) ·
 [calendar](features/calendar.md) ·
+[camera](features/camera.md) ·
 [emoji](features/emoji.md) ·
 [file search](features/file-search.md) ·
 [notes](features/notes.md) ·
@@ -40,6 +41,7 @@ open with an `## Invariants` section; read it before changing anything in that a
 [Linear](features/linear.md) ·
 [hotkeys](features/hotkeys.md) ·
 [window management](features/window-management.md) ·
+[window layouts](features/window-layouts.md) ·
 [custom commands](features/custom-commands.md) ·
 [uninstall](features/uninstall.md) ·
 [backup](features/backup.md) ·

@@ -129,6 +129,11 @@ final class AppSettings {
         didSet { defaults.set(searchScopes, forKey: Key.searchScopes.rawValue) }
     }
 
+    /// Ships on, unlike every other feature switch: a launcher is expected to keep history.
+    var clipboardEnabled: Bool {
+        didSet { defaults.set(clipboardEnabled, forKey: Key.clipboardEnabled.rawValue) }
+    }
+
     var clipboardRetention: ClipboardRetention {
         didSet {
             defaults.set(clipboardRetention.rawValue, forKey: Key.clipboardRetention.rawValue)
@@ -389,9 +394,17 @@ final class AppSettings {
         }
     }
 
-    /// Points between tiled windows and the screen edge; `WindowLayout` caps it.
+    /// Points between tiled windows and the screen edge; `WindowPlacementEngine` caps it.
     var windowGap: Int {
         didSet { defaults.set(windowGap, forKey: Key.windowGap.rawValue) }
+    }
+
+    /// Its own flag: hiding 34 command rows must not also hide the layouts you wrote.
+    var windowLayoutsShowInLauncher: Bool {
+        didSet {
+            defaults.set(
+                windowLayoutsShowInLauncher, forKey: Key.windowLayoutsShowInLauncher.rawValue)
+        }
     }
 
     /// Re-triggering a half steps it through ⅓ and ⅔ instead of re-applying the same frame.
@@ -490,6 +503,10 @@ final class AppSettings {
     }
 
     init() {
+        // The only feature switch that defaults on, so absence has to outrank a stored `false`.
+        clipboardEnabled =
+            defaults.object(forKey: Key.clipboardEnabled.rawValue) == nil
+            || defaults.bool(forKey: Key.clipboardEnabled.rawValue)
         // `integer(forKey:)` returns 0 when unset, which no case matches.
         clipboardRetention =
             ClipboardRetention(rawValue: defaults.integer(forKey: Key.clipboardRetention.rawValue))
@@ -615,6 +632,9 @@ final class AppSettings {
         // Unset reads as 0, which is the intended default anyway — no gap.
         windowGap = defaults.integer(forKey: Key.windowGap.rawValue)
         windowCycleOnRepeat = defaults.bool(forKey: Key.windowCycleOnRepeat.rawValue)
+        windowLayoutsShowInLauncher =
+            defaults.object(forKey: Key.windowLayoutsShowInLauncher.rawValue) == nil
+            || defaults.bool(forKey: Key.windowLayoutsShowInLauncher.rawValue)
         quicklinksEnabled =
             defaults.object(forKey: Key.quicklinksEnabled.rawValue) == nil
             || defaults.bool(forKey: Key.quicklinksEnabled.rawValue)

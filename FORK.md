@@ -775,6 +775,8 @@ in — including the five fork-local ones (divergences 4, 5, 6, 8, and the Misce
 time once the fork's `ScopeChip` sat on top of upstream's growth; its key handling is now a
 `keyChords(_:selection:)` half, and its three launcher chords one `launcherChord(_:)` handler.
 
+**The 2026-09-07 absorption of upstream `3d5cecf..a9c1708` (17 commits) was a merge.** The new launcher ranking keeps word reorderings as subsequence evidence, with the fork's regression tests using upstream's new alias model. Scope rows and fork destinations receive the same naming pass as upstream entries. Window layouts join the window-management scope; their settings, bindings and records, plus the clipboard enable flag, flow through the fork's extracted backup service. New palette colour and attachment surfaces follow the fork's scale tokens. Upstream also removed the expired storage relocation, absorbing divergence 19.
+
 **The 2026-08-20 absorption of rewritten upstream `42eb238..793bb1f` is the second merge exception.**
 Upstream force-rewrote the history that had previously ended at `ef1e1b5`, although `ef1e1b5` and its
 replacement `42eb238` have identical trees. Git therefore selected the pre-fork `d9d6f` merge base and

@@ -13,6 +13,8 @@ final class PaletteState {
     var isComposing = false
     /// The clipboard screen's type filter, reset with the rest of the screen state on each summon.
     var clipboardFilter: ClipboardFilter = .all
+    /// Ordering out leaves the SwiftUI tree mounted, so a media preview needs this to stop playing.
+    private(set) var isVisible = false
     /// Changes every time the palette is shown so the search field can re-focus.
     var focusToken = UUID()
     /// Bumped only by `prepare`, so lists snap to the top even when nothing else changed.
@@ -31,8 +33,16 @@ final class PaletteState {
     var pasteTarget: PasteTarget?
     /// Values typed into an extension's inline argument fields, keyed by `argumentKey`.
     var commandArguments: [String: String] = [:]
-    /// True while ⌘ is held, which numbers the favorite rows. The panel is the only writer.
+    /// True once ⌘ has been *held*, which numbers the favorite rows. The panel is the only writer.
     private(set) var commandHeld = false
+    /// A chord is a tap, so the numbering waits out the tap before it claims the trailing labels.
+    @ObservationIgnored private var commandHoldTask: Task<Void, Never>?
+    /// True while a form field owns the keyboard, so the palette's own text keys stay out of it.
+    private(set) var isEditingField = false
+    /// True while a control inside a screen has a list open, which owns the arrows and ↵ whole.
+    private(set) var isControlListOpen = false
+    /// Bumped when a press lands outside an open control list, which is how the list learns of it.
+    private(set) var controlListDismissToken = UUID()
     /// True only once the pointer has moved of its own accord; untracked, so it never re-renders.
     @ObservationIgnored private(set) var hoverHighlightArmed = false
     /// Bumped when the highlight drops, so a lit row clears even though the pointer never left it.
@@ -46,12 +56,18 @@ final class PaletteState {
     /// Fired when `menuOpen` flips, so the panel can hide the caret without a focus swap.
     @ObservationIgnored var onMenuOpenChanged: ((Bool) -> Void)?
 
+    func noteVisible(_ visible: Bool) {
+        isVisible = visible
+    }
+
     func prepare(mode: PaletteMode) {
         self.mode = mode
         query = ""
         scope = nil
         selection = 0
         isComposing = false
+        isEditingField = false
+        isControlListOpen = false
         commandArguments = [:]
         clipboardFilter = .all
         forceExpanded = false
@@ -60,6 +76,9 @@ final class PaletteState {
         focusToken = UUID()
         resetToken = UUID()
     }
+
+    /// Long enough that ⌘↵ or ⌘K never flashes the numbering, short enough to feel like a reveal.
+    private static let commandHoldDelay = Duration.milliseconds(400)
 
     /// U+0001 can't appear in an entry id or an argument name, so the halves stay unambiguous.
     nonisolated static func argumentKey(_ entryID: String, _ name: String) -> String {
@@ -76,8 +95,35 @@ final class PaletteState {
     }
 
     func noteCommandHeld(_ held: Bool) {
-        guard held != commandHeld else { return }
-        commandHeld = held
+        commandHoldTask?.cancel()
+        commandHoldTask = nil
+        guard held else {
+            commandHeld = false
+            return
+        }
+        guard !commandHeld else { return }
+        commandHoldTask = Task { [weak self] in
+            try? await Task.sleep(for: Self.commandHoldDelay)
+            guard !Task.isCancelled else { return }
+            self?.commandHeld = true
+        }
+    }
+
+    /// Set by whichever screen hands the keyboard to a control of its own.
+    func noteEditingField(_ editing: Bool) {
+        guard editing != isEditingField else { return }
+        isEditingField = editing
+    }
+
+    /// Set by a control whose own list is up; the palette leaves every navigation key to it.
+    func noteControlListOpen(_ open: Bool) {
+        guard open != isControlListOpen else { return }
+        isControlListOpen = open
+    }
+
+    func dismissControlList() {
+        guard isControlListOpen else { return }
+        controlListDismissToken = UUID()
     }
 
     /// The pointer moved, which re-lights the highlight once it has cleared the arming slop.

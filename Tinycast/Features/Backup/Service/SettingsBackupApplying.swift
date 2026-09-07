@@ -8,6 +8,7 @@ extension SettingsBackup {
         let s = core.settings
         var backup = SettingsBackup()
         backup.settings = SettingsData(
+            clipboardEnabled: s.clipboardEnabled,
             clipboardRetentionDays: s.clipboardRetention.rawValue,
             clipboardDisabledApps: s.clipboardDisabledApps,
             launchAtLogin: s.launchAtLogin,
@@ -35,6 +36,7 @@ extension SettingsBackup {
             windowManagementShowInLauncher: s.windowManagementShowInLauncher,
             windowGap: s.windowGap,
             windowCycleOnRepeat: s.windowCycleOnRepeat,
+            windowLayoutsShowInLauncher: s.windowLayoutsShowInLauncher,
             quicklinksEnabled: s.quicklinksEnabled,
             quicklinksShowInLauncher: s.quicklinksShowInLauncher,
             extensionsShowInLauncher: s.extensionsShowInLauncher,
@@ -100,10 +102,15 @@ extension SettingsBackup {
             uniqueKeysWithValues: hk.boundQuicklinkIDs.compactMap { id in
                 hk.binding(for: .quicklink(id: id)).map { (id.uuidString.lowercased(), $0) }
             })
+        hotkeys.windowLayouts = Dictionary(
+            uniqueKeysWithValues: hk.boundWindowLayoutIDs.compactMap { id in
+                hk.binding(for: .windowLayout(id: id)).map { (id.uuidString.lowercased(), $0) }
+            })
         backup.hotkeys = hotkeys
 
         backup.customCommands = core.customCommands.commands
         backup.quicklinks = core.quicklinks.quicklinks
+        backup.windowLayouts = core.windowLayouts.layouts
         backup.favoriteApps = core.favorites.keys
         backup.hiddenLauncherItems = Array(core.visibility.hiddenItemKeys)
         backup.hiddenLauncherKinds = Array(core.visibility.disabledKinds)
@@ -121,6 +128,11 @@ extension SettingsBackup {
         // Before the hotkeys, so a restored binding has its quicklink to attach to.
         if let quicklinks {
             summary.quicklinks = core.quicklinkCoordinator.replaceQuicklinks(quicklinks)
+        }
+        // Before the hotkeys too, for the same reason: a binding needs its layout to attach to.
+        if let windowLayouts {
+            summary.windowLayouts =
+                core.windowLayoutCoordinator.replaceWindowLayouts(windowLayouts)
         }
         if let hotkeys { summary.hotkeys = applyHotkeys(hotkeys, to: core) }
         if let favoriteApps {
@@ -143,6 +155,10 @@ extension SettingsBackup {
     private func applySettings(_ s: SettingsData, to core: AppCore) -> Int {
         let settings = core.settings
         var count = 0
+        if let flag = s.clipboardEnabled {
+            settings.clipboardEnabled = flag
+            count += 1
+        }
         if let days = s.clipboardRetentionDays, let retention = ClipboardRetention(rawValue: days) {
             settings.clipboardRetention = retention
             core.clipboardCoordinator.applyRetention(retention)
@@ -247,6 +263,10 @@ extension SettingsBackup {
         }
         if let flag = s.windowCycleOnRepeat {
             settings.windowCycleOnRepeat = flag
+            count += 1
+        }
+        if let flag = s.windowLayoutsShowInLauncher {
+            settings.windowLayoutsShowInLauncher = flag
             count += 1
         }
         if let flag = s.quicklinksEnabled {
@@ -402,6 +422,11 @@ extension SettingsBackup {
         for (rawID, b) in hotkeys.windowCommands ?? [:] {
             guard let id = WindowCommand.ID(rawValue: rawID) else { continue }
             apply(b, .windowCommand(id: id))
+        }
+        for (rawID, b) in hotkeys.windowLayouts ?? [:] {
+            guard let id = UUID(uuidString: rawID), core.windowLayouts.layout(id: id) != nil
+            else { continue }
+            apply(b, .windowLayout(id: id))
         }
         for (rawID, b) in hotkeys.quicklinks ?? [:] {
             guard let id = UUID(uuidString: rawID), core.quicklinks.quicklink(id: id) != nil else {

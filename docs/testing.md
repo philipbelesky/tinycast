@@ -57,7 +57,12 @@ is the trap: a running Tinycast records every write to it as a genuine copy, so 
 lands in clipboard history looking like something the user copied. `notes-editor-test` seeded one on
 every run from #232 onward by calling the native `copy:`/`cut:`/`paste:` actions; it now drives the
 `writeSelection(to:types:)` and `readSelection(from:)` primitives those actions delegate to, against
-`NSPasteboard.withUniqueName()`. Same AppKit path, no shared side effect.
+`NSPasteboard.withUniqueName()`. Same AppKit path, no shared side effect. `pasteboard-test` is the
+second case, and it is why `ClipboardManager.fileURLs(on:volatileRoots:)` and `Paster.write(_:store:to:)`
+each take the thing they act on as a parameter: a seam that exists so the harness never has to reach
+for the shared board. Its scratch tree lives under `temporaryDirectory`, which is itself a volatile
+root, so the cases about *reading* files inject an empty root list and the one case about durability
+is the one that runs against the shipped roots.
 
 Never join a compile to its run with `&&` in a `set -e` script. `set -e` is specified to ignore a
 failing command in a non-final AND-OR list member, so `swiftc … && /tmp/x` swallows a compile error and
@@ -70,7 +75,8 @@ If a change touches anything in the right column, the harness on the left is man
 
 | Harness | Guards |
 | --- | --- |
-| `fuzz-test` | `Launcher/Model/SearchRelevance.swift` |
+| `fuzz-test` | `Launcher/Model/SearchRelevance.swift`, `EntryNaming.swift`, `ScriptRomanization.swift`, `LauncherOrder.swift` |
+| `corpus-test` | the launcher's ranking, over a dense synthetic index — **a new complaint is a new case in `Tests/launcher-corpus/corpus.json`** |
 | `file-search-test` | `FileSearch/Model/`, plus the shared `FuzzyMatch` scorer |
 | `file-search-session-test` | serialized query execution, debounce coalescing and cancellation |
 | `ranking-test` | `Launcher/Model/LauncherRankingStore.swift` |
@@ -78,7 +84,8 @@ If a change touches anything in the right column, the harness on the left is man
 | `app-name-test` | `Platform/AppDisplayName.swift` — every path that names a scanned bundle |
 | `calc-test` | all of `Calculator/Model/` |
 | `calendar-test` | all of `Calendar/Model/` — link detection, the join window, the day buckets |
-| `clipboard-test` | `Clipboard/Model/ClipboardStore.swift` |
+| `clipboard-test` | `Clipboard/Model/ClipboardStore.swift`, `ClipboardFilter.swift`, `ClipboardFileKind.swift`, the colour trio |
+| `pasteboard-test` | `Clipboard/Service/ClipboardManager.swift` capture and `Paster.write` — what a Finder copy reads as, and what a file entry writes back |
 | `emoji-test` | `Emoji/Model/EmojiCatalog.swift`, `EmojiGridGeometry.swift`, the generated data |
 | `palette-selection-test` | `Features/PaletteRowIndex.swift` |
 | `palette-placement-test` | `DesignSystem/Theme.swift`, `Palette/PalettePlacement.swift` |
@@ -87,7 +94,8 @@ If a change touches anything in the right column, the harness on the left is man
 | `callout-test` | `DesignSystem/Theme.swift`, `Launcher/Model/ScopeTint.swift`, `HotKeys/UI/CalloutPlacement.swift` |
 | `system-action-test` | `SystemActions/Model/SystemAction.swift` |
 | `volume-test` | `SystemActions/Model/VolumeLevel.swift` |
-| `window-command-test` | `WindowManagement/WindowCommand.swift`, `WindowLayout.swift`, `WindowActionMemory.swift` |
+| `window-command-test` | `WindowManagement/WindowCommand.swift`, `WindowPlacementEngine.swift`, `WindowActionMemory.swift` |
+| `window-layout-test` | `WindowManagement/Model/WindowLayout*.swift` — the layout record, its geometry and its inverse, the plan and the store |
 | `custom-command-test` | `CustomCommands/Model/CustomCommand.swift`, `Service/ShellCommandRunner.swift` |
 | `uninstall-test` | all five pure files in `Uninstall/Model/` |
 | `quicklink-test` | all four files in `Quicklinks/Model/` |
@@ -138,7 +146,7 @@ when touching a pure file:
 - `Calculator/Model/` still takes its clock via `now`/`calendar` and its rates via `rates`
 - `Uninstall/Model/`'s deciding half still receives directory **names** and a `PathFacts`, never URLs
 - `HotKeys/Model/DoubleTap*` still take the clock as a parameter
-- `WindowManagement/` geometry still touches no `NSScreen` and makes no AX call
+- `WindowManagement/Model/` still touches no `NSScreen` and makes no AX call, layouts included
 - `Features/PaletteRowIndex.swift` still imports Foundation alone, despite living under `Features/`
 - `Quicklinks/Model/` is still handed the home directory rather than reading it
 - `FileSearch/Model/` is still handed the home directory rather than reading it
@@ -275,6 +283,9 @@ caches, TCC grants and login item, so this cannot disturb an installed copy.
 - ↵ pastes into the previous app; ⌥↵ pastes without closing the palette
 - A copy from an excluded app (Settings ▸ Clipboard ▸ Disabled Applications) is **not** recorded
 - Password-manager copies are still not recorded
+- Off (Settings ▸ Clipboard ▸ Enable Clipboard History): nothing new is recorded, the launcher row
+  and its shortcut are gone, the menu-bar row is gone, and Tab rings straight past the screen
+- Off then on again: existing clips come back; Clear history erases them while it is still off
 
 ### Launcher and icons
 

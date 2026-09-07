@@ -240,11 +240,13 @@ enum SettingsSearchCatalog {
         .init(pane: .ai, keywords: ["chat", "llm", "model", "openai", "anthropic"]),
         .init(.aiAI, "Enable AI", keywords: ["chat", "llm"]),
         .init(
-            .aiDefault, "Default model",
-            keywords: ["llm", "gpt", "claude"]),
-        .init(
-            .aiDefault, "Reasoning effort",
-            keywords: ["thinking", "chatgpt"]),
+            .aiProviders, "Providers",
+            keywords: [
+                "sign in", "connect", "codex", "claude", "opencode", "api key", "connection",
+                "base url", "openai", "anthropic", "ollama"
+            ]),
+        .init(.aiDefault, "Default model", keywords: ["llm", "gpt", "claude"]),
+        .init(.aiDefault, "Reasoning effort", keywords: ["thinking", "effort"]),
         .init(.aiChat, "Web search", keywords: ["browse", "internet"]),
         .init(
             .aiConversations, "Opens to",
@@ -258,12 +260,6 @@ enum SettingsSearchCatalog {
         .init(
             .aiSystemPrompt, "Send a system prompt",
             keywords: ["instructions", "persona"]),
-        .init(
-            group: .aiChatGPTSubscription, "ChatGPT Subscription",
-            keywords: ["sign in", "connect", "plus", "codex", "openai"]),
-        .init(
-            .aiAPIConnections, "Add API Connection",
-            keywords: ["key", "provider", "openai", "anthropic", "ollama", "base url"]),
         .init(
             .aiMCPServers, "Enable MCP servers",
             keywords: ["tools", "model context protocol"]),
@@ -342,7 +338,7 @@ enum SettingsSearchCatalog {
     private static let windowManagement: [SettingsSearchEntry] = [
         .init(
             pane: .windowManagement,
-            keywords: ["tile", "halves", "thirds", "maximize", "snap"]),
+            keywords: ["tile", "halves", "thirds", "maximize", "snap", "layouts", "arrangement"]),
         .init(
             .windowManagementWindowManagement, "Enable window management",
             keywords: ["tile", "accessibility"]),
@@ -354,13 +350,31 @@ enum SettingsSearchCatalog {
             keywords: ["padding", "spacing", "margin", "points"]),
         .init(
             group: .windowManagementOptions, "Window commands",
-            keywords: ["shortcut", "left half", "maximize", "center"])
+            keywords: ["shortcut", "left half", "maximize", "center"]),
+        .init(
+            group: .windowManagementLayouts, "Window Layouts",
+            keywords: [
+                "layout", "arrangement", "workspace", "preset", "restore windows",
+                "multi display", "monitor"
+            ]),
+        .init(
+            .windowManagementLayouts, "Show layouts in launcher",
+            keywords: ["hide", "visibility", "search"]),
+        .init(
+            .windowManagementLayouts, "New Layout",
+            keywords: ["add", "create", "arrangement", "preset"]),
+        .init(
+            .windowManagementLayouts, "Create Layout from Current Windows",
+            keywords: ["capture", "snapshot", "current", "save arrangement"])
     ]
 
     private static let clipboard: [SettingsSearchEntry] = [
         .init(
             pane: .clipboard,
             keywords: ["paste", "history", "copy", "pasteboard"]),
+        .init(
+            .clipboardClipboard, "Enable Clipboard History",
+            keywords: ["disable", "turn off", "monitor", "record", "privacy"]),
         .init(
             .clipboardGlobalShortcuts, "Clipboard History",
             keywords: ["hotkey", "paste", "browser"]),

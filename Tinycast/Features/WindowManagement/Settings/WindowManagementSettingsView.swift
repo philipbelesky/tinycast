@@ -2,9 +2,12 @@ import SwiftUI
 
 struct WindowManagementSettingsView: View {
     @Environment(AppSettings.self) private var settings
+    @Environment(AppCore.self) private var core
+    @State private var pendingDeletion: WindowLayout?
 
     var body: some View {
         @Bindable var settings = settings
+        @Bindable var core = core
         return Form {
             FeatureSwitchSection(
                 anchor: .windowManagementWindowManagement,
@@ -17,6 +20,7 @@ struct WindowManagementSettingsView: View {
 
             Group {
                 options
+                WindowLayoutsSection(onDelete: { pendingDeletion = $0 })
                 commands
             }
             .settingsEnabled(settings.windowManagementEnabled)
@@ -28,6 +32,19 @@ struct WindowManagementSettingsView: View {
         }
         .formStyle(.grouped)
         .settingsScrollTarget(.windowManagement)
+        // Presented from the pane, so the two launcher commands can open it too.
+        .sheet(item: $core.pendingWindowLayoutEdit) { request in
+            WindowLayoutEditorSheet(request: request)
+        }
+        .alert(item: $pendingDeletion) { layout in
+            Alert(
+                title: Text("Delete \u{201C}\(layout.name)\u{201D}?"),
+                message: Text("Its global shortcut and launcher references go with it."),
+                primaryButton: .destructive(Text("Delete")) {
+                    core.windowLayoutCoordinator.deleteWindowLayout(id: layout.id)
+                },
+                secondaryButton: .cancel())
+        }
     }
 
     private var options: some View {

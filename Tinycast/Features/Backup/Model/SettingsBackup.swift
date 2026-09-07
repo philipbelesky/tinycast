@@ -7,6 +7,7 @@ struct SettingsBackup: Codable {
     var hotkeys: HotkeyBackup?
     var customCommands: [CustomCommand]?
     var quicklinks: [Quicklink]?
+    var windowLayouts: [WindowLayout]?
     var favoriteApps: [String]?
     var hiddenLauncherItems: [String]?
     var hiddenLauncherKinds: [String]?
@@ -15,6 +16,8 @@ struct SettingsBackup: Codable {
     /// Enums store by raw value, so an unknown one is ignored rather than failing.
     struct SettingsData: Codable {
         // Adding a field here means adding it to SettingsBackupCoverage too, or the harness fails.
+        // Carried, unlike the consent flags: recording your own copies grants no permission class.
+        var clipboardEnabled: Bool?
         var clipboardRetentionDays: Int?
         var clipboardDisabledApps: [String]?
         var launchAtLogin: Bool?
@@ -44,6 +47,7 @@ struct SettingsBackup: Codable {
         var windowManagementShowInLauncher: Bool?
         var windowGap: Int?
         var windowCycleOnRepeat: Bool?
+        var windowLayoutsShowInLauncher: Bool?
         // Carried, unlike `snippetsEnabled`: opening a link grants no permission class of its own.
         var quicklinksEnabled: Bool?
         var quicklinksShowInLauncher: Bool?
@@ -97,6 +101,7 @@ struct SettingsBackup: Codable {
         var systemActions: [String: HotKeyBinding]?
         var windowCommands: [String: HotKeyBinding]?
         var quicklinks: [String: HotKeyBinding]?
+        var windowLayouts: [String: HotKeyBinding]?
     }
 
     /// A tally of what an import touched, for user-facing confirmation.
@@ -108,6 +113,7 @@ struct SettingsBackup: Codable {
         var aliases = 0
         var customCommands = 0
         var quicklinks = 0
+        var windowLayouts = 0
     }
 }
 

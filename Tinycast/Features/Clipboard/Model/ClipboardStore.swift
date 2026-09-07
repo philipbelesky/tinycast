@@ -5,10 +5,11 @@ import SQLite3
 private let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
 
 struct ClipboardItem: Identifiable, Hashable, Sendable {
-    enum Kind: String, Sendable { case text, image }
+    enum Kind: String, Sendable { case text, image, file }
 
     let id: UUID
     let kind: Kind
+    /// The copied text, or for a `.file` entry the absolute path — which is what FTS indexes.
     let text: String?
     /// Absolute path on disk; only files under `imagesDir` are ours to delete.
     let imagePath: String?
@@ -20,6 +21,9 @@ struct ClipboardItem: Identifiable, Hashable, Sendable {
 
     var isPinned: Bool { pinnedAt != nil }
 
+    /// The referenced path, so no call site re-derives a file entry's meaning from `text`.
+    var filePath: String? { kind == .file ? text : nil }
+
     init(text: String, sourceBundleID: String?) {
         self.init(
             id: UUID(), kind: .text, text: text, imagePath: nil, createdAt: Date(),
@@ -29,6 +33,13 @@ struct ClipboardItem: Identifiable, Hashable, Sendable {
     init(imagePath: String, createdAt: Date = Date(), sourceBundleID: String?) {
         self.init(
             id: UUID(), kind: .image, text: nil, imagePath: imagePath, createdAt: createdAt,
+            sourceBundleID: sourceBundleID)
+    }
+
+    /// Referenced where it lies: `imagePath` stays nil, keeping an unowned file from `deleteBlob`.
+    init(filePath: String, createdAt: Date = Date(), sourceBundleID: String?) {
+        self.init(
+            id: UUID(), kind: .file, text: filePath, imagePath: nil, createdAt: createdAt,
             sourceBundleID: sourceBundleID)
     }
 
@@ -156,14 +167,25 @@ final class ClipboardStore {
         imagesDir = base.appendingPathComponent("images", isDirectory: true)
         dbURL = base.appendingPathComponent("clipboard.sqlite3")
         try? FileManager.default.createDirectory(at: imagesDir, withIntermediateDirectories: true)
-        if !openDatabase() {
-            // Captured, not authored: discard a corrupt or outdated database and start over.
-            closeDatabase()
-            for suffix in ["", "-wal", "-shm"] {
-                try? FileManager.default.removeItem(atPath: dbURL.path + suffix)
-            }
-            if !openDatabase() { closeDatabase() }
+        open()
+    }
+
+    /// Idempotent, so the coordinator can re-open the file when the feature is switched back on.
+    func open() {
+        guard db == nil else { return }
+        if openDatabase() { return }
+        // Captured, not authored: discard a corrupt or outdated database and start over.
+        closeDatabase()
+        for suffix in ["", "-wal", "-shm"] {
+            try? FileManager.default.removeItem(atPath: dbURL.path + suffix)
         }
+        if !openDatabase() { closeDatabase() }
+    }
+
+    /// Every accessor is statement-guarded, so a closed store answers as an empty history.
+    func close() {
+        closeDatabase()
+        items = []
     }
 
     /// Application Support, not Caches: a history the OS may reclaim is not a history.
@@ -212,6 +234,19 @@ final class ClipboardStore {
     func addText(_ text: String, sourceBundleID: String?) {
         if items.first?.kind == .text, items.first?.text == text { return }
         insert(ClipboardItem(text: text, sourceBundleID: sourceBundleID))
+    }
+
+    /// One row per file. Batched, so a multi-file copy prunes once rather than once per file.
+    func addFiles(_ paths: [String], sourceBundleID: String?) {
+        // Only a single file can be a ⌘C repeat, which is the case `addText` also guards.
+        if paths.count == 1, items.first?.kind == .file, items.first?.text == paths[0] { return }
+        for path in paths {
+            let item = ClipboardItem(filePath: path, sourceBundleID: sourceBundleID)
+            if let stmt = insertStmt { Self.bindAndInsert(stmt, item) }
+            items.insert(item, at: 0)
+        }
+        trimWindow()
+        prune()
     }
 
     func addImage(_ data: Data, sourceBundleID: String?) {
@@ -265,6 +300,11 @@ final class ClipboardStore {
 
     func imageURL(for item: ClipboardItem) -> URL? {
         guard let path = item.imagePath else { return nil }
+        return URL(fileURLWithPath: path)
+    }
+
+    func fileURL(for item: ClipboardItem) -> URL? {
+        guard let path = item.filePath else { return nil }
         return URL(fileURLWithPath: path)
     }
 
@@ -570,7 +610,8 @@ final class ClipboardStore {
     nonisolated private static func importKey(_ item: ClipboardItem) -> Int {
         var hasher = Hasher()
         hasher.combine(item.kind)
-        hasher.combine(item.kind == .text ? item.text : item.imagePath)
+        // Keyed off `text` for everything but an image, or every file entry hashes alike.
+        hasher.combine(item.kind == .image ? item.imagePath : item.text)
         return hasher.finalize()
     }
 

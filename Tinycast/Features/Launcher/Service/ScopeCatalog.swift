@@ -53,7 +53,7 @@ enum ScopeCatalog {
             definition: ScopeDefinition(
                 keyword: "w", id: windowManagement, title: "Window Management",
                 symbol: "macwindow.on.rectangle", tint: .teal),
-            target: .kinds([.windowCommand, .systemAction])),
+            target: .kinds([.windowCommand, .windowLayout, .systemAction])),
         Entry(
             definition: ScopeDefinition(
                 keyword: "h", id: herdr, title: "herdr", symbol: "macwindow", tint: .brown),

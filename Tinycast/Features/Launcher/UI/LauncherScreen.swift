@@ -25,6 +25,8 @@ struct LauncherScreen: PaletteScreen {
     private let suggestions: [String]
     /// True when cached destinations share the list with on-demand Linear ticket results.
     private let isLinearScope: Bool
+    /// The colour the query itself spells, if it spells one; nil for every other query.
+    private let color: ColorValue?
     /// Sections stand in for the ranked Results list, which a typed query collapses to.
     private let showSections: Bool
     /// Only the empty query pins favorites — a category shows its sections without one of its own.
@@ -89,6 +91,8 @@ struct LauncherScreen: PaletteScreen {
             ? CalcMemo.evaluate(vm.query, rates: currencyRates.source) : nil
         // Scoped for the same reason: the section widens a query a scope has just narrowed.
         let fallbacks = vm.scope == nil ? core.fallbackCoordinator.entries(for: vm.query) : []
+        let color = engine == nil && !isLinearScope && calc == nil
+            ? ColorValue.parse(vm.query) : nil
         let entries = results.map(Row.entry) + fallbacks.map { Row.fallback($0.fallback, $0.entry) }
         let pinsFavorites =
             engine == nil && vm.scope == nil
@@ -104,6 +108,7 @@ struct LauncherScreen: PaletteScreen {
         let suggestions = engine == nil ? [] : core.searchSuggestions.suggestions(for: vm.query)
         self.suggestions = suggestions
         self.fallbacks = fallbacks
+        self.color = color
         self.showSections =
             engine == nil && !isLinearScope
             && (pinsFavorites || AppEntry.Kind.named(by: vm.query) != nil)
@@ -113,6 +118,8 @@ struct LauncherScreen: PaletteScreen {
             self.rows = [.webSearch(engine)] + suggestions.map(Row.suggestion)
         } else if let calc {
             self.rows = [.calc(calc)] + entries
+        } else if let color {
+            self.rows = [.color(color)] + entries
         } else if let meeting {
             self.rows = [.meeting(meeting)] + entries
         } else {
@@ -126,6 +133,7 @@ struct LauncherScreen: PaletteScreen {
         case meeting(MeetingEvent)
         case webSearch(WebSearchEngine)
         case suggestion(String)
+        case color(ColorValue)
         case entry(AppEntry)
         /// Prefixed, because the same command can also be a ranked hit above its own fallback row.
         case fallback(Fallback, AppEntry)
@@ -136,6 +144,7 @@ struct LauncherScreen: PaletteScreen {
             case .meeting: return "meeting-card"
             case .webSearch(let engine): return engine.entryID
             case .suggestion(let text): return SearchSuggestions.rowID(text)
+            case .color: return "color-card"
             case .entry(let app): return app.id
             case .fallback(let fallback, _): return "fallback-" + fallback.id
             }
@@ -151,6 +160,7 @@ struct LauncherScreen: PaletteScreen {
     var primaryActionTitle: String {
         switch row(at: clampedSelection) {
         case .calc: return "Copy Answer"
+        case .color: return "Copy Color"
         case .meeting(let meeting):
             return meeting.link == nil ? "Open in Calendar" : "Join Meeting"
         case .webSearch(let engine): return "Search \(engine.name)"
@@ -200,7 +210,7 @@ struct LauncherScreen: PaletteScreen {
 
     private func isCardSelected(_ selection: Int) -> Bool {
         switch row(at: selection) {
-        case .calc, .meeting: return true
+        case .calc, .meeting, .color: return true
         case .webSearch, .suggestion, .entry, .fallback, nil: return false
         }
     }
@@ -208,6 +218,7 @@ struct LauncherScreen: PaletteScreen {
     /// Whichever card leads, in the terms the list draws it in.
     private var leadCard: LauncherList.LeadCard? {
         if let calc { return .calc(calc) }
+        if let color { return .color(color) }
         return meeting.map { .meeting($0, now: now) }
     }
 
@@ -218,7 +229,7 @@ struct LauncherScreen: PaletteScreen {
         // An empty scoped query has nothing to search for yet; the row still invites text.
         case .webSearch(let engine):
             return core.webSearchCoordinator.canSearch(engine: engine, query: vm.query)
-        case .meeting, .suggestion, .entry, .fallback, nil: return true
+        case .meeting, .color, .suggestion, .entry, .fallback, nil: return true
         }
     }
 
@@ -226,6 +237,8 @@ struct LauncherScreen: PaletteScreen {
         switch row(at: selection) {
         case .calc(let result):
             return result.isActionable ? CalcActionsMenu.content(result: result, core: core) : nil
+        case .color(let color):
+            return ColorActionsMenu.content(color: color, core: core)
         case .meeting(let meeting):
             return MeetingActionsMenu.content(meeting: meeting, core: core)
         case .entry(let app):
@@ -251,6 +264,8 @@ struct LauncherScreen: PaletteScreen {
         switch row(at: selection) {
         // Error cards no-op — copyCalculatorResult only acts on value payloads.
         case .calc(let result): core.calculatorCoordinator.copyCalculatorResult(result)
+        case .color(let color):
+            core.clipboardCoordinator.copyColor(color, as: ColorFormat.primary(for: color))
         case .meeting(let meeting): core.calendarCoordinator.activateMeeting(id: meeting.id)
         case .webSearch(let engine):
             core.webSearchCoordinator.search(engine: engine, query: vm.query)
@@ -368,7 +383,7 @@ struct LauncherScreen: PaletteScreen {
     }
 
     private func select(row index: Int) {
-        vm.selection = index + (calc == nil && meeting == nil ? 0 : 1)
+        vm.selection = index + (leadCard == nil ? 0 : 1)
         scrollToFollow()
     }
 

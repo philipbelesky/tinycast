@@ -3,6 +3,7 @@ import Foundation
 /// The UserDefaults keys `AppSettings` owns; `CaseIterable` so the backup harness enumerates them.
 enum AppSettingsKey: String, CaseIterable {
     // Every raw value is spelled out so renaming a case can never rename a persisted key.
+    case clipboardEnabled = "clipboardEnabled"
     case clipboardRetention = "clipboardRetentionDays"
     case clipboardDisabledApps = "clipboardDisabledApps"
     case hyperKey = "hyperKeyPhysicalKey"
@@ -30,6 +31,7 @@ enum AppSettingsKey: String, CaseIterable {
     case windowManagementShowInLauncher = "windowManagementShowInLauncher"
     case windowGap = "windowManagementGap"
     case windowCycleOnRepeat = "windowManagementCycleOnRepeat"
+    case windowLayoutsShowInLauncher = "windowLayoutsShowInLauncher"
     case quicklinksEnabled = "quicklinksEnabled"
     case quicklinksShowInLauncher = "quicklinksShowInLauncher"
     case quicklinkOpensNewWindow = "quicklinkOpensNewWindow"
@@ -64,6 +66,7 @@ enum AppSettingsKey: String, CaseIterable {
     case menuBarLinkedEventsOnly = "menuBarLinkedEventsOnly"
     case hideCurrentEvent = "hideCurrentEvent"
     case aiEnabled = "aiEnabled"
+    case aiInstalledProviders = "aiInstalledProviders"
     case aiConnections = "aiConnections"
     case aiDefaultModel = "aiDefaultModel"
     case aiWebSearch = "aiWebSearch"
