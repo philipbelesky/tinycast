@@ -18,8 +18,8 @@ enum LinearDestination: String, CaseIterable, Identifiable, Sendable {
 
 /// One Linear destination worth opening, from a sidebar route or an on-demand ticket lookup.
 /// See docs/features/linear.md.
-struct LinearTarget: Identifiable, Hashable, Sendable {
-    enum Kind: String, Sendable {
+struct LinearTarget: Identifiable, Hashable, Codable, Sendable {
+    enum Kind: String, Codable, Sendable {
         case saved
         case builtIn
         case project
@@ -46,7 +46,7 @@ struct LinearTarget: Identifiable, Hashable, Sendable {
         }
     }
 
-    struct IssueDetails: Hashable, Sendable {
+    struct IssueDetails: Hashable, Codable, Sendable {
         let identifier: String
         let stateName: String
         let updatedAt: Date

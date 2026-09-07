@@ -363,6 +363,7 @@
 		A32BE15F664FB1215BE084BC /* ExtensionFormMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5D1A8D93DEC49E4EA11C449 /* ExtensionFormMetrics.swift */; };
 		A33EA048BC22D7313F4D480C /* EventDraftFields.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D8553E1626E985013046C47 /* EventDraftFields.swift */; };
 		A41185C975CBF97A8C6EAC19 /* SystemPromptEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF36BDC9ACE867DCC2CCF746 /* SystemPromptEditor.swift */; };
+		A478C593BD12FB1717EA83DC /* LinearIssueIndexStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55ABE856C3D3051D1743F3A4 /* LinearIssueIndexStore.swift */; };
 		A47E49315D60D94CF75E22C9 /* PaletteDropGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 418527DD2F2370A1B82A13B7 /* PaletteDropGuideView.swift */; };
 		A500AF3BF8910B335A7A936C /* HUDPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB1752929BA1ACC0BC54865C /* HUDPanel.swift */; };
 		A5354210CDCB796D2D988B82 /* RaycastImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14F474B4E9FD7738D97AB65E /* RaycastImport.swift */; };
@@ -476,7 +477,6 @@
 		D6D8169527668572F0073F94 /* RelaunchRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = E01488803F8025B0523D44BA /* RelaunchRunner.swift */; };
 		D736A0FE574A343AA0FD3911 /* AppIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E58EBB08450BA3426DF0565 /* AppIndex.swift */; };
 		D9113113F828FD6983715D6B /* UninstallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62F2B0F5FDD503E6BB739A47 /* UninstallView.swift */; };
-		D9128F4FF922EE2458CE0C2E /* LinearIssueSearchCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36550C99423035D7B513D199 /* LinearIssueSearchCache.swift */; };
 		D99DAF62B746E6009E1BFB1F /* QuickAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8A4DEF28F120FE354EB5599 /* QuickAction.swift */; };
 		D9F77EF819BE3A06AA6B25A3 /* QuickActionPrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = F513217C40F0B8199DC57A35 /* QuickActionPrompt.swift */; };
 		DA1EE0A8933EADD357FCE32C /* QuicklinkArgumentSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54E48A8D5E2BC00E9E1CD5BF /* QuicklinkArgumentSession.swift */; };
@@ -508,6 +508,7 @@
 		E4C6F315EA0F0544D9E4BB08 /* FileIconStamp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC39721B6964B279FB5D5DC3 /* FileIconStamp.swift */; };
 		E4C8AF492A31FE7DD21F34DF /* HerdrTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 813DE3A2C24B44F770217566 /* HerdrTarget.swift */; };
 		E4E1403AA9A8ACE4A3D3581C /* MeetingEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B330ABFC83721904159DDF2 /* MeetingEvent.swift */; };
+		E53B852CB14455DE519A72C5 /* LinearIssueIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4EC3764A0FE06710393A5F1 /* LinearIssueIndex.swift */; };
 		E58AB83C608F8BBF99EAEB7E /* QuicklinkListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 856F65245B10433A230194E6 /* QuicklinkListView.swift */; };
 		E5DFE5B70598CD2279D6A2AB /* FallbacksSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61D7B06067FB35E7CC6C1E09 /* FallbacksSettingsView.swift */; };
 		E625A725A4B52B23173A9EB2 /* ScopeCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 528202142420E3E6B4036C0F /* ScopeCatalog.swift */; };
@@ -685,7 +686,6 @@
 		33994DC2FB0A6B23A403CA29 /* AppLauncher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLauncher.swift; sourceTree = "<group>"; };
 		3447094D26F75622B6C0EEED /* VSCodeProjectScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VSCodeProjectScanner.swift; sourceTree = "<group>"; };
 		364BEC0805A8F5C39444EAF5 /* SettingsNavigationState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsNavigationState.swift; sourceTree = "<group>"; };
-		36550C99423035D7B513D199 /* LinearIssueSearchCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinearIssueSearchCache.swift; sourceTree = "<group>"; };
 		366EF3CB6D22631F4EF604D4 /* SyncEnvelope.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncEnvelope.swift; sourceTree = "<group>"; };
 		36B6DAC3B9FF387367C3FAB4 /* UninstallSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UninstallSession.swift; sourceTree = "<group>"; };
 		36C6775BBA0FC6F134296606 /* ImageThumbnail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageThumbnail.swift; sourceTree = "<group>"; };
@@ -757,6 +757,7 @@
 		53DBA322BA1F117530075F51 /* QuickActionFailure.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickActionFailure.swift; sourceTree = "<group>"; };
 		548C83C4086CD9FB8E85B222 /* ClipboardScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardScreen.swift; sourceTree = "<group>"; };
 		54E48A8D5E2BC00E9E1CD5BF /* QuicklinkArgumentSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuicklinkArgumentSession.swift; sourceTree = "<group>"; };
+		55ABE856C3D3051D1743F3A4 /* LinearIssueIndexStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinearIssueIndexStore.swift; sourceTree = "<group>"; };
 		5645BBC2FCBD23A65CE28AE3 /* HerdrCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrCoordinator.swift; sourceTree = "<group>"; };
 		56D6EE5144AEF889C95B3758 /* QuickActionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickActionCoordinator.swift; sourceTree = "<group>"; };
 		570CE37C7133E28F7495ED91 /* MarkdownCodeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownCodeView.swift; sourceTree = "<group>"; };
@@ -921,6 +922,7 @@
 		A0BAA0471DD8CE4352F45FED /* ExtensionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionCoordinator.swift; sourceTree = "<group>"; };
 		A1306524F57602D90FCF153C /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		A178C17DB989B6D2D71C021E /* ExtensionActionsPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionActionsPanel.swift; sourceTree = "<group>"; };
+		A4EC3764A0FE06710393A5F1 /* LinearIssueIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinearIssueIndex.swift; sourceTree = "<group>"; };
 		A5873BB8728FD8BC5D256A21 /* CameraCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraCoordinator.swift; sourceTree = "<group>"; };
 		A5958B66BC7FD9FE3F2B8F49 /* MCPStdioTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPStdioTransport.swift; sourceTree = "<group>"; };
 		A5A8F78D3F1BFA8E86F9CB47 /* AppAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppAppearance.swift; sourceTree = "<group>"; };
@@ -1538,8 +1540,8 @@
 			isa = PBXGroup;
 			children = (
 				AFF7E22E3E0991E0CE3D468D /* LinearCredentials.swift */,
+				A4EC3764A0FE06710393A5F1 /* LinearIssueIndex.swift */,
 				6BC47767FD3C1D7C4A5BD7D4 /* LinearIssueLookup.swift */,
-				36550C99423035D7B513D199 /* LinearIssueSearchCache.swift */,
 				44E065C3D4202597CAD5CE82 /* LinearTarget.swift */,
 			);
 			path = Model;
@@ -2808,6 +2810,7 @@
 			isa = PBXGroup;
 			children = (
 				6FDD76D05F065BE99B37DFA8 /* LinearClient.swift */,
+				55ABE856C3D3051D1743F3A4 /* LinearIssueIndexStore.swift */,
 				E4E815313F21009CA394A630 /* LinearProcessRunner.swift */,
 				683C45433072310B695596E7 /* LinearStore.swift */,
 			);
@@ -3224,8 +3227,9 @@
 				73DFEE403C86965605E8571B /* LinearClient.swift in Sources */,
 				9229286C78240516FE89D930 /* LinearCoordinator.swift in Sources */,
 				5318B5BD75E2083C81D6AA54 /* LinearCredentials.swift in Sources */,
+				E53B852CB14455DE519A72C5 /* LinearIssueIndex.swift in Sources */,
+				A478C593BD12FB1717EA83DC /* LinearIssueIndexStore.swift in Sources */,
 				60433FF1A710BDEC32ACBAA6 /* LinearIssueLookup.swift in Sources */,
-				D9128F4FF922EE2458CE0C2E /* LinearIssueSearchCache.swift in Sources */,
 				413229A73BA5D3DE7DD1D3A5 /* LinearProcessRunner.swift in Sources */,
 				958CBB84143DFB4EEFAF800B /* LinearSettingsView.swift in Sources */,
 				156C511B04E360BDF2C5B133 /* LinearStore.swift in Sources */,

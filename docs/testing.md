@@ -324,7 +324,7 @@ caches, TCC grants and login item, so this cannot disturb an installed copy.
 - The `l` scope shows cached destinations without making a ticket request; `861` finds that exact number across authenticated workspaces, and `PC-861` narrows it by team key
 - A three-character title query returns current issue matches, while one or two characters make no request; number and full-identifier lookup can return an archived issue
 - Results identify their workspace and state, open in the configured app or browser, and expose no favourite, hotkey, ranking-reset or Finder actions
-- Replacing a query rapidly never lets the older response land; leaving the scope cancels the lookup, and repeating a completed query within five minutes uses the memory cache
+- Replacing a query rapidly never lets the older response land; leaving the scope cancels the lookup, and cached matches appear immediately, including after relaunch
 - Turning Linear off during a lookup clears destinations and issue rows, cancels the request and deletes the disk cache; turning it back on republishes cached destinations immediately
 - With one authenticated workspace unavailable, successful workspace results still appear but are not cached; with every workspace unavailable, the palette reports that search is unavailable
 
@@ -494,3 +494,11 @@ tccutil reset Accessibility com.belesky.tinycast.dev 2>/dev/null || true
 - Quit and relaunch: everything created above persisted
 - Nothing was written outside `com.belesky.tinycast.dev/`. Channel isolation is not negotiable — a Dev build
   writing into the stable app's directory is a defect even though the data is disposable
+
+### Linear issue cache
+
+- Cached ticket matches appear before the live-search debounce and survive relaunch.
+- A fast workspace publishes while another remains pending; changing the query never shows the previous query’s rows.
+- Disabling Linear during a refresh removes cached tickets and prevents late replies or writes from restoring them.
+- Changing the configured account clears previous metadata, while a failed refresh retains the last successful snapshot.
+- Fresh snapshots are not refetched on repeated palette openings; stale snapshots refresh half-hourly and after wake.

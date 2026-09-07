@@ -284,23 +284,6 @@ struct LinearTest {
             "a foreign issue URL is dropped",
             !issues.contains { $0.issueDetails?.identifier == "PC-863" })
 
-        // MARK: - Memory-only issue cache
-
-        let lookup = LinearIssueLookup.number(861)
-        let fetchedAt = Date(timeIntervalSince1970: 1_000)
-        var cache = LinearIssueSearchCache()
-        cache.store(issues, for: lookup, fetchedAt: fetchedAt)
-        check(
-            "an issue lookup is reused inside five minutes",
-            cache.targets(for: lookup, now: fetchedAt.addingTimeInterval(299)) == issues)
-        check(
-            "an issue lookup expires at five minutes",
-            cache.targets(for: lookup, now: fetchedAt.addingTimeInterval(300)) == nil)
-        cache.removeAll()
-        check(
-            "clearing the memory cache forgets every issue", cache.targets(for: lookup, now: fetchedAt) == nil
-        )
-
         print(failures == 0 ? "\nALL PASSED" : "\n\(failures) FAILED")
         exit(failures == 0 ? 0 : 1)
     }

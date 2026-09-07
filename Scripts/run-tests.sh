@@ -354,9 +354,17 @@ run vscode-test            Tinycast/Features/VSCode/Model/VSCodeProject.swift
 run linear-test            Tinycast/Features/Linear/Model/LinearTarget.swift \
                            Tinycast/Features/Linear/Model/LinearCredentials.swift \
                            Tinycast/Features/Linear/Model/LinearIssueLookup.swift \
-                           Tinycast/Features/Linear/Model/LinearIssueSearchCache.swift \
                            Tinycast/Features/Linear/Service/LinearProcessRunner.swift \
                            Tinycast/Platform/SubprocessEnvironment.swift
+run linear-index-test      Tinycast/Features/Linear/Model/LinearTarget.swift \
+                           Tinycast/Features/Linear/Model/LinearIssueLookup.swift \
+                           Tinycast/Features/Linear/Model/LinearIssueIndex.swift
+run linear-index-store-test Tinycast/Features/Linear/Model/*.swift \
+                            Tinycast/Features/Linear/Service/LinearClient.swift \
+                            Tinycast/Features/Linear/Service/LinearProcessRunner.swift \
+                            Tinycast/Features/Linear/Service/LinearIssueIndexStore.swift \
+                            Tinycast/Platform/SubprocessEnvironment.swift \
+                            Tinycast/Platform/NotificationToken.swift
 run sync-test              Tinycast/Features/Sync/Model/SyncEnvelope.swift \
                            Tinycast/Features/Sync/Model/SyncPlan.swift \
                            Tinycast/Features/Backup/Model/SettingsBackup.swift \

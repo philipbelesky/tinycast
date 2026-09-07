@@ -7,14 +7,6 @@ import Foundation
 final class LinearStore {
     /// Views change rarely and each refresh costs one request per workspace, so this is generous.
     static let refreshInterval: TimeInterval = 6 * 3600
-    private static let issueSearchDebounce: Duration = .milliseconds(200)
-
-    enum IssueSearchState: Equatable {
-        case idle
-        case searching
-        case ready
-        case failed
-    }
 
     /// On unless turned off. Not in `AppSettings`, so no import can flip it either way.
     private(set) var isEnabled: Bool
@@ -24,9 +16,9 @@ final class LinearStore {
     private(set) var lastRefreshed: Date?
     /// Why the last refresh came back short, verbatim from the CLI. Nil when it went fine.
     private(set) var lastError: String?
-    private(set) var issueSearchState = IssueSearchState.idle
-    private(set) var issueSearchError: String?
-    private(set) var issueSearchTargets: [LinearTarget] = []
+    let issues = LinearIssueIndexStore(fileURL: AppPaths.caches().appendingPathComponent("linear-issues.json"))
+    var issueSearchState: LinearIssueIndexStore.SearchState { issues.searchState }
+    var issueSearchError: String? { issues.searchError }
 
     /// Built-ins are routes rather than saved work, so they are opt-out on their own.
     var includesBuiltIn: Bool {
@@ -44,9 +36,6 @@ final class LinearStore {
     private let defaults = UserDefaults.standard
     private let fileURL: URL
     @ObservationIgnored private var refreshing = false
-    @ObservationIgnored private var issueSearchTask: Task<Void, Never>?
-    @ObservationIgnored private var activeIssueLookup: LinearIssueLookup?
-    @ObservationIgnored private var issueSearchCache = LinearIssueSearchCache()
 
     struct Cache: Codable, Sendable {
         var fetchedAt: Date
@@ -86,6 +75,7 @@ final class LinearStore {
     /// Switched off, or inside the interval, this reaches no network at all.
     func refreshIfStale() async {
         guard isEnabled else { return }
+        issues.refreshIfStale()
         let age = lastRefreshed.map { Date().timeIntervalSince($0) } ?? .infinity
         guard age >= Self.refreshInterval else { return }
         await refresh(force: true)
@@ -120,6 +110,7 @@ final class LinearStore {
         isEnabled = enabled
         defaults.set(enabled, forKey: Self.consentKey)
         guard !enabled else {
+            issues.start()
             onChange?(targets)
             Task { await refresh(force: true) }
             return
@@ -128,76 +119,28 @@ final class LinearStore {
         lastRefreshed = nil
         lastError = nil
         clearIssueSearch()
-        issueSearchCache.removeAll()
+        issues.stop(removeCache: true)
         try? FileManager.default.removeItem(at: fileURL)
         onChange?([])
     }
 
-    /// Debounces a title, number or full-identifier lookup and forgets superseded visible results.
-    func updateIssueSearch(_ rawQuery: String) {
-        guard isEnabled, let lookup = LinearIssueLookup.parse(rawQuery) else {
-            clearIssueSearch()
-            return
-        }
-        if activeIssueLookup == lookup, issueSearchState != .failed { return }
-        issueSearchTask?.cancel()
-        activeIssueLookup = lookup
-        issueSearchError = nil
-        if let cached = issueSearchCache.targets(for: lookup, now: Date()) {
-            issueSearchTargets = cached
-            issueSearchState = .ready
-            issueSearchTask = nil
-            return
-        }
-        issueSearchTargets = []
-        issueSearchState = .searching
-        issueSearchTask = Task { [weak self] in
-            try? await Task.sleep(for: Self.issueSearchDebounce)
-            guard !Task.isCancelled, let self, self.isEnabled,
-                self.activeIssueLookup == lookup
-            else { return }
-            let snapshot = await LinearClient.searchIssues(lookup)
-            guard !Task.isCancelled, self.isEnabled, self.activeIssueLookup == lookup else { return }
-            self.issueSearchTask = nil
-            self.issueSearchTargets = snapshot.targets
-            self.issueSearchError =
-                snapshot.failures.isEmpty
-                ? nil : snapshot.failures.joined(separator: "; ")
-            self.issueSearchState = snapshot.successfulWorkspaceCount == 0 ? .failed : .ready
-            if snapshot.failures.isEmpty {
-                self.issueSearchCache.store(snapshot.targets, for: lookup, fetchedAt: Date())
-            }
-        }
-    }
+    func updateIssueSearch(_ rawQuery: String) { issues.updateSearch(rawQuery) }
 
-    /// Cancels the visible ticket lookup while retaining the short in-memory repeat cache.
-    func clearIssueSearch() {
-        guard
-            activeIssueLookup != nil || issueSearchTask != nil || !issueSearchTargets.isEmpty
-                || issueSearchError != nil || issueSearchState != .idle
-        else { return }
-        issueSearchTask?.cancel()
-        issueSearchTask = nil
-        activeIssueLookup = nil
-        issueSearchTargets = []
-        issueSearchError = nil
-        issueSearchState = .idle
-    }
+    func clearIssueSearch() { issues.clearSearch() }
 
-    func issueTargets(for rawQuery: String) -> [LinearTarget] {
-        guard isEnabled, activeIssueLookup == LinearIssueLookup.parse(rawQuery),
-            issueSearchState == .ready
-        else { return [] }
-        return issueSearchTargets
-    }
+    func issueTargets(for rawQuery: String) -> [LinearTarget] { issues.targets(for: rawQuery) }
 
     func isIssueTarget(id: String) -> Bool {
-        issueSearchTargets.contains { $0.id == id && $0.kind == .issue }
+        issues.searchTargets.contains { $0.id == id && $0.kind == .issue }
     }
 
     func target(id: String) -> LinearTarget? {
-        targets.first { $0.id == id } ?? issueSearchTargets.first { $0.id == id }
+        targets.first { $0.id == id } ?? issues.searchTargets.first { $0.id == id }
     }
+
+    func start() { if isEnabled { issues.start() } }
+
+    func stop() { issues.stop() }
 
     private func store(_ targets: [LinearTarget]) {
         let cache = Cache(

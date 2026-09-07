@@ -347,6 +347,8 @@ Debug-run dylib injection is inherited by every child process and breaks any too
 executable, so both this and `HerdrClient` strip `DYLD_*` before spawning. Deleting that line
 reintroduces a bug that only appears when the app is launched from Xcode.
 
+**Ticket search is local first.** A per-channel disk cache holds at most 500 issue metadata records per workspace and refreshes stale snapshots half-hourly, including checks on launch and wake. Each debounced live workspace response publishes independently and updates the cache. Account changes and disabling clear cached metadata; it never enters settings sync or backups. This supersedes the original five-minute memory-only query cache, by the owner’s explicit choice. The model harness covers matching, expiry and identity isolation; the store harness covers disk restore, progressive results and cancellation during cache removal.
+
 **On merge:** same rule as divergences 5 and 6. If upstream grows its own consent helper, this should
 adopt it rather than keep a parallel one.
 
@@ -560,7 +562,7 @@ in every app — a different question from whether a feature may fetch.
 Linear was the closest call and went with the rest. Tinycast never sees an API token: the `linear` CLI
 holds the credentials and this app reads only workspace slugs from its config. Sidebar refreshes send
 no typed text; ticket lookup does send the explicit query after the user enters the Linear scope, then
-keeps the returned issue metadata in memory for five minutes and never writes it to disk. That is a
+caches bounded issue metadata locally with half-hourly background refresh (divergence 8). That is a
 meaningful privacy cost, but on these known-owner Macs a permanent Settings disclosure is more useful
 than a one-time modal. On a Mac with no CLI installed or none logged in, on is inert — requests fail
 closed, nothing publishes, and the unusable scope is removed.

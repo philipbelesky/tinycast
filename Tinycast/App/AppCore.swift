@@ -247,6 +247,7 @@ final class AppCore {
                 self?.applyScopePresence()
             }
             // Linear is the only slice restored from disk, so it has rows before any refresh.
+            linear.start()
             linearCoordinator.applyLinearPresence()
             // Both mirror something outside the app, so both re-read on the palette's own trigger.
             paletteCoordinator.onShow = { [weak self] in
@@ -399,6 +400,7 @@ final class AppCore {
 
     func flushNotesForTermination() async {
         await notesCoordinator.prepareForTermination()
+        await linear.issues.waitForPersistence()
     }
 
     func prepareForTermination() {
@@ -410,6 +412,7 @@ final class AppCore {
         snippetListener.stop()
         snippetsStore.stop()
         settingsSync.stop()
+        linear.stop()
         aiChat.cancel()
         chatGPTSubscription.stop()
         mcp.stop()

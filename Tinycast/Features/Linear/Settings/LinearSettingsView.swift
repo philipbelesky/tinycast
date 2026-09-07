@@ -47,6 +47,7 @@ struct LinearSettingsView: View {
                     Button("Refresh Now") {
                         refreshing = true
                         Task {
+                            store.issues.refreshIfStale(force: true)
                             await store.refresh(force: true)
                             refreshing = false
                         }
@@ -56,12 +57,17 @@ struct LinearSettingsView: View {
                     Text("Views")
                     Text(viewsStatus)
                 }
+                LabeledContent("Cached tickets", value: "\(store.issues.cachedIssueCount)")
+                if let error = store.issues.refreshError {
+                    Text("Ticket refresh: " + error).foregroundStyle(.secondary)
+                }
             } footer: {
                 Text(
                     "Views are re-read at most every six hours, and only when you open the palette. "
-                        + "Ticket numbers, keys and title text are sent to every logged-in workspace "
-                        + "after a short pause; results stay in memory for five minutes and are never "
-                        + "written to disk. "
+                        + "Recent ticket titles, keys, states and links are cached on this Mac and "
+                        + "refreshed every 30 minutes. Local matches appear immediately; after a short "
+                        + "pause, your query is sent to each logged-in workspace for more results. "
+                        + "Disabling Linear removes the cache; it is never synced or backed up. "
                         + "The Linear app has to have been launched once before it can answer a link; "
                         + "until then, choose Browser."
                 )

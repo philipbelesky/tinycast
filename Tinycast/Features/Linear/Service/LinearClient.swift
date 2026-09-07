@@ -80,31 +80,75 @@ enum LinearClient {
         return snapshot
     }
 
-    /// Searches tickets across every logged-in workspace without persisting the query or results.
-    nonisolated static func searchIssues(_ lookup: LinearIssueLookup) async -> IssueSnapshot {
-        guard let linear = executablePath else {
-            return IssueSnapshot(failures: ["the linear command line tool wasn’t found"])
-        }
+    struct IssueConfiguration: Equatable, Sendable {
+        var id: String
+        var workspaces: [String]
+    }
+
+    nonisolated static func issueConfiguration() -> IssueConfiguration {
         let slugs = workspaces()
-        guard !slugs.isEmpty else {
-            return IssueSnapshot(failures: ["no workspace is logged in — run `linear auth login`"])
-        }
-        let replies = await withTaskGroup(of: IssueReply.self) { group in
-            for (index, slug) in slugs.enumerated() {
+        let attributes = try? FileManager.default.attributesOfItem(atPath: credentialsPath)
+        let modified = (attributes?[.modificationDate] as? Date)?.timeIntervalSince1970 ?? 0
+        return IssueConfiguration(id: "\(modified):" + slugs.joined(separator: ","), workspaces: slugs)
+    }
+
+    /// Publishes each workspace independently, so a slow response cannot hold up another's rows.
+    nonisolated static func searchIssues(
+        _ lookup: LinearIssueLookup, workspaces: [String],
+        onReply: @escaping @Sendable (IssueReply) async -> Void
+    ) async {
+        guard let linear = executablePath else { return }
+        await withTaskGroup(of: IssueReply.self) { group in
+            for slug in workspaces {
                 group.addTask {
-                    await searchIssues(
-                        lookup, workspaceSlug: slug, workspaceIndex: index, executable: linear)
+                    await searchIssues(lookup, workspaceSlug: slug, executable: linear)
                 }
             }
-            var replies: [IssueReply] = []
-            for await reply in group { replies.append(reply) }
-            return replies.sorted { $0.workspaceIndex < $1.workspaceIndex }
+            for await reply in group {
+                guard !Task.isCancelled else { group.cancelAll(); return }
+                await onReply(reply)
+            }
         }
-        var snapshot = IssueSnapshot()
-        snapshot.successfulWorkspaceCount = replies.count { $0.failure == nil }
-        snapshot.failures = replies.compactMap(\.failure)
-        snapshot.targets = mergeIssueTargets(replies.map(\.targets))
-        return snapshot
+    }
+
+    /// A bounded full snapshot reconciles deletions and lost access without a second sync protocol.
+    nonisolated static func recentIssues(workspace: String) async -> IssueReply {
+        guard let linear = executablePath else {
+            return IssueReply(workspace: workspace, failure: "the linear command line tool wasn’t found")
+        }
+        var targets: [LinearTarget] = []
+        var cursor: String?
+        var accountID: String?
+        repeat {
+            guard !Task.isCancelled else { return IssueReply(workspace: workspace, failure: "cancelled") }
+            var variables: [String: Any] = ["first": min(100, LinearIssueIndex.workspaceCapacity - targets.count)]
+            if let cursor { variables["after"] = cursor }
+            guard let encoded = try? JSONSerialization.data(withJSONObject: variables),
+                let json = String(data: encoded, encoding: .utf8)
+            else { return IssueReply(workspace: workspace, failure: "could not encode issue page") }
+            let result = await LinearProcessRunner.run(
+                linear, ["--workspace", workspace, "api", recentIssueQuery, "--variables-json", json])
+            let reply = issueReply(result, workspace: workspace)
+            guard reply.failure == nil else { return reply }
+            guard accountID == nil || accountID == reply.accountID else {
+                return IssueReply(workspace: workspace, failure: "account changed during refresh", accessDenied: true)
+            }
+            accountID = reply.accountID
+            targets += reply.targets
+            guard let result,
+                let root = try? JSONSerialization.jsonObject(with: result.output) as? [String: Any],
+                let data = root["data"] as? [String: Any],
+                let issues = data["issues"] as? [String: Any],
+                let page = issues["pageInfo"] as? [String: Any],
+                let hasNext = page["hasNextPage"] as? Bool
+            else { return IssueReply(workspace: workspace, failure: "invalid issue pagination") }
+            if !hasNext { break }
+            guard let next = page["endCursor"] as? String, next != cursor, !reply.targets.isEmpty else {
+                return IssueReply(workspace: workspace, failure: "issue pagination did not advance")
+            }
+            cursor = next
+        } while targets.count < LinearIssueIndex.workspaceCapacity
+        return IssueReply(workspace: workspace, targets: targets, accountID: accountID)
     }
 
     /// What a refresh found, and what it could not. A networked feature that fails silently is
@@ -114,16 +158,12 @@ enum LinearClient {
         var failures: [String] = []
     }
 
-    struct IssueSnapshot: Sendable {
+    struct IssueReply: Sendable {
+        var workspace: String
         var targets: [LinearTarget] = []
-        var failures: [String] = []
-        var successfulWorkspaceCount = 0
-    }
-
-    private struct IssueReply: Sendable {
-        let workspaceIndex: Int
-        let targets: [LinearTarget]
-        let failure: String?
+        var accountID: String?
+        var failure: String?
+        var accessDenied = false
     }
 
     nonisolated private static func describe(
@@ -146,29 +186,39 @@ enum LinearClient {
     }
 
     nonisolated private static func searchIssues(
-        _ lookup: LinearIssueLookup, workspaceSlug: String, workspaceIndex: Int,
-        executable: String
+        _ lookup: LinearIssueLookup, workspaceSlug: String, executable: String
     ) async -> IssueReply {
         guard let request = issueRequest(lookup, workspaceSlug: workspaceSlug) else {
-            return IssueReply(
-                workspaceIndex: workspaceIndex, targets: [],
-                failure: "\(workspaceSlug): the Linear query could not be encoded")
+            return IssueReply(workspace: workspaceSlug, failure: "the Linear query could not be encoded")
         }
-        let result = await LinearProcessRunner.run(executable, request)
-        guard let result, result.status == 0, !result.signalled else {
-            return IssueReply(
-                workspaceIndex: workspaceIndex, targets: [],
-                failure: describe(workspaceSlug, result))
+        return issueReply(await LinearProcessRunner.run(executable, request), workspace: workspaceSlug)
+    }
+
+    nonisolated static func issueReply(
+        _ result: LinearProcessRunner.Result?, workspace: String
+    ) -> IssueReply {
+        guard let result else {
+            return IssueReply(workspace: workspace, failure: describe(workspace, nil))
         }
         if let error = firstError(in: result.output) {
-            return IssueReply(
-                workspaceIndex: workspaceIndex, targets: [],
-                failure: "\(workspaceSlug): \(error)")
+            let denied = ["AUTHENTICATION_ERROR", "FORBIDDEN", "UNAUTHENTICATED"].contains {
+                String(bytes: result.output, encoding: .utf8)?.contains($0) == true
+            }
+            return IssueReply(workspace: workspace, failure: error, accessDenied: denied)
         }
+        guard result.status == 0, !result.signalled else {
+            return IssueReply(workspace: workspace, failure: describe(workspace, result))
+        }
+        guard let root = try? JSONSerialization.jsonObject(with: result.output) as? [String: Any],
+            let data = root["data"] as? [String: Any],
+            let organization = data["organization"] as? [String: Any],
+            let organizationID = organization["id"] as? String,
+            let viewer = data["viewer"] as? [String: Any], let viewerID = viewer["id"] as? String,
+            let issues = data["issues"] as? [String: Any], issues["nodes"] is [[String: Any]]
+        else { return IssueReply(workspace: workspace, failure: "invalid issue response") }
         return IssueReply(
-            workspaceIndex: workspaceIndex,
-            targets: LinearTarget.parseIssues(result.output, workspaceSlug: workspaceSlug),
-            failure: nil)
+            workspace: workspace, targets: LinearTarget.parseIssues(result.output, workspaceSlug: workspace),
+            accountID: organizationID + ":" + viewerID)
     }
 
     nonisolated private static func issueRequest(
@@ -193,34 +243,21 @@ enum LinearClient {
         return ["--workspace", workspaceSlug, "api", query, "--variables-json", json]
     }
 
-    /// Interleaves workspace order so the first configured one cannot fill the list.
-    nonisolated private static func mergeIssueTargets(
-        _ workspaceTargets: [[LinearTarget]]
-    ) -> [LinearTarget] {
-        var merged: [LinearTarget] = []
-        var seen: Set<String> = []
-        var offset = 0
-        while merged.count < issueResultLimit {
-            var appended = false
-            for targets in workspaceTargets where targets.indices.contains(offset) {
-                let target = targets[offset]
-                if seen.insert(target.id).inserted {
-                    merged.append(target)
-                    if merged.count == issueResultLimit { return merged }
-                }
-                appended = true
-            }
-            guard appended else { break }
-            offset += 1
+    private static let recentIssueQuery = """
+        query RecentLinearIssues($first: Int!, $after: String) {
+          organization { id urlKey }
+          viewer { id }
+          issues(first: $first, after: $after, includeArchived: false, orderBy: updatedAt) {
+            nodes { identifier title url updatedAt archivedAt state { name } }
+            pageInfo { hasNextPage endCursor }
+          }
         }
-        return merged
-    }
-
-    private static let issueResultLimit = 24
+        """
 
     private static let numberIssueQuery = """
         query LinearIssueNumber($number: Float!) {
-          organization { urlKey }
+          organization { id urlKey }
+          viewer { id }
           issues(filter: { number: { eq: $number } }, first: 12, includeArchived: true,
                  orderBy: updatedAt) {
             nodes { identifier title url updatedAt archivedAt state { name } }
@@ -230,7 +267,8 @@ enum LinearClient {
 
     private static let identifierIssueQuery = """
         query LinearIssueIdentifier($teamKey: String!, $number: Float!) {
-          organization { urlKey }
+          organization { id urlKey }
+          viewer { id }
           issues(filter: { number: { eq: $number }, team: { key: { eqIgnoreCase: $teamKey } } },
                  first: 12, includeArchived: true, orderBy: updatedAt) {
             nodes { identifier title url updatedAt archivedAt state { name } }
@@ -240,7 +278,8 @@ enum LinearClient {
 
     private static let titleIssueQuery = """
         query LinearIssueTitle($title: String!) {
-          organization { urlKey }
+          organization { id urlKey }
+          viewer { id }
           issues(filter: { title: { containsIgnoreCase: $title } }, first: 12,
                  includeArchived: false, orderBy: updatedAt) {
             nodes { identifier title url updatedAt archivedAt state { name } }
