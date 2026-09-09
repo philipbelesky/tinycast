@@ -1,12 +1,19 @@
 import Foundation
 
-/// A ticket lookup inferred from the Linear scope's typed query.
+/// A ticket lookup inferred from the root search or Linear scope's typed query.
 enum LinearIssueLookup: Equatable, Hashable, Sendable {
     case number(Int)
     case identifier(teamKey: String, number: Int)
     case title(String)
 
     static let minimumTitleLength = 3
+
+    var isExactIssueLookup: Bool {
+        switch self {
+        case .number, .identifier: true
+        case .title: false
+        }
+    }
 
     /// Numbers search every team; full identifiers one team; longer text searches titles.
     static func parse(_ rawQuery: String) -> LinearIssueLookup? {

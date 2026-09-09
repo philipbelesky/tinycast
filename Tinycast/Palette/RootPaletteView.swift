@@ -276,6 +276,7 @@ struct RootPaletteView: View {
         .onChange(of: vm.focusToken) {
             searchFocused = !screen.hidesSearchField
             openMenu = nil
+            refreshLinearIssueSearch()
         }
         .onChange(of: vm.query) {
             adoptScopeIfTyped()
@@ -298,6 +299,7 @@ struct RootPaletteView: View {
             refreshSuggestions()
             refreshLinearIssueSearch()
         }
+        .onChange(of: linearIssueSearchEnabled) { refreshLinearIssueSearch() }
         .onChange(of: vm.mode) {
             vm.selection = 0
             vm.clipboardFilter = .all
@@ -1102,11 +1104,14 @@ struct RootPaletteView: View {
         core.searchSuggestions.update(engine: engine, query: vm.query)
     }
 
-    /// Ticket lookup follows only the live Linear scope and cancels as soon as that scope leaves.
+    private var linearIssueSearchEnabled: Bool {
+        vm.isVisible && vm.mode == .launcher && ScopeCatalog.includesLinearIssues(
+            scope: vm.scope, settings: settings, isEnabled: core.linear.isEnabled, visibility: core.visibility)
+    }
+
+    /// Leaving root/Linear search or switching the feature off cancels pending ticket requests.
     private func refreshLinearIssueSearch() {
-        guard vm.mode == .launcher, let scope = vm.scope,
-            ScopeCatalog.target(for: scope, settings: settings) == .linear
-        else {
+        guard linearIssueSearchEnabled else {
             core.linear.clearIssueSearch()
             return
         }

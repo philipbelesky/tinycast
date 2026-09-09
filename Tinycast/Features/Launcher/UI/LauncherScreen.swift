@@ -68,14 +68,18 @@ struct LauncherScreen: PaletteScreen {
         // A mode scope never reaches here: adopting one switches screen instead of setting a scope.
         case .mode, nil: break
         }
+        let issues = ScopeCatalog.includesLinearIssues(
+            scope: vm.scope, settings: core.settings, isEnabled: core.linear.isEnabled, visibility: visibility)
+            ? AppIndex.linearEntries(for: core.linear.issueTargets(for: vm.query)).filter(visibility.isVisible) : []
+        let lookup = LinearIssueLookup.parse(vm.query)
+        let leadsWithIssues = isLinearScope || lookup?.isExactIssueLookup == true
         var results =
             engine == nil
             ? appIndex.orderedResults(
                 query: vm.query, visibility: visibility, favorites: favorites,
-                scope: vm.scope, kinds: kinds)
+                scope: vm.scope, kinds: kinds, additionalEntries: leadsWithIssues ? [] : issues)
             : []
-        if isLinearScope {
-            let issues = AppIndex.linearEntries(for: core.linear.issueTargets(for: vm.query))
+        if leadsWithIssues {
             let issueIDs = Set(issues.map(\.id))
             results = issues + results.filter { !issueIDs.contains($0.id) }
         }
@@ -85,9 +89,9 @@ struct LauncherScreen: PaletteScreen {
         {
             results.insert(browser, at: 0)
         }
-        // A remote scope owns the whole query, so a bare issue number is never a calculation.
+        // A resolved PHI key must beat the calculator's golden-ratio constant subtraction.
         let calc =
-            engine == nil && !isLinearScope
+            engine == nil && !isLinearScope && !(leadsWithIssues && !issues.isEmpty)
             ? CalcMemo.evaluate(vm.query, rates: currencyRates.source) : nil
         // Scoped for the same reason: the section widens a query a scope has just narrowed.
         let fallbacks = vm.scope == nil ? core.fallbackCoordinator.entries(for: vm.query) : []

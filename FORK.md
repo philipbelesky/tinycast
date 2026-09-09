@@ -330,7 +330,7 @@ coordinator, a settings pane), plus the same hook set as divergences 5 and 6 —
 `PaletteCoordinator.onShow`, `AppCore` wiring, `SettingsTab` and the settings/backup registries.
 
 `l payments` lists every workspace's Linear sidebar — saved views, projects, initiatives; ↵ opens
-one. A number, full identifier or title inside that scope also searches issues across every logged-in
+one. A number, full identifier or title in root search or that scope also searches issues across every logged-in
 workspace, with exact number searches including archived issues and title searches excluding them. It is
 the **second networked feature** in the app and the first the fork added, so it copies
 `CurrencyRateStore` rather than inventing a second shape: flag on the store, three guards,
@@ -563,7 +563,7 @@ in every app — a different question from whether a feature may fetch.
 
 Linear was the closest call and went with the rest. Tinycast never sees an API token: the `linear` CLI
 holds the credentials and this app reads only workspace slugs from its config. Sidebar refreshes send
-no typed text; ticket lookup does send the explicit query after the user enters the Linear scope, then
+no typed text; ticket lookup sends valid queries from root search or the Linear scope, then
 caches bounded issue metadata locally with half-hourly background refresh (divergence 8). That is a
 meaningful privacy cost, but on these known-owner Macs a permanent Settings disclosure is more useful
 than a one-time modal. On a Mac with no CLI installed or none logged in, on is inert — requests fail

@@ -147,6 +147,14 @@ enum ScopeCatalog {
         entries(settings: settings).first { $0.definition.id == scope.id }?.target
     }
 
+    /// Root search and the Linear scope share tickets; other scopes keep their own results.
+    static func includesLinearIssues(
+        scope: ScopeDefinition?, settings: AppSettings, isEnabled: Bool, visibility: VisibilityStore
+    ) -> Bool {
+        isEnabled && settings.linearShowInLauncher && visibility.isKindEnabled(.linearTarget)
+            && (scope == nil || scope?.id == linear)
+    }
+
     /// Declaration order, which is also the order a keyword collision is settled in.
     private static var allEntries: [Entry] {
         filters + modes + WebSearchEngine.builtIn.map(webEntry)

@@ -310,6 +310,7 @@ final class AppIndex {
         let aliasRevision: Int
         let visibilityRevision: Int
         let favoritesRevision: Int
+        let additionalEntries: [AppEntry]
     }
 
     /// Repeated renders for the same query reuse the ranking instead of re-matching every frame.
@@ -697,17 +698,20 @@ final class AppIndex {
     /// The launcher's ordered list: ranked matches minus hidden entries, favorites pinned first.
     func orderedResults(
         query: String, visibility: VisibilityStore, favorites: FavoritesStore,
-        scope: ScopeDefinition? = nil, kinds: Set<AppEntry.Kind>? = nil
+        scope: ScopeDefinition? = nil, kinds: Set<AppEntry.Kind>? = nil,
+        additionalEntries: [AppEntry] = []
     ) -> [AppEntry] {
         let q = query.trimmingCharacters(in: .whitespaces)
         let key = ResultsKey(
             query: q, scopeID: scope?.id, entriesRevision: entriesRevision,
             rankingRevision: ranking.revision, aliasRevision: aliases.revision,
             visibilityRevision: visibility.revision,
-            favoritesRevision: favorites.revision)
+            favoritesRevision: favorites.revision, additionalEntries: additionalEntries)
         return resultsMemo.value(for: key) {
             // Filtering stays downstream of `matches` so that memo is never keyed on hidden state.
-            var base = matches(q).filter(visibility.isVisible)
+            let candidates = additionalEntries.isEmpty || AppEntry.Kind.named(by: q) != nil ? matches(q)
+                : rank(q, limit: 200, additionalEntries: additionalEntries)
+            var base = candidates.filter(visibility.isVisible)
             if let kinds { base = base.filter { kinds.contains($0.kind) } }
             // A scope is the whole point of the query; favorites would only dilute it.
             guard kinds == nil, q.isEmpty, !favorites.keys.isEmpty else { return base }
@@ -716,18 +720,21 @@ final class AppIndex {
         }
     }
 
-    private func rank(_ q: String, limit: Int) -> [AppEntry] {
+    private func rank(_ q: String, limit: Int, additionalEntries: [AppEntry] = []) -> [AppEntry] {
         Signposts.interval("AppIndex.rank") {
             let learned = ranking.usage(query: q)
+            let additionalIDs = Set(additionalEntries.map(\.id))
+            let entries = additionalEntries.isEmpty ? apps
+                : apps.filter { !additionalIDs.contains($0.id) } + Self.named(additionalEntries)
             return LauncherOrder.ranked(
-                apps, query: FuzzyMatch.Query(q), limit: limit,
+                entries, query: FuzzyMatch.Query(q), limit: limit,
                 fields: { app in
                     guard let alias = self.aliases.alias(for: app.preferenceKey) else {
                         return SearchFields(app.aliases)
                     }
                     return SearchFields(app.aliases + [.userAlias(alias)])
                 },
-                usage: { learned[$0.preferenceKey] ?? 0 }, name: \.name)
+                usage: { additionalIDs.contains($0.id) ? 0 : learned[$0.preferenceKey] ?? 0 }, name: \.name)
         }
     }
 }

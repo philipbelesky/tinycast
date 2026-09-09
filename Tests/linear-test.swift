@@ -235,6 +235,9 @@ struct LinearTest {
         // MARK: - Issue lookup grammar
 
         check("a bare issue number searches every team", LinearIssueLookup.parse("861") == .number(861))
+        check("root ticket numbers lead results", LinearIssueLookup.parse("1190")?.isExactIssueLookup == true)
+        check("root ticket keys lead results", LinearIssueLookup.parse("phi-1190")?.isExactIssueLookup == true)
+        check("title matches share normal ranking", LinearIssueLookup.parse("claim editor")?.isExactIssueLookup == false)
         check(
             "a full identifier narrows by normalized team key",
             LinearIssueLookup.parse(" pc-861 ") == .identifier(teamKey: "PC", number: 861))

@@ -1,8 +1,8 @@
 # Linear
 
-The `l` scope combines cached Linear destinations with local ticket matching and live search across every workspace the `linear` CLI is logged in to. An empty or ordinary local query filters saved views, projects, initiatives and fixed workspace pages; a ticket query adds matching issues above those destinations. ↵ opens either kind of result in the Linear app or the browser.
+The main launcher and `l` scope combine cached Linear destinations with local ticket matching and live search across every workspace the `linear` CLI is logged in to. Exact ticket numbers and keys lead the main launcher's results; title matches share its normal relevance ranking. The `l` scope narrows the list to Linear and places matching issues above destinations. ↵ opens either kind of result in the Linear app or the browser.
 
-Ticket query grammar is deliberately narrow:
+An exact ticket match also takes precedence over a calculator interpretation of the same text, such as treating a PHI identifier as subtraction from the golden-ratio constant. Ticket query grammar is deliberately narrow:
 
 - `861` finds that exact issue number across every team and workspace, including archived issues.
 - `PC-861` finds that exact team key and issue number across every workspace, including archived issues.
@@ -13,7 +13,7 @@ Ticket query grammar is deliberately narrow:
 - **This is a networked feature and it ships on** ([FORK.md](../../FORK.md) divergence 15). Its enable flag belongs to the Linear store, never general settings, so importing settings cannot turn the network on. Show-in-launcher and destination preferences can be backed up because neither can enable a request.
 - **Tinycast never sees a Linear token.** Every request goes through the `linear` CLI, which holds credentials in the system keyring. Tinycast reads only the configured workspace slugs from the CLI's credentials file, and the parser ignores every other key.
 - **A selected CLI workspace wins over an ambient API key.** Tinycast removes `LINEAR_API_KEY` from the otherwise-sanitised inherited subprocess environment. Without this, a developer shell's key makes `--workspace` fail or silently changes the identity being queried.
-- **Disabling is structural.** A disabled store does not read the destination cache, publish rows or fetch. The flag is re-checked after every await, so disabling or leaving the scope while a request is running prevents that response from landing.
+- **Disabling is structural.** A disabled store does not read the destination cache, publish rows or fetch. The flag is re-checked after every await. Closing the palette, entering another scope or screen, or disabling launcher visibility cancels ticket search and prevents its response from landing. Both root and scoped results obey category and item visibility.
 - **Ticket metadata is cached locally.** Each workspace retains at most 500 issue titles, identifiers, links, states and update/archive dates in the app channel’s cache directory. Queries are never persisted, and issue records never enter settings sync, backups or learned launcher ranking. Tickets cannot become favourites or hotkeys. Disabling Linear removes the cache; a changed CLI configuration or confirmed account identity clears the previous account’s records.
 - **A result URL must belong to the workspace that answered.** Projects, initiatives and issues use Linear's returned URL because it contains a slug clients cannot safely reconstruct; a URL outside the answering workspace is dropped.
 - **A target identity carries its workspace.** Two workspaces may contain identically named views or the same issue number, so identity includes the workspace URL key and destination path.
@@ -42,7 +42,7 @@ launch / wake / 30-minute timer → stale workspaces → paginated recent issues
                                                        ↓
                                              bounded local disk cache
                                                        ↓
-Linear scope + valid query → immediate local matches + debounced live search
+Root or Linear scope + valid query → immediate local matches + debounced live search
                                                        ↓
                                   each workspace reply replaces its local matches
 
@@ -66,4 +66,4 @@ desktop   linear://linear.app/philipb/view/c3f94e04a1e5
 
 ## Not here
 
-Creating, editing or tracking issues; documents and teams; a complete offline workspace mirror; ticket favourites, hotkeys or learned ranking; and ticket lookup outside the explicit Linear scope.
+Creating, editing or tracking issues; documents and teams; a complete offline workspace mirror; and ticket favourites, hotkeys or learned ranking.

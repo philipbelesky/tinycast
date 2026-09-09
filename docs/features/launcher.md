@@ -524,6 +524,8 @@ search row, and the same code path a typed keyword takes. See
 
 ## Linear
 
+Ticket queries also work without a scope. Cached issues appear immediately, followed by debounced live results from each configured workspace. Exact numbers and keys lead the list; title matches share the launcher's normal relevance ranking without learning usage. Explicit category queries retain their category listing. Turning off Linear, its launcher visibility or its category stops query search; selecting another scope or closing the palette cancels pending requests.
+
 `AppEntry.Kind.linearTarget` publishes what is in every logged-in Linear workspace's sidebar — saved
 views, projects, initiatives — plus each one's built-in pages. Its switch lives on `LinearStore` rather
 than `AppSettings`, so no settings import can move it; the slice is simply empty on a Mac where the
