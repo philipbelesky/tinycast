@@ -10,11 +10,6 @@ struct LinearSettingsView: View {
     var body: some View {
         @Bindable var settings = settings
         return Form {
-            LauncherItemsSection(
-                kind: .linearTarget,
-                anchor: .linearLinear,
-                searchPrompt: "Search views…")
-
             Section {
                 Toggle(
                     isOn: Binding(get: { store.isEnabled }, set: { store.setEnabled($0) })
@@ -24,12 +19,17 @@ struct LinearSettingsView: View {
                 }
                 Toggle(isOn: $settings.linearShowInLauncher) {
                     Text("Show in launcher")
-                    Text("Find views and search tickets from the Linear scope.")
+                    Text("Find views and tickets in the main launcher and Linear scope.")
                 }
                 .settingsEnabled(store.isEnabled)
             } header: {
                 SettingsSectionHeader(.linearLinear)
             }
+
+            LauncherItemsSection(
+                kind: .linearTarget,
+                anchor: .linearLinear,
+                searchPrompt: "Search views…")
 
             Section {
                 Picker("Open Linear in", selection: $settings.linearDestination) {

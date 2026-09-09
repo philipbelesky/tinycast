@@ -8,11 +8,6 @@ struct VSCodeSettingsView: View {
     var body: some View {
         @Bindable var settings = settings
         return Form {
-            LauncherItemsSection(
-                kind: .vsCodeProject,
-                anchor: .vsCodeVSCode,
-                searchPrompt: "Search projects…")
-
             FeatureSwitchSection(
                 anchor: .vsCodeVSCode,
                 enableTitle: "Enable VS Code Projects",
@@ -22,6 +17,11 @@ struct VSCodeSettingsView: View {
                 launcherSubtitle: "Find projects in launcher search.",
                 isEnabled: $settings.vsCodeEnabled,
                 showsInLauncher: $settings.vsCodeShowInLauncher)
+
+            LauncherItemsSection(
+                kind: .vsCodeProject,
+                anchor: .vsCodeVSCode,
+                searchPrompt: "Search projects…")
 
             Section {
                 LabeledContent("Projects", value: "\(store.projects.count)")

@@ -50,6 +50,7 @@ themselves are in [AGENTS.md](AGENTS.md#non-negotiables). This file covers only 
 | 20 | [Extension helper harness waits for completion](#20--extension-helper-harness-waits-for-completion) | Low — one harness's timing | Yes — it fixes a test that fails under load |
 | 21 | [Harnesses run in their own session](#21--harnesses-run-in-their-own-session) | Low — one line in the `--exec` worker | Yes — it fixes a suite that hangs in any terminal |
 | 22 | [Zed project opener](#22--zed-project-opener) | Medium — the same `AppEntry.Kind` surface as 4 | Yes, as a feature |
+| 23 | [Feature switch placement and sidebar status](#23--feature-switch-placement-and-sidebar-status) | Low — localized settings changes | Yes, as a usability improvement |
 
 Keep each divergence as **its own commit**, never squashed together. Rebasing `philip` onto a new
 `origin/main` then replays them one at a time, and a divergence that upstream has since made redundant
@@ -755,6 +756,12 @@ how harnesses are selected, queued, or reported.
 The source is `~/Library/Application Support/Zed/db/0-stable/db.sqlite`. It is read-only through the system SQLite library and excludes remote rows: a remote path cannot be reopened from this process. The database's WAL stays under Zed's ownership; no copy, migration, or write is performed. `docs/features/zed.md` records the precise query contract and the reason the row timestamp, rather than a filesystem mtime, is recency.
 
 **On merge:** re-apply the `Kind` case and follow the compiler through the same shared launcher and settings switches as VS Code. If upstream adds a generic editor-project source, rebuild both editor features on it only if the shared abstraction can preserve Zed's ordered multi-root behavior.
+
+## 23 — Feature switch placement and sidebar status
+
+Feature panes put their master enable switch before their launcher item lists. Disabled features retain a selectable settings sidebar row with an “Off” label, so their status is visible and their controls remain reachable. The sidebar reads each feature's existing enable state; Linear's switch remains owned by its store.
+
+**On merge:** keep these localized settings changes unless upstream provides equivalent switch placement and disabled-state feedback.
 
 ## Merging upstream
 

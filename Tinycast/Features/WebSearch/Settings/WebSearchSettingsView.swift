@@ -10,11 +10,6 @@ struct WebSearchSettingsView: View {
     var body: some View {
         @Bindable var settings = settings
         return Form {
-            LauncherItemsSection(
-                kind: .webSearch,
-                anchor: .webSearchWebSearch,
-                searchPrompt: "Search engines…")
-
             FeatureSwitchSection(
                 anchor: .webSearchWebSearch,
                 enableTitle: "Enable web search",
@@ -24,6 +19,11 @@ struct WebSearchSettingsView: View {
                 launcherSubtitle: "Find the engines in launcher search.",
                 isEnabled: $settings.webSearchEnabled,
                 showsInLauncher: $settings.webSearchShowInLauncher)
+
+            LauncherItemsSection(
+                kind: .webSearch,
+                anchor: .webSearchWebSearch,
+                searchPrompt: "Search engines…")
 
             Section {
                 Picker("Default engine", selection: $settings.webSearchEngine) {

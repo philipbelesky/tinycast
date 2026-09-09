@@ -31,7 +31,7 @@ struct SettingsSidebarView: View {
             ForEach(SettingsSection.allCases) { section in
                 Section(section.title) {
                     ForEach(section.tabs) { tab in
-                        Label(tab.title, systemImage: tab.systemImage).tag(tab)
+                        SettingsSidebarTabRow(tab: tab).tag(tab)
                     }
                 }
             }
@@ -78,6 +78,49 @@ struct SettingsSidebarView: View {
             get: { navigation.tab },
             set: { if let tab = $0 { navigation.select(tab) } }
         )
+    }
+}
+
+/// Marks a feature pane as off without hiding the place where it can be turned back on.
+private struct SettingsSidebarTabRow: View {
+    let tab: SettingsTab
+    @Environment(AppSettings.self) private var settings
+    @Environment(AppCore.self) private var core
+
+    private var isDisabled: Bool {
+        switch tab {
+        case .ai: !settings.aiEnabled
+        case .quickActions: !settings.quickActionsEnabled
+        case .fileSearch: !settings.fileSearchEnabled
+        case .webSearch: !settings.webSearchEnabled
+        case .herdr: !settings.herdrEnabled
+        case .vsCode: !settings.vsCodeEnabled
+        case .zed: !settings.zedEnabled
+        case .linear: !core.linear.isEnabled
+        case .notes: !settings.notesEnabled
+        case .snippets: !settings.snippetsEnabled
+        case .windowManagement: !settings.windowManagementEnabled
+        case .clipboard: !settings.clipboardEnabled
+        case .calendar: !settings.calendarEnabled
+        case .extensions: !settings.extensionsEnabled
+        case .commands: !settings.customCommandsEnabled
+        case .quicklinks: !settings.quicklinksEnabled
+        case .general, .applications, .systemSettings, .systemActions, .fallbacks, .emoji,
+            .permissions, .backup, .miscellaneous, .about:
+            false
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.sm) {
+            Label(tab.title, systemImage: tab.systemImage)
+            Spacer(minLength: Theme.Spacing.sm)
+            if isDisabled {
+                Text("Off")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
     }
 }
 

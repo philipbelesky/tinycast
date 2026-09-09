@@ -8,11 +8,6 @@ struct HerdrSettingsView: View {
     var body: some View {
         @Bindable var settings = settings
         return Form {
-            LauncherItemsSection(
-                kind: .herdrTarget,
-                anchor: .herdrHerdr,
-                searchPrompt: "Search herdr targets…")
-
             FeatureSwitchSection(
                 anchor: .herdrHerdr,
                 enableTitle: "Enable herdr",
@@ -22,6 +17,11 @@ struct HerdrSettingsView: View {
                 launcherSubtitle: "Find herdr tabs in launcher search.",
                 isEnabled: $settings.herdrEnabled,
                 showsInLauncher: $settings.herdrShowInLauncher)
+
+            LauncherItemsSection(
+                kind: .herdrTarget,
+                anchor: .herdrHerdr,
+                searchPrompt: "Search herdr targets…")
 
             Section {
                 LabeledContent("Tabs", value: "\(store.targets.count)")
