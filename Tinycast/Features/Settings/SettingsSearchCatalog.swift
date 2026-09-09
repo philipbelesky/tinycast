@@ -111,7 +111,7 @@ enum SettingsSearchCatalog {
         general + applications + systemSettings
         + systemActions + commands + quicklinks + fallbacks + ai + quickActions + fileSearch + notes
         + snippets + windowManagement + clipboard + emoji + calendar + extensions + permissions
-        + backup + about + webSearch + herdr + vsCode + linear + miscellaneous
+        + backup + about + webSearch + herdr + vsCode + zed + linear + miscellaneous
 
     private static let general: [SettingsSearchEntry] = [
         .init(pane: .general, keywords: ["preferences", "settings"]),
@@ -524,6 +524,11 @@ enum SettingsSearchCatalog {
         .init(
             .vsCodeVSCode, "Enable VS Code Projects",
             keywords: ["visual studio code", "editor", "workspace"])
+    ]
+
+    private static let zed: [SettingsSearchEntry] = [
+        .init(pane: .zed, keywords: ["editor", "projects", "folders", "workspaces"]),
+        .init(.zedZed, "Enable Zed Projects", keywords: ["editor", "workspace"])
     ]
 
     private static let linear: [SettingsSearchEntry] = [

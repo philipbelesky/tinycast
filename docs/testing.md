@@ -119,6 +119,7 @@ If a change touches anything in the right column, the harness on the left is man
 | `websearch-test` | `WebSearch/Model/WebSearchEngine.swift`, `SearchSuggestions.swift` |
 | `herdr-test` | `Herdr/Model/HerdrTarget.swift`, `HerdrHost.swift` |
 | `vscode-test` | `VSCode/Model/VSCodeProject.swift` |
+| `zed-test` | `Zed/Model/ZedProject.swift` |
 | `linear-test` | Linear destination/issue models, credentials and cancellable process runner |
 
 The two harnesses that need a server to talk to bring their own: `Tests/ai-fixtures/codex-stub.js`

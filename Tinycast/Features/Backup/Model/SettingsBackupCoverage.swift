@@ -43,6 +43,8 @@ enum SettingsBackupCoverage {
         "herdrTerminalBundleID": .herdrTerminalBundleID,
         "vsCodeEnabled": .vsCodeEnabled,
         "vsCodeShowInLauncher": .vsCodeShowInLauncher,
+        "zedEnabled": .zedEnabled,
+        "zedShowInLauncher": .zedShowInLauncher,
         "scopeKeywords": .scopeKeywords,
         "linearShowInLauncher": .linearShowInLauncher,
         "linearDestination": .linearDestination,

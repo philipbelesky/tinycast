@@ -14,6 +14,7 @@ struct AppEntry: Identifiable, Hashable, Sendable {
         case webSearch
         case herdrTarget
         case vsCodeProject
+        case zedProject
         case linearTarget
         case scope
         case extensionCommand
@@ -69,6 +70,10 @@ struct AppEntry: Identifiable, Hashable, Sendable {
                 return KindDescriptor(
                     label: "VS Code", sectionTitle: "VS Code Projects",
                     openVerb: "Open in VS Code", canRevealInFinder: true, isSymbolIcon: false)
+            case .zedProject:
+                return KindDescriptor(
+                    label: "Zed", sectionTitle: "Zed Projects",
+                    openVerb: "Open in Zed", canRevealInFinder: true, isSymbolIcon: false)
             case .linearTarget:
                 return KindDescriptor(
                     label: "Linear", sectionTitle: "Linear",
@@ -175,7 +180,7 @@ struct AppEntry: Identifiable, Hashable, Sendable {
         case .quicklink:
             return Quicklink.id(fromEntryID: id).map { .quicklink(id: $0) }
         // A web search needs a query; a herdr id and a project path can vanish between launches.
-        case .snippet, .webSearch, .herdrTarget, .vsCodeProject, .linearTarget, .scope,
+        case .snippet, .webSearch, .herdrTarget, .vsCodeProject, .zedProject, .linearTarget, .scope,
             .extensionCommand, .meeting:
             return nil
         }
@@ -224,7 +229,7 @@ struct AppEntry: Identifiable, Hashable, Sendable {
         case .herdrTarget: return "macwindow"
         case .windowLayout: return WindowLayout.sfSymbol
         case .meeting: return "video.fill"
-        case .application, .systemSettings, .vsCodeProject, .linearTarget, .scope,
+        case .application, .systemSettings, .vsCodeProject, .zedProject, .linearTarget, .scope,
             .extensionCommand:
             return "questionmark"
         }
@@ -339,6 +344,7 @@ final class AppIndex {
     private var webSearchEntries: [AppEntry] = []
     private var herdrEntries: [AppEntry] = []
     private var vsCodeEntries: [AppEntry] = []
+    private var zedEntries: [AppEntry] = []
     private var linearEntries: [AppEntry] = []
     private var scopeEntries: [AppEntry] = []
     private var extensionEntries: [AppEntry] = []
@@ -477,6 +483,20 @@ final class AppIndex {
         }
         guard entries != vsCodeEntries else { return }
         vsCodeEntries = entries
+        publishEntries()
+    }
+
+    /// Replaces the Zed slice, already ordered most recently opened first.
+    func setZedProjects(_ projects: [ZedProject]) {
+        let entries = projects.map { project in
+            AppEntry(
+                id: project.entryID, name: project.name, url: URL(filePath: project.paths[0]),
+                bundleID: nil, kind: .zedProject,
+                // Every root and parent should find the workspace that Zed opens together.
+                matchAliases: project.paths + project.displayPaths)
+        }
+        guard entries != zedEntries else { return }
+        zedEntries = entries
         publishEntries()
     }
 
@@ -646,7 +666,7 @@ final class AppIndex {
         let updated =
             Self.named(scopeEntries + meetingEntries) + discoveredEntries
             + Self.named(
-                extensionEntries + quicklinkEntries + vsCodeEntries + herdrEntries + linearEntries
+                extensionEntries + quicklinkEntries + vsCodeEntries + zedEntries + herdrEntries + linearEntries
                     + webSearchEntries + snippetEntries + Self.systemActionEntries
                     + windowLayoutEntries + windowCommandEntries + customCommandEntries
                     + commandEntries)

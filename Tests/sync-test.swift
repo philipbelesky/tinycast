@@ -59,6 +59,8 @@ struct SyncTest {
             s.herdrTerminalBundleID = "com.apple.Terminal"
             s.vsCodeEnabled = true
             s.vsCodeShowInLauncher = true
+            s.zedEnabled = true
+            s.zedShowInLauncher = true
             s.scopeKeywords = ["l": "linear"]
             s.linearShowInLauncher = true
             s.linearDestination = "app"

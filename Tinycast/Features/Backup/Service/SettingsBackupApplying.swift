@@ -51,6 +51,8 @@ extension SettingsBackup {
             herdrTerminalBundleID: s.herdrTerminalBundleID,
             vsCodeEnabled: s.vsCodeEnabled,
             vsCodeShowInLauncher: s.vsCodeShowInLauncher,
+            zedEnabled: s.zedEnabled,
+            zedShowInLauncher: s.zedShowInLauncher,
             scopeKeywords: s.scopeKeywords,
             linearShowInLauncher: s.linearShowInLauncher,
             linearDestination: s.linearDestination.rawValue,
@@ -309,6 +311,14 @@ extension SettingsBackup {
         }
         if let flag = s.vsCodeShowInLauncher {
             settings.vsCodeShowInLauncher = flag
+            count += 1
+        }
+        if let flag = s.zedEnabled {
+            settings.zedEnabled = flag
+            count += 1
+        }
+        if let flag = s.zedShowInLauncher {
+            settings.zedShowInLauncher = flag
             count += 1
         }
         if let keywords = s.scopeKeywords {

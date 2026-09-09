@@ -447,6 +447,15 @@ final class AppSettings {
         didSet { defaults.set(vsCodeShowInLauncher, forKey: Key.vsCodeShowInLauncher.rawValue) }
     }
 
+    /// Reads Zed's local workspace list; nothing leaves the machine.
+    var zedEnabled: Bool {
+        didSet { defaults.set(zedEnabled, forKey: Key.zedEnabled.rawValue) }
+    }
+
+    var zedShowInLauncher: Bool {
+        didSet { defaults.set(zedShowInLauncher, forKey: Key.zedShowInLauncher.rawValue) }
+    }
+
     /// Opening a link grants no permission class, so this ships on rather than behind a dialog.
     var webSearchEnabled: Bool {
         didSet { defaults.set(webSearchEnabled, forKey: Key.webSearchEnabled.rawValue) }
@@ -671,6 +680,12 @@ final class AppSettings {
         vsCodeShowInLauncher =
             defaults.object(forKey: Key.vsCodeShowInLauncher.rawValue) == nil
             || defaults.bool(forKey: Key.vsCodeShowInLauncher.rawValue)
+        zedEnabled =
+            defaults.object(forKey: Key.zedEnabled.rawValue) == nil
+            || defaults.bool(forKey: Key.zedEnabled.rawValue)
+        zedShowInLauncher =
+            defaults.object(forKey: Key.zedShowInLauncher.rawValue) == nil
+            || defaults.bool(forKey: Key.zedShowInLauncher.rawValue)
         supportRemindersEnabled =
             defaults.object(forKey: Key.supportReminders.rawValue) == nil
             || defaults.bool(forKey: Key.supportReminders.rawValue)

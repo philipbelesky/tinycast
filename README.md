@@ -47,6 +47,7 @@ keep it actively maintained. GitHub Sponsors isn't available in my country, so p
 - **Calculator** — do math, unit, live currency and crypto conversions inline, right in the palette.
 - **Quicklinks** — turn a URL, search, file or deeplink into a command, with placeholders for typed
   input, the clipboard or the date.
+- **Editor projects** — reopen the recent VS Code projects and Zed workspaces you already use.
 - **Snippets** — reusable Markdown templates with dynamic placeholders, arguments, nested references
   and optional keyword expansion.
 - **Custom commands** — run named shell commands through fuzzy search or their own global hotkeys.

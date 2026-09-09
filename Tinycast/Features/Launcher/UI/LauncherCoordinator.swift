@@ -106,6 +106,10 @@ final class LauncherCoordinator {
             core.vsCodeCoordinator.open(path: path)
             return
         }
+        if app.kind == .zedProject {
+            core.zedCoordinator.open(entryID: app.id)
+            return
+        }
         // The coordinator hides the palette itself, after herdr's focus call has been sent.
         if app.kind == .herdrTarget {
             guard let id = HerdrTarget.id(fromEntryID: app.id) else { return }
@@ -172,7 +176,7 @@ final class LauncherCoordinator {
             let snippetID = String(app.id.dropFirst("snippet:".count))
             snippetCoordinator.expandSnippet(id: snippetID, targetApp: previous)
         case .command, .customCommand, .systemAction, .windowCommand, .windowLayout, .quicklink,
-            .webSearch, .herdrTarget, .vsCodeProject, .linearTarget, .scope, .extensionCommand,
+            .webSearch, .herdrTarget, .vsCodeProject, .zedProject, .linearTarget, .scope, .extensionCommand,
             .meeting:
             break  // handled above
         }

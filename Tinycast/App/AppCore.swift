@@ -89,6 +89,11 @@ final class AppCore {
         store: vsCode, settings: settings, appIndex: appIndex,
         paletteCoordinator: paletteCoordinator)
 
+    @ObservationIgnored private(set) lazy var zed = ZedStore()
+    @ObservationIgnored private(set) lazy var zedCoordinator = ZedCoordinator(
+        store: zed, settings: settings, appIndex: appIndex,
+        paletteCoordinator: paletteCoordinator)
+
     @ObservationIgnored private(set) lazy var linear = LinearStore()
     @ObservationIgnored private(set) lazy var linearCoordinator = LinearCoordinator(
         store: linear, settings: settings, appIndex: appIndex,
@@ -242,6 +247,7 @@ final class AppCore {
             applyScopePresence()
             herdr.onChange = { [weak self] _ in self?.herdrCoordinator.applyHerdrPresence() }
             vsCode.onChange = { [weak self] _ in self?.vsCodeCoordinator.applyVSCodePresence() }
+            zed.onChange = { [weak self] _ in self?.zedCoordinator.applyZedPresence() }
             linear.onChange = { [weak self] _ in
                 self?.linearCoordinator.applyLinearPresence()
                 self?.applyScopePresence()
@@ -254,6 +260,7 @@ final class AppCore {
                 guard let self else { return }
                 await herdrCoordinator.refresh()
                 await vsCodeCoordinator.refresh()
+                await zedCoordinator.refresh()
                 await linearCoordinator.refresh()
                 // The registry follows the feature switches and the user's keywords, so it is
                 // re-read here rather than tracked from a dozen places.
@@ -488,6 +495,11 @@ final class AppCore {
                 _ = $0.vsCodeEnabled
                 _ = $0.vsCodeShowInLauncher
             }, reproject: { $0.vsCodeCoordinator.applyVSCodePresence() })
+        track(
+            {
+                _ = $0.zedEnabled
+                _ = $0.zedShowInLauncher
+            }, reproject: { $0.zedCoordinator.applyZedPresence() })
         track({ _ = $0.linearShowInLauncher }, reproject: { $0.linearCoordinator.applyLinearPresence() })
         track(
             {

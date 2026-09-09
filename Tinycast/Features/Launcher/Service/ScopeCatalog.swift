@@ -27,6 +27,7 @@ enum ScopeCatalog {
     static let windowManagement = "scope:window-management"
     static let herdr = "scope:herdr"
     static let vsCode = "scope:vscode"
+    static let zed = "scope:zed"
     static let linear = "scope:linear"
     static let emoji = "scope:emoji"
     static let clipboard = "scope:clipboard"
@@ -63,6 +64,10 @@ enum ScopeCatalog {
                 keyword: "p", id: vsCode, title: "VS Code",
                 symbol: "chevron.left.forwardslash.chevron.right", tint: .black),
             target: .kinds([.vsCodeProject])),
+        Entry(
+            definition: ScopeDefinition(
+                keyword: "z", id: zed, title: "Zed", symbol: "cursorarrow.rays", tint: .purple),
+            target: .kinds([.zedProject])),
         Entry(
             definition: ScopeDefinition(
                 keyword: "l", id: linear, title: "Linear", symbol: "line.3.horizontal.decrease.circle",
@@ -179,6 +184,7 @@ enum ScopeCatalog {
         case windowManagement: return settings.windowManagementEnabled
         case herdr: return settings.herdrEnabled
         case vsCode: return settings.vsCodeEnabled
+        case zed: return settings.zedEnabled
         case linear: return settings.linearShowInLauncher
         default:
             return id.hasPrefix("scope:" + WebSearchEngine.entryIDPrefix)

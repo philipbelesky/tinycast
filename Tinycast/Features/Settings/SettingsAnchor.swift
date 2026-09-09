@@ -105,6 +105,8 @@ extension SettingsAnchor {
 
     static let vsCodeVSCode = Self(tab: .vsCode, title: "VS Code")
 
+    static let zedZed = Self(tab: .zed, title: "Zed")
+
     static let linearLinear = Self(tab: .linear, title: "Linear")
 
     static let miscellaneousCalculator = Self(tab: .miscellaneous, title: "Calculator")

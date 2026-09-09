@@ -48,6 +48,7 @@ final class SettingsCoordinator {
             .environment(core.quicklinks)
             .environment(core.herdr)
             .environment(core.vsCode)
+            .environment(core.zed)
             .environment(core.linear)
             .environment(core.windowLayouts)
             .environment(core.calendarStore)

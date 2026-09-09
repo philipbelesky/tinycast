@@ -501,6 +501,12 @@ and pruned of anything no longer on disk. It is the only synthetic kind backed b
 and so the only one that can be revealed in Finder. The slice keeps
 the store's recency order instead of being alphabetized. See [vscode.md](vscode.md).
 
+## Zed projects
+
+`AppEntry.Kind.zedProject` publishes local Zed workspaces, re-read each time the palette opens and
+pruned of any workspace with a root no longer on disk. The slice keeps Zed's recency order instead of
+being alphabetized. See [zed.md](zed.md).
+
 ## herdr
 
 `AppEntry.Kind.herdrTarget` publishes the running herdr session's workspaces and tabs, re-read each

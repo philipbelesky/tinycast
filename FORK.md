@@ -49,6 +49,7 @@ themselves are in [AGENTS.md](AGENTS.md#non-negotiables). This file covers only 
 | 19 | [Expired storage relocation removed](#19--expired-storage-relocation-removed) | Low — a deletion upstream will likely make too | Yes — the migration had expired |
 | 20 | [Extension helper harness waits for completion](#20--extension-helper-harness-waits-for-completion) | Low — one harness's timing | Yes — it fixes a test that fails under load |
 | 21 | [Harnesses run in their own session](#21--harnesses-run-in-their-own-session) | Low — one line in the `--exec` worker | Yes — it fixes a suite that hangs in any terminal |
+| 22 | [Zed project opener](#22--zed-project-opener) | Medium — the same `AppEntry.Kind` surface as 4 | Yes, as a feature |
 
 Keep each divergence as **its own commit**, never squashed together. Rebasing `philip` onto a new
 `origin/main` then replays them one at a time, and a divergence that upstream has since made redundant
@@ -646,7 +647,7 @@ new private helpers — plus a `wordOrder()` section in `Tests/fuzz-test.swift` 
 Upstream matches the query as one string in the order typed, so `pr terminal` finds nothing named
 `Terminal PRs`: neither the substring pass nor the subsequence walk can go backwards. That suits app
 names, which are short and which people type from the front. It suits none of the entry kinds this
-fork added — quicklinks, herdr workspaces, VS Code projects, Linear destinations — whose names are phrases the
+fork added — quicklinks, herdr workspaces, VS Code projects, Zed workspaces, Linear destinations — whose names are phrases the
 owner wrote (`Work / Terminal PRs`) and recalls by content rather than by order.
 
 `FuzzyMatch.Query` now folds every reordering of a two- or three-word query alongside the order typed,
@@ -745,6 +746,16 @@ under test. `PseudoTerminal.swift` already spawns with `POSIX_SPAWN_SETSID` for 
 conflict here is trivial to resolve: it is a wrapper around the harness invocation, not a change to
 how harnesses are selected, queued, or reported.
 
+## 22 — Zed project opener
+
+**Touches:** a new `Features/Zed/` (one pure model with a harness, a SQLite scanner, a store, a coordinator, and a settings pane), plus the same hook set as divergences 4–6 — `AppEntry.Kind.zedProject`, an `AppIndex` slice, a `LauncherCoordinator` branch, `ScopeCatalog`'s `z`, `PaletteCoordinator.onShow`, `AppCore` wiring, `SettingsTab`, and the settings/backup registries.
+
+`z payments` lists Zed's local workspaces, most recent first; ↵ opens one. Zed's `workspaces` table stores multi-root workspaces as newline-separated paths plus an order vector, so this feature preserves the original workspace rather than flattening its roots into unrelated rows.
+
+The source is `~/Library/Application Support/Zed/db/0-stable/db.sqlite`. It is read-only through the system SQLite library and excludes remote rows: a remote path cannot be reopened from this process. The database's WAL stays under Zed's ownership; no copy, migration, or write is performed. `docs/features/zed.md` records the precise query contract and the reason the row timestamp, rather than a filesystem mtime, is recency.
+
+**On merge:** re-apply the `Kind` case and follow the compiler through the same shared launcher and settings switches as VS Code. If upstream adds a generic editor-project source, rebuild both editor features on it only if the shared abstraction can preserve Zed's ordered multi-root behavior.
+
 ## Merging upstream
 
 ```sh
@@ -791,8 +802,7 @@ and the old and new boundary commits are verified tree-identical.
 Then, before calling it done — the standard gate from
 [testing.md](docs/testing.md#definition-of-done) plus the fork-specific checks:
 
-- [ ] `./Scripts/run-tests.sh` passes (`scope-test`, `websearch-test`, `herdr-test`, `vscode-test`
-      and `linear-test` are fork-local).
+- [ ] `./Scripts/run-tests.sh` passes (`scope-test`, `websearch-test`, `herdr-test`, `vscode-test`, `zed-test` and `linear-test` are fork-local).
 - [ ] Debug build compiles with no new warnings.
 - [ ] `./Scripts/lint.sh` is clean.
 - [ ] `grep -rln 'import AppKit\|import SwiftUI\|import Cocoa' Tinycast/Features/*/Model/` returns nothing.
@@ -807,11 +817,11 @@ Then, before calling it done — the standard gate from
       added to its source list in `Scripts/run-tests.sh` — `palette-placement-test`, `icon-cache-test`
       and `hover-arming-test` all needed it (divergences 3, 4).
 - [ ] **Every fork-local Settings pane is listed in `SettingsSearchCatalog`** — Web Search, herdr,
-      VS Code, Linear and Miscellaneous, each with a `SettingsAnchor` its `Form` claims, or
+      VS Code, Zed, Linear and Miscellaneous, each with a `SettingsAnchor` its `Form` claims, or
       `settings-history-test` fails on *every pane is reachable from Settings search*
       (divergences 4, 5, 6, 8).
-- [ ] **`PaletteCoordinator.onShow` still fires** — otherwise herdr, VS Code and Linear list stale
-      state (divergences 5, 6, 8).
+- [ ] **`PaletteCoordinator.onShow` still fires** — otherwise herdr, VS Code, Zed and Linear list stale
+      state (divergences 5, 6, 8, 22).
 - [ ] **Linear's flag is still on the store, not in `AppSettings`** (divergences 8, 15).
 - [ ] **The five default-on initialisers survived** — upstream's are `defaults.bool(forKey:)`, the
       fork's are `object(forKey:) == nil || bool(forKey:)`, and a merge that takes upstream's line

@@ -65,6 +65,8 @@ struct SettingsBackup: Codable {
         var herdrTerminalBundleID: String?
         var vsCodeEnabled: Bool?
         var vsCodeShowInLauncher: Bool?
+        var zedEnabled: Bool?
+        var zedShowInLauncher: Bool?
         /// Carried: a keyword is a typing preference, and grants nothing.
         var scopeKeywords: [String: String]?
         // Carried: neither is the Linear consent flag, which lives on the store and never leaves it.
