@@ -98,16 +98,21 @@ extension SettingsAnchor {
 
     // Fork-local panes — FORK.md divergences 4, 5, 6 and 8.
     static let webSearchWebSearch = Self(tab: .webSearch, title: "Web Search")
+    static let webSearchEngines = Self(tab: .webSearch, title: "Search Engines")
     static let webSearchSuggestions = Self(tab: .webSearch, title: "Suggestions")
     static let webSearchKeywords = Self(tab: .webSearch, title: "Keywords")
 
     static let herdrHerdr = Self(tab: .herdr, title: "herdr")
+    static let herdrTabs = Self(tab: .herdr, title: "Tabs")
 
     static let vsCodeVSCode = Self(tab: .vsCode, title: "VS Code")
+    static let vsCodeProjects = Self(tab: .vsCode, title: "Projects")
 
     static let zedZed = Self(tab: .zed, title: "Zed")
+    static let zedProjects = Self(tab: .zed, title: "Projects")
 
     static let linearLinear = Self(tab: .linear, title: "Linear")
+    static let linearViews = Self(tab: .linear, title: "Views")
 
     static let miscellaneousCalculator = Self(tab: .miscellaneous, title: "Calculator")
 }

@@ -22,7 +22,7 @@ struct WebSearchSettingsView: View {
 
             LauncherItemsSection(
                 kind: .webSearch,
-                anchor: .webSearchWebSearch,
+                anchor: .webSearchEngines,
                 searchPrompt: "Search engines…")
 
             Section {

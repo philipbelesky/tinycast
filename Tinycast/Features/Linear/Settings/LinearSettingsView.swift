@@ -28,7 +28,7 @@ struct LinearSettingsView: View {
 
             LauncherItemsSection(
                 kind: .linearTarget,
-                anchor: .linearLinear,
+                anchor: .linearViews,
                 searchPrompt: "Search views…")
 
             Section {

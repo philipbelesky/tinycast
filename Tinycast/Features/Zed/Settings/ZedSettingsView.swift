@@ -20,7 +20,7 @@ struct ZedSettingsView: View {
 
             LauncherItemsSection(
                 kind: .zedProject,
-                anchor: .zedZed,
+                anchor: .zedProjects,
                 searchPrompt: "Search projects…")
 
             Section {

@@ -20,7 +20,7 @@ struct VSCodeSettingsView: View {
 
             LauncherItemsSection(
                 kind: .vsCodeProject,
-                anchor: .vsCodeVSCode,
+                anchor: .vsCodeProjects,
                 searchPrompt: "Search projects…")
 
             Section {

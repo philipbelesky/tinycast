@@ -20,7 +20,7 @@ struct HerdrSettingsView: View {
 
             LauncherItemsSection(
                 kind: .herdrTarget,
-                anchor: .herdrHerdr,
+                anchor: .herdrTabs,
                 searchPrompt: "Search herdr targets…")
 
             Section {
