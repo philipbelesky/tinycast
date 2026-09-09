@@ -115,10 +115,13 @@ Two host-call flavours:
 | `Service/ExtensionOAuthKeychain.swift` | secure OAuth token storage backed by macOS Keychain |
 | `Service/ExtensionOAuthSession.swift` | PKCE state tracking, browser launch, and callback redirect resolution |
 | `Service/ExtensionStorage.swift` | per-extension `LocalStorage`, `Cache` and preference values (one JSON file each) |
+| `Service/ExtensionCommandMetadataStore.swift` | every command's subtitle override and refresh bookkeeping, in one small file |
 | `Service/ExtensionCatalog.swift` | discovery on disk, install, uninstall, import-from-Raycast |
 | `Service/ExtensionCleanup.swift` | the build workspace's name, the launch sweep, and reclaiming orphans |
 | `Service/ExtensionManager.swift` | the single owner: installed set, the one running session, launcher entries |
 | `Model/ExtensionManifest.swift` | `package.json` → commands, preferences, arguments |
+| `Model/ExtensionRefreshPolicy.swift` | background-refresh decisions: interval parsing, due dates, backoff |
+| `Model/ExtensionLaunchType.swift` | `userInitiated` / `background`, mirroring `@raycast/api` `LaunchType` |
 | `Model/RenderNode.swift` | the decoded render tree (`RenderTree` / `RenderNode` / `RenderValue`) |
 | `Model/ExtensionAppearance.swift` | the per-extension icon override and its tint palette |
 | `Service/ExtensionAppearanceStore.swift` | where those overrides persist |
@@ -161,6 +164,19 @@ screens hold (see [palette.md](palette.md)).
   whole signal. `ExtensionScreen.Item`
   carries both the flat `selection` index and the scroll id, and is the `ForEach` identity of the row
   and the grid cell alike — see the scroll-id rule in [ui.md](../ui.md#rows-selection-hover).
+- **Search-bar dropdown** — `List.Dropdown` and `Grid.Dropdown` draw as
+  `ExtensionSearchAccessoryButton` at the header's trailing edge and drop `ExtensionPickerList` as one
+  of the palette's `OpenMenu` cases, so the arrows, ↵, Escape and the click-away come from the one menu
+  path and no second key handler exists to disagree with it. `PaletteFilterAction` routes ⌘P, so a
+  command's own dropdown answers before Tinycast's clipboard filter can. The list is
+  `listWidth` (240) rather than a form picker's 360: it hangs off a chip, not a field.
+  **Swift owns the selection** — the runtime keeps `makeSearchDropdown` hook-free so an extension may
+  call `List.Dropdown({…})` directly — so `ExtensionManager.accessoryValues` keys it by render-node id
+  and `seedSearchBarAccessory` reports the opening choice through `onChange` on the first commit, as
+  Raycast does; without that, a command filtering its rows by the value renders nothing (issue #511).
+  A `value` prop makes it controlled: the extension holds it, nothing is seeded, nothing reported.
+  `storeValue` parks the pick in `ExtensionStorage.accessoryValues` — host UI state, outside the
+  `LocalStorage` namespace JavaScript reads, and gone when the extension is uninstalled.
 - **Grid tiles** — `ExtensionGridLayout` reads the `Grid`'s `columns`, `aspectRatio`, `fit` and `inset`
   and is the one place tile geometry is decided. A tile is a column wide and `aspectRatio` tall, and its
   content is scaled to that tile rather than drawn at an icon size, which is what makes an image-heavy
@@ -292,7 +308,9 @@ screens hold (see [palette.md](palette.md)).
   root, which would tear the command down before its `await confirmAlert(…)` ever returns.
 - **Command arguments** — a command declaring `arguments` shows inline fields sized to their
   placeholders, right after the typed text, exactly as Raycast does. Tab walks search field → each
-  argument → back; ↵ from any of them runs the command with the values as `props.arguments`; a blank
+  argument → back; Left/Right do the same only when their caret reaches a field boundary. Returning
+  to the search field selects its query, so Right first places the caret at its end and then enters
+  the first argument. ↵ from any of them runs the command with the values as `props.arguments`; a blank
   required argument blocks the launch and focuses the offending field. The fields get their own
   `FocusState` rather than joining the search field's, so the palette's one always-attached `TextField`
   (see [palette.md](palette.md)) keeps owning focus.
@@ -426,6 +444,38 @@ asynchronously and only while extensions are on, so at launch "not installed yet
 identical, and pruning there would quietly drop a working binding. Uninstalling clears its own instead,
 along with the extension's stored preferences and its chosen icon.
 
+## Background refresh
+
+A `no-view` command declaring `interval` (`"90s"`, `"1m"`, `"12h"`, `"1d"`) re-runs headlessly on that
+schedule, exactly as Raycast's background refresh: the same bundle runs to completion with
+`environment.launchType` and `props.launchType` set to `Background`, and `updateCommandMetadata` is
+the only thing that escapes it — the subtitle it writes appears beside the command's name in launcher
+search, unless it merely restates the owning extension, which the row already carries on the right.
+Coffee's "Caffeinate Status" is the reference case: every minute it rewrites its subtitle to
+`✔ Caffeinated (…)` or `✖ Decaffeinated`.
+
+Like Raycast, refresh is opt-in per command: off until the first manual run or the Settings toggle
+(Settings › Extensions › the command › Background refresh), which also shows the last refresh and the
+last error. The launcher row carries the state too: a dot while refresh is on, its dimmed twin
+while it is off, a warning with the error as its tooltip when the last background run failed, and
+the Actions menu offers Enable / Disable Background Refresh plus Refresh Now. The override lives in
+`extension-commands.json` — derived state, so no backup carries it — and uninstall removes an
+extension's records with everything else. Deliberately not in `extension-data/<name>.json`: drawing a
+launcher row reads every command's metadata, and that file holds the extension's whole `Cache`.
+
+The scheduler is one loop doing date math, not one timer per command: close ticks run as a single
+batch, installs share a deterministic phase so they don't re-fire in lockstep after sleep, and a wakeup
+with nothing due costs a comparison. Three guards keep it cheap:
+
+- Intervals clamp to a minute; failures back off exponentially to a day.
+- A tick never preempts a running command — foreground first, the tick waits for the next due.
+- A hung run dies before its successor is due, and a background run shows no toast, HUD, alert or
+  window call, since those would fire on a timer.
+
+`ExtensionRefreshPolicy` is where the parsing, due dates and backoff live, driven by
+`Tests/ext-refresh-test.swift`; `Tests/ext-metadata-test.swift` covers the store behind it. A `menu-bar` interval parses but never schedules, since menu-bar
+commands don't run at all.
+
 ## What's supported
 
 **Components** — `List` (+ `Item`, `Section`, `EmptyView`, `Item.Detail`, `Dropdown`), `Grid`
@@ -439,7 +489,8 @@ along with the extension's stored preferences and its chosen icon.
 **APIs** — `Clipboard`, `LocalStorage`, `Cache`, `environment`, `getPreferenceValues`, `showToast`,
 `showHUD`, `confirmAlert`, `closeMainWindow`, `popToRoot`, `clearSearchBar`, `open`, `trash`,
 `showInFinder`, `getApplications`, `getDefaultApplication`, `getFrontmostApplication`,
-`getSelectedText`, `getSelectedFinderItems`, `launchCommand`, `openExtensionPreferences`,
+`getSelectedText`, `getSelectedFinderItems`, `launchCommand`, `updateCommandMetadata`,
+`openExtensionPreferences`,
 `useNavigation`, `OAuth`, `Icon`, `Color`, `Image.Mask`, `Keyboard.Shortcut.Common`, `LaunchType`.
 
 **OAuth 2.0 PKCE** — `OAuth.PKCEClient`, `OAuth.TokenSet`, `OAuth.RedirectMethod`, with S256 challenges and
@@ -503,7 +554,8 @@ zips ship that binary `644`, so the chmod is what makes it runnable at all; the 
 covers the rest of the wrapper. Color Picker is the reference case.
 
 **Command modes** — `view` renders into the palette; `no-view` runs headless with the palette closed.
-Both receive `props.arguments` and `props.launchType`.
+Both receive `props.arguments` and `props.launchType`. A `no-view` command declaring `interval`
+(`"1m"`, `"12h"`, `"1d"`) also refreshes in the background — see below.
 
 Measured against the 37 extensions installed in a real Raycast on the development machine: **32
 extensions / 114 of 147 view commands** boot and render. `Scripts/raycast-runtime/test.mjs <dir>` and
@@ -575,6 +627,7 @@ never shares with an installed copy.
 | --- | --- | --- |
 | The extension | `extensions/<name>/` | yes |
 | `LocalStorage`, `Cache`, preferences | `extension-data/<safe name>.json` | yes |
+| Command subtitle, refresh state | `extension-commands.json` | yes |
 | `environment.supportPath` | `extension-support/<safe name>/` | yes |
 | OAuth tokens | macOS Keychain (`com.tinycast.extensions.oauth`) | yes |
 | Icon override | `UserDefaults` → `extensionAppearances` | yes |

@@ -50,19 +50,22 @@ failed=()
 ran=0
 only="${1:-}"
 
-# run [slow] [-O] <name> <source...> — queue the harness. `slow` dispatches it in the first wave.
+# run [slow] [-O] [index] <name> <source...> — queue the harness. `slow` dispatches it in the first
+# wave; `index` marks a benchmark the suite never runs.
 run() {
-    local opt=-Onone pri=1
+    local opt=-Onone pri=1 index_only=0
     while :; do
         case "$1" in
-            slow) pri=0; shift;;
-            -O)   opt=-O; shift;;
-            *)    break;;
+            slow)  pri=0; shift;;
+            -O)    opt=-O; shift;;
+            index) index_only=1; shift;;
+            *)     break;;
         esac
     done
     local name=$1
     shift
     if [ -n "$only" ] && [ "$name" != "$only" ]; then return 0; fi
+    if [ "$index_only" -eq 1 ]; then return 0; fi
     ran=$((ran + 1))
 
     # xargs splits the queue on whitespace, so no harness source path may contain a space.
@@ -81,6 +84,10 @@ run file-search-session-test Tinycast/Platform/Signposts.swift \
                              $L/SearchRelevance.swift \
                              Tinycast/Features/FileSearch/Model/*.swift \
                              Tinycast/Features/FileSearch/Service/*.swift
+run index file-search-performance Tinycast/Platform/Signposts.swift \
+                           $L/SearchRelevance.swift \
+                           Tinycast/Features/FileSearch/Model/*.swift \
+                           Tinycast/Features/FileSearch/Service/FileSearchService.swift
 run ranking-test           $L/SearchRelevance.swift $L/LauncherRankingStore.swift
 run scopes-test            $L/SearchScopes.swift
 run app-name-test          Tinycast/Platform/AppDisplayName.swift \
@@ -91,6 +98,7 @@ run scope-test             $L/QueryScope.swift \
                            $L/ScopeKeywords.swift
 run favorites-test         $L/FavoriteSlots.swift
 run calc-test              Tinycast/Features/Calculator/Model/*.swift
+run index calc-performance Tinycast/Features/Calculator/Model/*.swift
 run calendar-test          Tinycast/Features/Calendar/Model/*.swift
 run clipboard-test         Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFilter.swift \
@@ -106,6 +114,14 @@ run pasteboard-test        Tinycast/Platform/PasteboardFiles.swift \
                            Tinycast/Features/Clipboard/Model/ColorSpaces.swift \
                            Tinycast/Features/Clipboard/Service/ClipboardManager.swift \
                            Tinycast/Features/Clipboard/Service/Paster.swift
+run index clipboard-file-performance \
+                           Tinycast/Platform/PasteboardFiles.swift \
+                           Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
+                           Tinycast/Features/Clipboard/Model/ClipboardFilter.swift \
+                           Tinycast/Features/Clipboard/Model/ColorValue.swift \
+                           Tinycast/Features/Clipboard/Model/ColorFormat.swift \
+                           Tinycast/Features/Clipboard/Model/ColorSpaces.swift \
+                           Tinycast/Features/Clipboard/Service/ClipboardManager.swift
 run emoji-test             Tinycast/Features/Emoji/Model/EmojiCatalog.swift \
                            Tinycast/Features/Emoji/Model/EmojiGridGeometry.swift \
                            Tinycast/Features/Emoji/Model/EmojiData.generated.swift
@@ -134,20 +150,44 @@ run hover-arming-test      Tinycast/Palette/HoverArming.swift \
                            Tinycast/Features/Clipboard/Model/ColorFormat.swift \
                            Tinycast/Features/Clipboard/Model/ColorSpaces.swift \
                            Tinycast/Features/Quicklinks/Model/Quicklink.swift \
+                           Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift \
                            Tinycast/Features/CustomCommands/Model/CustomCommand.swift
 run palette-escape-test    Tinycast/Palette/PaletteMode.swift \
                            Tinycast/Palette/PaletteEscapeAction.swift \
+                           Tinycast/Palette/CommandEscapeTap.swift \
+                           Tinycast/Features/Settings/EscapeKeyBehavior.swift \
                            Tinycast/Features/Quicklinks/Model/Quicklink.swift \
+                           Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift \
+                           Tinycast/Features/CustomCommands/Model/CustomCommand.swift
+run palette-navigation-test Tinycast/Palette/PaletteState.swift \
+                           Tinycast/Palette/PaletteMode.swift \
+                           Tinycast/Palette/HoverArming.swift \
+                           $L/QueryScope.swift \
+                           $L/ScopeTint.swift \
+                           Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
+                           Tinycast/Features/Clipboard/Model/ClipboardFilter.swift \
+                           Tinycast/Features/Clipboard/Model/ColorValue.swift \
+                           Tinycast/Features/Clipboard/Model/ColorFormat.swift \
+                           Tinycast/Features/Clipboard/Model/ColorSpaces.swift \
+                           Tinycast/Features/Quicklinks/Model/Quicklink.swift \
+                           Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift \
+                           Tinycast/Features/CustomCommands/Model/CustomCommand.swift
+run palette-filter-test    Tinycast/Palette/PaletteMode.swift \
+                           Tinycast/Palette/PaletteFilterAction.swift \
+                           Tinycast/Features/Quicklinks/Model/Quicklink.swift \
+                           Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift \
                            Tinycast/Features/CustomCommands/Model/CustomCommand.swift
 run palette-tab-test       Tinycast/Palette/PaletteMode.swift \
                            Tinycast/Palette/PaletteTabAction.swift \
                            Tinycast/Features/Quicklinks/Model/Quicklink.swift \
+                           Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift \
                            Tinycast/Features/CustomCommands/Model/CustomCommand.swift
 run fallback-test          Tinycast/Features/Launcher/Model/Fallback.swift \
                            Tinycast/Features/Launcher/Model/CommandID.swift \
                            Tinycast/Features/HotKeys/Model/HotKeyAction.swift \
                            Tinycast/Features/QuickActions/Model/QuickAction.swift \
                            Tinycast/Features/Quicklinks/Model/Quicklink.swift \
+                           Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift \
                            Tinycast/Features/SystemActions/Model/SystemAction.swift \
                            Tinycast/Features/WindowManagement/Model/WindowCommand.swift
 run hotkey-test            Tinycast/Features/HotKeys/Model/DoubleTapModifier.swift \
@@ -159,6 +199,7 @@ run hotkey-test            Tinycast/Features/HotKeys/Model/DoubleTapModifier.swi
                            Tinycast/Features/QuickActions/Model/QuickAction.swift \
                            Tinycast/Features/Launcher/Model/CommandID.swift \
                            Tinycast/Features/Quicklinks/Model/Quicklink.swift \
+                           Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift \
                            Tinycast/Features/SystemActions/Model/SystemAction.swift \
                            Tinycast/Features/WindowManagement/Model/WindowCommand.swift
 run callout-test           Tinycast/Platform/Appearance.swift \
@@ -180,7 +221,10 @@ run ext-icon-test          Tinycast/Platform/Appearance.swift \
                            Tinycast/Platform/Images/IconCache.swift \
                            Tinycast/Platform/Compression/Zlib.swift \
                            Tinycast/Features/Extensions/Model/ExtensionBootConfig.swift \
+                           Tinycast/Features/Extensions/Model/ExtensionLaunchType.swift \
                            Tinycast/Features/Extensions/Model/ExtensionManifest.swift \
+                           Tinycast/Features/Extensions/Model/ExtensionRefreshPolicy.swift \
+                           Tinycast/Features/Extensions/Model/ExtensionRefreshState.swift \
                            Tinycast/Features/Extensions/Model/RenderNode.swift \
                            Tinycast/Features/Extensions/Service/ExtensionCatalog.swift \
                            Tinycast/Features/Extensions/Service/ExtensionFetcher.swift \
@@ -208,6 +252,7 @@ run window-layout-test     Tinycast/Features/WindowManagement/Model/WindowComman
                            Tinycast/Features/WindowManagement/Model/WindowLayoutStore.swift
 run custom-command-test    Tinycast/Platform/PseudoTerminal.swift \
                            Tinycast/Features/CustomCommands/Model/CustomCommand.swift \
+                           Tinycast/Features/CustomCommands/Model/RaycastScriptImport.swift \
                            Tinycast/Features/CustomCommands/Service/ShellCommandRunner.swift \
                            Tinycast/Features/CustomCommands/Service/CustomCommandArgumentSession.swift
 run uninstall-test         Tinycast/Features/Uninstall/Model/UninstallTarget.swift \
@@ -218,7 +263,8 @@ run uninstall-test         Tinycast/Features/Uninstall/Model/UninstallTarget.swi
 run quicklink-test         Tinycast/Features/Quicklinks/Model/Quicklink.swift \
                            Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift \
                            Tinycast/Features/Quicklinks/Model/QuicklinkStore.swift \
-                           Tinycast/Features/Quicklinks/Model/QuicklinkArchive.swift
+                           Tinycast/Features/Quicklinks/Model/QuicklinkArchive.swift \
+                           Tinycast/Features/Quicklinks/Model/RaycastQuicklinkImport.swift
 run slow snippets-test     Tinycast/Platform/NotificationToken.swift \
                            Tinycast/Platform/HealthTicker.swift \
                            Tinycast/Platform/AccessibilityText.swift \
@@ -253,7 +299,16 @@ E=Tinycast/Features/Extensions
 run symbols-test           $E/Service/SymbolCatalog.swift
 run ext-cleanup-test       $E/Service/ExtensionCleanup.swift \
                            $E/Service/ExtensionCatalog.swift \
-                           $E/Model/ExtensionManifest.swift
+                           $E/Model/ExtensionManifest.swift \
+                           $E/Model/ExtensionLaunchType.swift \
+                           $E/Model/ExtensionRefreshPolicy.swift \
+                           $E/Model/ExtensionRefreshState.swift
+run ext-refresh-test       $E/Model/ExtensionManifest.swift \
+                           $E/Model/ExtensionLaunchType.swift \
+                           $E/Model/ExtensionRefreshPolicy.swift \
+                           $E/Model/ExtensionRefreshState.swift
+run ext-metadata-test      $E/Model/ExtensionCommandMetadata.swift \
+                           $E/Service/ExtensionCommandMetadataStore.swift
 run ext-store-test         $E/Model/ExtensionRegistry.swift \
                            $E/Model/ExtensionPackageManager.swift \
                            $E/Model/ExtensionStoreResponse.swift
@@ -263,16 +318,25 @@ run ext-form-test          $E/Model/ExtensionFormMetrics.swift \
                            $E/Model/ExtensionDateExpression.swift \
                            $E/UI/ExtensionListKey.swift \
                            Tests/ext-list-key-test.swift
+run ext-accessory-test     $E/Model/RenderNode.swift \
+                           $E/Model/ExtensionPickerItem.swift \
+                           $E/Model/ExtensionSearchAccessory.swift \
+                           $E/Service/ExtensionStorage.swift
 run slow ext-test          -parse-as-library \
                            Tinycast/Platform/Appearance.swift \
                            Tinycast/Platform/Images/IconCache.swift \
                            Tinycast/DesignSystem/Theme.swift \
                            $L/ScopeTint.swift \
                            $E/Model/ExtensionBootConfig.swift \
+                           $E/Model/ExtensionLaunchType.swift \
                            $E/Model/ExtensionFormField.swift \
                            $E/Model/ExtensionGridLayout.swift \
                            $E/Model/ExtensionManifest.swift \
+                           $E/Model/ExtensionRefreshPolicy.swift \
+                           $E/Model/ExtensionRefreshState.swift \
                            $E/Model/RenderNode.swift \
+                           $E/Model/ExtensionPickerItem.swift \
+                           $E/Model/ExtensionSearchAccessory.swift \
                            $E/Service/ExtensionCatalog.swift \
                            $E/Service/ExtensionFetcher.swift \
                            $E/Service/ExtensionIconCache.swift \
@@ -315,6 +379,8 @@ run mcp-test               Tinycast/Features/Settings/AppSettingsKey.swift \
                            Tinycast/Features/AI/Model/JSONValue.swift \
                            Tinycast/Features/MCP/Model/*.swift \
                            Tinycast/Features/MCP/Settings/MCPSettingsStore.swift
+run -O text-diff-test      Tinycast/Features/QuickActions/Model/TextDiffEngine.swift
+run index text-diff-performance Tinycast/Features/QuickActions/Model/TextDiffEngine.swift
 run quick-action-test      Tinycast/Features/Settings/AppSettingsKey.swift \
                            Tinycast/Features/AI/Model/AIConnection.swift \
                            Tinycast/Features/AI/Model/AppleIntelligence.swift \

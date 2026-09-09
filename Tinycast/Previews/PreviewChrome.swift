@@ -58,7 +58,7 @@
                 .environment(core.emojiIndex)
                 .environment(core.frequentEmoji)
                 .environment(core.quicklinks)
-                .environment(core.quicklinkArguments)
+                .environment(core.customCommandArguments)
                 .environment(core.uninstall)
         }
     }

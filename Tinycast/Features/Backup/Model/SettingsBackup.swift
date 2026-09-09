@@ -19,6 +19,7 @@ struct SettingsBackup: Codable {
         // Carried, unlike the consent flags: recording your own copies grants no permission class.
         var clipboardEnabled: Bool?
         var clipboardRetentionDays: Int?
+        var clipboardDefaultAction: String?
         var clipboardDisabledApps: [String]?
         var launchAtLogin: Bool?
         var hyperKey: String?
@@ -27,6 +28,7 @@ struct SettingsBackup: Codable {
         var emojiSkinTone: String?
         var showInMenuBar: Bool?
         var popToRootSeconds: Int?
+        var escapeKeyBehavior: String?
         var appearance: String?
         var compactMode: Bool?
         var showFavoritesInCompactMode: Bool?

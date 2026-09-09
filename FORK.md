@@ -429,8 +429,8 @@ re-gather bookkeeping rule (entry 36), which are transport-independent.
 ## 11 — SwiftUI previews
 
 **Touches:** a new `Tinycast/Previews/` (`PreviewData.swift`, `PreviewChrome.swift`), plus a trailing
-`#if DEBUG` / `#Preview` block appended to 22 view files across `DesignSystem/`, `Palette/`,
-`Windows/` and `Features/*/UI/`. 34 previews in total.
+`#if DEBUG` / `#Preview` block appended to 21 view files across `DesignSystem/`, `Palette/`,
+`Windows/` and `Features/*/UI/`. 32 previews in total.
 
 Upstream has no previews at all — the canvas has never been part of how this app is built, and
 [ui.md](docs/ui.md) says to verify AppKit rendering with a `swiftc` harness and leave visual sign-off
@@ -438,7 +438,7 @@ to a human. That stays true: a preview asserts nothing and is on no gate. It is 
 hand-drawn surfaces, nothing more.
 
 The previews live **in the view's own file** rather than in `Previews/`, because the Xcode canvas only
-renders what is in the open editor — a preview a folder away is one you never look at. The cost is 22
+renders what is in the open editor — a preview a folder away is one you never look at. The cost is 21
 upstream files carrying a fork-local tail, which is why every one of them is a pure append after the
 last `}`: git resolves an append cleanly unless upstream appends there too, and upstream has nothing
 there to append. `Previews/` itself holds only the shared fixtures and the three chrome modifiers, so
@@ -452,7 +452,8 @@ store graph from `AppCore.shared`, and the list of states a canvas must not fake
 
 **On merge:** take upstream's version of any conflicting view file whole, then re-append the preview
 tail — it depends on nothing but the view's own initialiser and `PreviewData`. If a view's parameters
-changed upstream, fix the fixture rather than the view. This is the one divergence that would be
+changed upstream, fix the fixture rather than the view; if upstream deletes the view, the preview and
+any fixture only it used go with it, and `PreviewChrome`'s store list follows what `AppCore` still owns. This is the one divergence that would be
 upstreamed as-is, so if upstream ever adds previews of its own, drop the fork's for that file.
 
 ## 12 — Re-homed decision reasoning
@@ -507,7 +508,8 @@ where size matters again.
 ## 14 — Xcode only, no LSP scaffolding
 
 **Touches:** deletes `Scripts/sync-lsp.sh` and all four `.vscode/` files; strips the `--index` mode
-from `Scripts/run-tests.sh`; rewrites the Editor and Formatting sections of `docs/development.md` and
+from `Scripts/run-tests.sh`, keeping only its `run index <name>` keyword, which now simply marks a
+benchmark the suite never queues; rewrites the Editor and Formatting sections of `docs/development.md` and
 the header of `Scripts/format.sh`, both of which justified themselves by ⌘S in VS Code agreeing with
 the script; drops `buildServer.json` and `.compile` from `.gitignore`.
 
@@ -529,7 +531,9 @@ indexes them and an open harness reports every shipped type as *cannot find in s
 which is the thing that actually proves a harness compiles.
 
 **On merge:** upstream will keep editing all six files. Take its changes to `run-tests.sh`'s harness
-list — that part matters — and re-delete the `--index` plumbing around it; delete the rest again. If
+list — that part matters — and re-delete the `--index` plumbing around it, leaving the `index` keyword
+parsed so an upstream benchmark registration still skips rather than running as a harness named
+`index`; delete the rest again. If
 you ever want VS Code back, `git show` any of these paths before this commit brings the whole setup
 back intact.
 
@@ -796,6 +800,8 @@ time once the fork's `ScopeChip` sat on top of upstream's growth; its key handli
 `keyChords(_:selection:)` half, and its three launcher chords one `launcherChord(_:)` handler.
 
 **The 2026-09-07 absorption of upstream `3d5cecf..a9c1708` (17 commits) was a merge.** The new launcher ranking keeps word reorderings as subsequence evidence, with the fork's regression tests using upstream's new alias model. Scope rows and fork destinations receive the same naming pass as upstream entries. Window layouts join the window-management scope; their settings, bindings and records, plus the clipboard enable flag, flow through the fork's extracted backup service. New palette colour and attachment surfaces follow the fork's scale tokens. Upstream also removed the expired storage relocation, absorbing divergence 19.
+
+**The 2026-09-10 absorption of upstream `a9c1708..1855c81` (20 commits) was a merge, and the cheapest one yet — ten conflicts, no re-litigated divergence.** Upstream's #493 moved a quicklink's arguments off their own screen into a header accessory, deleting `QuicklinkArgumentSession` and the two views around it; the fork took the deletion whole, losing that view's two previews (divergence 11) and the fixture only they used, and `PreviewChrome` swapped the retired session for `CustomCommandArgumentSession`. The replace-on-import button (divergence 7) now sits on top of upstream's extracted `addImportedQuicklinks`. Upstream also split `RootPaletteView.body` again, into `stateObservers(_:)` and `keyHandlers(_:selection:)` — which supersedes the fork's own `keyChords(_:selection:)` split from the previous drop, so the file was taken whole from upstream and the fork's scope chip, suggestion and Linear observers, `launcherChord(_:)` and scale tokens re-applied onto it. The new inline argument strip arrived full of magic numbers (divergence 3): `QuicklinkArgumentsRow`'s field box and width envelope and `QuicklinkPreview`'s glyph now multiply by `Theme.scale`, and its chevron takes `Theme.Typography.disclosure`. `palette-navigation-test` is the latest upstream harness to compile `PaletteState.swift` and so to need `$L/QueryScope.swift` and `$L/ScopeTint.swift` in its source list. Upstream's `--index` mode came back in a new shape — a `run index <name>` keyword registering benchmarks that stay out of the suite — so divergence 14 now keeps the keyword and drops only the compile-database emission.
 
 **The 2026-08-20 absorption of rewritten upstream `42eb238..793bb1f` is the second merge exception.**
 Upstream force-rewrote the history that had previously ended at `ef1e1b5`, although `ef1e1b5` and its

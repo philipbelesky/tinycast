@@ -155,6 +155,9 @@ enum SettingsSearchCatalog {
             .generalGeneral, "Pop to Root Search",
             keywords: ["reset", "timeout", "back"]),
         .init(
+            .generalGeneral, "Escape Key Behavior",
+            keywords: ["escape", "esc", "back", "close", "navigate"]),
+        .init(
             .generalGeneral, "Auto-switch input source",
             keywords: ["keyboard", "layout", "language", "abc"])
     ]
@@ -202,7 +205,10 @@ enum SettingsSearchCatalog {
             keywords: ["script", "shell"]),
         .init(
             .commandsCustomCommands, "Add Custom Command",
-            keywords: ["new", "script", "shell", "shortcut"])
+            keywords: ["new", "script", "shell", "shortcut"]),
+        .init(
+            .commandsCustomCommands, "Import Raycast Scripts",
+            keywords: ["raycast", "script", "folder", "directory", "migrate"])
     ]
 
     private static let quicklinks: [SettingsSearchEntry] = [
@@ -381,6 +387,9 @@ enum SettingsSearchCatalog {
         .init(
             .clipboardHistory, "Keep history for",
             keywords: ["retention", "delete", "privacy", "expire"]),
+        .init(
+            .clipboardHistory, "Default action",
+            keywords: ["enter", "return", "paste", "copy", "primary"]),
         .init(
             group: .clipboardDisabledApplications, "Disabled Applications",
             keywords: ["exclude", "password manager", "ignore", "privacy"]),

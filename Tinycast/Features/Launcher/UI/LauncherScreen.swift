@@ -13,6 +13,8 @@ struct LauncherScreen: PaletteScreen {
     let meeting: MeetingEvent?
     let now: Date
     let openActions: () -> Void
+    /// Opens the palette's own menu for an `options=` field, keyed by argument name.
+    let openArgumentOptions: (String) -> Void
     /// Called when an action reorders the list, so the highlight scrolls back into view.
     let scrollToFollow: () -> Void
 
@@ -42,7 +44,8 @@ struct LauncherScreen: PaletteScreen {
         appIndex: AppIndex, favorites: FavoritesStore, visibility: VisibilityStore,
         currencyRates: CurrencyRateStore, core: AppCore, vm: PaletteState, running: Bool,
         meeting: MeetingEvent?, now: Date,
-        openActions: @escaping () -> Void, scrollToFollow: @escaping () -> Void
+        openActions: @escaping () -> Void, openArgumentOptions: @escaping (String) -> Void,
+        scrollToFollow: @escaping () -> Void
     ) {
         self.appIndex = appIndex
         self.favorites = favorites
@@ -52,6 +55,7 @@ struct LauncherScreen: PaletteScreen {
         self.running = running
         self.now = now
         self.openActions = openActions
+        self.openArgumentOptions = openArgumentOptions
         self.scrollToFollow = scrollToFollow
 
         // A scope decides what the query may match before the query is scored at all.
@@ -186,6 +190,13 @@ struct LauncherScreen: PaletteScreen {
         -> PaletteHeaderAccessory?
     {
         guard let entry = entry(at: selection) else { return nil }
+        // A quicklink asks for its values in root search too, so the fallback never leaves it.
+        if entry.kind == .quicklink {
+            return QuicklinkArgumentsAccessory.make(
+                quicklink: quicklink(for: entry), core: core, vm: vm, focus: focus,
+                placement: .afterQuery, onOpenOptions: openArgumentOptions,
+                onSubmit: { activate(at: selection) })
+        }
         return ExtensionArgumentsAccessory.make(
             entry: entry, coordinator: core.extensionCoordinator,
             values: { name in headerFieldBinding(entry: entry, name: name) },
@@ -199,12 +210,20 @@ struct LauncherScreen: PaletteScreen {
 
     /// The typed values for one row, stripped of blanks — what gets handed to the command.
     private func argumentValues(for entry: AppEntry) -> [String: String] {
+        if entry.kind == .quicklink {
+            guard let quicklink = quicklink(for: entry) else { return [:] }
+            return QuicklinkArgumentsAccessory.values(for: quicklink, core: core, vm: vm)
+        }
         var values: [String: String] = [:]
         for argument in core.extensionCoordinator.commandArguments(for: entry) ?? [] {
             let typed = vm.commandArguments[PaletteState.argumentKey(entry.id, argument.name)] ?? ""
             if !typed.isEmpty { values[argument.name] = typed }
         }
         return values
+    }
+
+    private func quicklink(for entry: AppEntry) -> Quicklink? {
+        Quicklink.id(fromEntryID: entry.id).flatMap(core.quicklinks.quicklink)
     }
 
     private func entry(at selection: Int) -> AppEntry? {

@@ -1,10 +1,19 @@
 import Foundation
 
+/// A screen to return to, held with enough state that going back looks like never having left.
+struct PaletteFrame: Equatable {
+    let mode: PaletteMode
+    let query: String
+    let selection: Int
+}
+
 /// Palette state shared between the panel's SwiftUI tree and the coordinator.
 @MainActor
 @Observable
 final class PaletteState {
     var mode: PaletteMode = .launcher
+    /// The screens below `mode`, innermost last: a summon starts a new one, navigating pushes on.
+    private(set) var backStack: [PaletteFrame] = []
     var query: String = ""
     /// The committed scope keyword, if any. Not a mode: same screen, same selection model.
     var scope: ScopeDefinition?
@@ -17,7 +26,7 @@ final class PaletteState {
     private(set) var isVisible = false
     /// Changes every time the palette is shown so the search field can re-focus.
     var focusToken = UUID()
-    /// Bumped only by `prepare`, so lists snap to the top even when nothing else changed.
+    /// Bumped when a screen opens fresh, so lists snap to the top even when nothing else changed.
     var resetToken = UUID()
     /// Bumped when an action reorders the list, so the highlight scrolls back into view.
     var followToken = UUID()
@@ -31,8 +40,10 @@ final class PaletteState {
     var forceExpanded = false
     /// The paste target, mirrored on every show; `prepare` resets the screen, not this.
     var pasteTarget: PasteTarget?
-    /// Values typed into an extension's inline argument fields, keyed by `argumentKey`.
+    /// Values typed into a row's inline argument fields, keyed by `argumentKey`.
     var commandArguments: [String: String] = [:]
+    /// Set when the palette opens to fill one row's fields; the header focuses the first empty one.
+    var pendingArgumentEntryID: String?
     /// True once ⌘ has been *held*, which numbers the favorite rows. The panel is the only writer.
     private(set) var commandHeld = false
     /// A chord is a tap, so the numbering waits out the tap before it claims the trailing labels.
@@ -60,7 +71,43 @@ final class PaletteState {
         isVisible = visible
     }
 
+    var canGoBack: Bool { !backStack.isEmpty }
+
+    /// Open `mode` as the root: a fresh screen with nothing behind it to go back to.
     func prepare(mode: PaletteMode) {
+        backStack.removeAll()
+        replace(mode: mode)
+    }
+
+    /// Swap the screen in place, leaving whatever it was opened over still behind it.
+    func replace(mode: PaletteMode) {
+        openScreen(mode)
+        resetToken = UUID()
+    }
+
+    /// Open `mode` over the current screen, which a back step returns to.
+    func push(mode: PaletteMode) {
+        backStack.append(PaletteFrame(mode: self.mode, query: query, selection: selection))
+        replace(mode: mode)
+    }
+
+    /// Restore the screen underneath, false when this one is the root.
+    func pop() -> Bool {
+        guard let frame = backStack.popLast() else { return false }
+        openScreen(frame.mode)
+        query = frame.query
+        selection = frame.selection
+        // Not `resetToken`: snapping to the top would throw away the selection restored here.
+        followToken = UUID()
+        return true
+    }
+
+    /// Tab rings the root surfaces, so crossing to one leaves nothing behind it.
+    func resetNavigation() {
+        backStack.removeAll()
+    }
+
+    private func openScreen(_ mode: PaletteMode) {
         self.mode = mode
         query = ""
         scope = nil
@@ -69,12 +116,12 @@ final class PaletteState {
         isEditingField = false
         isControlListOpen = false
         commandArguments = [:]
+        pendingArgumentEntryID = nil
         clipboardFilter = .all
         forceExpanded = false
         dropHoverHighlight()
         menuOpen = false
         focusToken = UUID()
-        resetToken = UUID()
     }
 
     /// Long enough that ⌘↵ or ⌘K never flashes the numbering, short enough to feel like a reveal.

@@ -111,8 +111,6 @@
                 name: "Swift Forums", link: "https://forums.swift.org", showsInRootSearch: false)
         ]
 
-        static let quicklinkOptions = ["staging", "production", "local"]
-
         // MARK: - Uninstall
 
         static let uninstallCandidates: [UninstallCandidate] = [

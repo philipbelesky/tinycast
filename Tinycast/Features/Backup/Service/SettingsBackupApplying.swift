@@ -10,6 +10,7 @@ extension SettingsBackup {
         backup.settings = SettingsData(
             clipboardEnabled: s.clipboardEnabled,
             clipboardRetentionDays: s.clipboardRetention.rawValue,
+            clipboardDefaultAction: s.clipboardDefaultAction.rawValue,
             clipboardDisabledApps: s.clipboardDisabledApps,
             launchAtLogin: s.launchAtLogin,
             hyperKey: s.hyperKey.rawValue,
@@ -19,6 +20,7 @@ extension SettingsBackup {
             showInMenuBar: UserDefaults.standard.object(forKey: SettingsKey.showInMenuBar) as? Bool
                 ?? true,
             popToRootSeconds: s.popToRootTimeout.rawValue,
+            escapeKeyBehavior: s.escapeKeyBehavior.rawValue,
             appearance: s.appearance.rawValue,
             compactMode: s.compactMode,
             showFavoritesInCompactMode: s.showFavoritesInCompactMode,
@@ -170,6 +172,10 @@ extension SettingsBackup {
             settings.clipboardDisabledApps = apps
             count += 1
         }
+        if let raw = s.clipboardDefaultAction, let action = ClipboardDefaultAction(rawValue: raw) {
+            settings.clipboardDefaultAction = action
+            count += 1
+        }
         if let launch = s.launchAtLogin {
             settings.launchAtLogin = launch
             count += 1
@@ -196,6 +202,10 @@ extension SettingsBackup {
         }
         if let secs = s.popToRootSeconds, let timeout = PopToRootTimeout(rawValue: secs) {
             settings.popToRootTimeout = timeout
+            count += 1
+        }
+        if let raw = s.escapeKeyBehavior, let behavior = EscapeKeyBehavior(rawValue: raw) {
+            settings.escapeKeyBehavior = behavior
             count += 1
         }
         if let raw = s.appearance, let appearance = AppAppearance(rawValue: raw) {

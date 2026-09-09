@@ -145,6 +145,14 @@ final class AppSettings {
         didSet { defaults.set(clipboardDisabledApps, forKey: Key.clipboardDisabledApps.rawValue) }
     }
 
+    /// What ↵ does on a clipboard entry; ⌘↵ always does the other one.
+    var clipboardDefaultAction: ClipboardDefaultAction {
+        didSet {
+            defaults.set(
+                clipboardDefaultAction.rawValue, forKey: Key.clipboardDefaultAction.rawValue)
+        }
+    }
+
     var launchAtLogin: Bool {
         didSet { LaunchAtLogin.set(launchAtLogin) }
     }
@@ -173,6 +181,11 @@ final class AppSettings {
     /// How long a closed palette keeps its state before popping back to the root launcher.
     var popToRootTimeout: PopToRootTimeout {
         didSet { defaults.set(popToRootTimeout.rawValue, forKey: Key.popToRootTimeout.rawValue) }
+    }
+
+    /// Whether Escape walks back through the screens the palette opened, or just closes it.
+    var escapeKeyBehavior: EscapeKeyBehavior {
+        didSet { defaults.set(escapeKeyBehavior.rawValue, forKey: Key.escapeKeyBehavior.rawValue) }
     }
 
     /// Follow macOS, or pin Tinycast to one appearance. Applied by `AppCore.applyAppearance()`.
@@ -524,6 +537,9 @@ final class AppSettings {
         clipboardDisabledApps =
             defaults.stringArray(forKey: Key.clipboardDisabledApps.rawValue)
             ?? ["com.apple.keychainaccess", "com.apple.Passwords"]
+        clipboardDefaultAction =
+            defaults.string(forKey: Key.clipboardDefaultAction.rawValue)
+            .flatMap(ClipboardDefaultAction.init) ?? .paste
         launchAtLogin = LaunchAtLogin.isEnabled
         hyperKey =
             defaults.string(forKey: Key.hyperKey.rawValue).flatMap(HyperKeyPhysicalKey.init)
@@ -541,6 +557,9 @@ final class AppSettings {
         popToRootTimeout =
             PopToRootTimeout(rawValue: defaults.integer(forKey: Key.popToRootTimeout.rawValue))
             ?? .immediately
+        escapeKeyBehavior =
+            defaults.string(forKey: Key.escapeKeyBehavior.rawValue).flatMap(EscapeKeyBehavior.init)
+            ?? .navigateBackOrClose
         appearance =
             defaults.string(forKey: Key.appearance.rawValue).flatMap(AppAppearance.init) ?? .system
         compactMode = defaults.bool(forKey: Key.compactMode.rawValue)
