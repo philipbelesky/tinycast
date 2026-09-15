@@ -371,6 +371,7 @@ pane, and the table is what a fresh install reads.
 | `p` | VS Code | `.vsCodeProject` | yes |
 | `z` | Zed | `.zedProject` | yes |
 | `l` | Linear | cached destinations + on-demand ticket lookup | yes |
+| `o` `t` | OmniFocus / TextFlow | [task capture](task-capture.md) — the query is a task | yes |
 | `g` `d` `b` `k` | Google / DuckDuckGo / Bing / Kagi | [web search](web-search.md) | yes |
 | `e` | Emoji & Symbols | `PaletteMode.emoji` | no |
 | `v` | Clipboard | `PaletteMode.clipboard` | no |

@@ -488,10 +488,12 @@ run herdr-test             Tinycast/Features/Herdr/Model/HerdrTarget.swift \
                            Tinycast/Features/Herdr/Model/HerdrHost.swift
 run vscode-test            Tinycast/Features/VSCode/Model/VSCodeProject.swift
 run zed-test               Tinycast/Features/Zed/Model/ZedProject.swift
+run task-capture-test      Tinycast/Features/TaskCapture/Model/*.swift
 run linear-test            Tinycast/Features/Linear/Model/LinearTarget.swift \
                            Tinycast/Features/Linear/Model/LinearCredentials.swift \
                            Tinycast/Features/Linear/Model/LinearIssueLookup.swift \
                            Tinycast/Features/Linear/Service/LinearProcessRunner.swift \
+                           Tinycast/Platform/CommandLineProcess.swift \
                            Tinycast/Platform/SubprocessEnvironment.swift
 run linear-index-test      Tinycast/Features/Linear/Model/LinearTarget.swift \
                            Tinycast/Features/Linear/Model/LinearIssueLookup.swift \
@@ -499,6 +501,7 @@ run linear-index-test      Tinycast/Features/Linear/Model/LinearTarget.swift \
 run linear-index-store-test Tinycast/Features/Linear/Model/*.swift \
                             Tinycast/Features/Linear/Service/LinearClient.swift \
                             Tinycast/Features/Linear/Service/LinearProcessRunner.swift \
+                            Tinycast/Platform/CommandLineProcess.swift \
                             Tinycast/Features/Linear/Service/LinearIssueIndexStore.swift \
                             Tinycast/Platform/SubprocessEnvironment.swift \
                             Tinycast/Platform/NotificationToken.swift

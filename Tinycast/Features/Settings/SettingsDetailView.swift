@@ -23,6 +23,7 @@ struct SettingsDetailView: View {
             case .vsCode: VSCodeSettingsView()
             case .zed: ZedSettingsView()
             case .linear: LinearSettingsView()
+            case .taskCapture: TaskCaptureSettingsView()
             case .notes: NotesSettingsView()
             case .snippets: SnippetsSettingsView()
             case .navigation: NavigationSettingsView()

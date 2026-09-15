@@ -27,6 +27,8 @@ struct LauncherScreen: PaletteScreen {
     private let suggestions: [String]
     /// True when cached destinations share the list with on-demand Linear ticket results.
     private let isLinearScope: Bool
+    /// Set while a capture scope is armed; the query is a task and the card is its preview.
+    private let taskCapture: TaskCapturePreview?
     /// The colour the query itself spells, if it spells one; nil for every other query.
     private let color: ColorValue?
     /// Sections stand in for the ranked Results list, which a typed query collapses to.
@@ -63,22 +65,27 @@ struct LauncherScreen: PaletteScreen {
         var kinds: Set<AppEntry.Kind>?
         var engine: WebSearchEngine?
         var isLinearScope = false
+        var capture: TaskCapturePreview?
         switch target {
         case .kinds(let scoped): kinds = scoped
         case .webSearch(let scoped): engine = scoped
         case .linear:
             kinds = [.linearTarget]
             isLinearScope = true
+        case .taskCapture(let destination):
+            capture = core.taskCaptureCoordinator.preview(query: vm.query, destination: destination)
         // A mode scope never reaches here: adopting one switches screen instead of setting a scope.
         case .mode, nil: break
         }
+        // A capture owns the query the way a web scope does: nothing else is scored against it.
+        let ownsQuery = engine != nil || capture != nil
         let issues = ScopeCatalog.includesLinearIssues(
             scope: vm.scope, settings: core.settings, isEnabled: core.linear.isEnabled, visibility: visibility)
             ? AppIndex.linearEntries(for: core.linear.issueTargets(for: vm.query)).filter(visibility.isVisible) : []
         let lookup = LinearIssueLookup.parse(vm.query)
         let leadsWithIssues = isLinearScope || lookup?.isExactIssueLookup == true
         var results =
-            engine == nil
+            !ownsQuery
             ? appIndex.orderedResults(
                 query: vm.query, visibility: visibility, favorites: favorites,
                 scope: vm.scope, kinds: kinds, additionalEntries: leadsWithIssues ? [] : issues)
@@ -95,15 +102,15 @@ struct LauncherScreen: PaletteScreen {
         }
         // A resolved PHI key must beat the calculator's golden-ratio constant subtraction.
         let calc =
-            engine == nil && !isLinearScope && !(leadsWithIssues && !issues.isEmpty)
+            !ownsQuery && !isLinearScope && !(leadsWithIssues && !issues.isEmpty)
             ? CalcMemo.evaluate(vm.query, rates: currencyRates.source) : nil
         // Scoped for the same reason: the section widens a query a scope has just narrowed.
         let fallbacks = vm.scope == nil ? core.fallbackCoordinator.entries(for: vm.query) : []
-        let color = engine == nil && !isLinearScope && calc == nil
+        let color = !ownsQuery && !isLinearScope && calc == nil
             ? ColorValue.parse(vm.query) : nil
         let entries = results.map(Row.entry) + fallbacks.map { Row.fallback($0.fallback, $0.entry) }
         let pinsFavorites =
-            engine == nil && vm.scope == nil
+            !ownsQuery && vm.scope == nil
             && vm.query.trimmingCharacters(in: .whitespaces).isEmpty
         // At most one of them leads, so the flat index keeps a single-row offset.
         let meeting = pinsFavorites ? meeting : nil
@@ -112,17 +119,22 @@ struct LauncherScreen: PaletteScreen {
         self.calc = calc
         self.webSearch = engine
         self.isLinearScope = isLinearScope
+        self.taskCapture = capture
         // Empty until the query's own reply lands, and empty forever without consent.
         let suggestions = engine == nil ? [] : core.searchSuggestions.suggestions(for: vm.query)
         self.suggestions = suggestions
         self.fallbacks = fallbacks
         self.color = color
         self.showSections =
-            engine == nil && !isLinearScope
+            !ownsQuery && !isLinearScope
             && (pinsFavorites || AppEntry.Kind.named(by: vm.query) != nil)
         self.pinsFavorites = pinsFavorites
         self.favoriteCount = pinsFavorites ? results.prefix(while: favorites.isFavorite).count : 0
-        if let engine {
+        if let capture {
+            let completions = core.taskCaptureCoordinator.completions(
+                query: vm.query, destination: capture.destination)
+            self.rows = [.taskCapture(capture)] + completions.map(Row.completion)
+        } else if let engine {
             self.rows = [.webSearch(engine)] + suggestions.map(Row.suggestion)
         } else if let calc {
             self.rows = [.calc(calc)] + entries
@@ -145,10 +157,14 @@ struct LauncherScreen: PaletteScreen {
         case entry(AppEntry)
         /// Prefixed, because the same command can also be a ranked hit above its own fallback row.
         case fallback(Fallback, AppEntry)
+        case taskCapture(TaskCapturePreview)
+        case completion(TaskCaptureCompletion)
 
         var id: String {
             switch self {
             case .calc: return "calc-card"
+            case .taskCapture: return "task-capture-card"
+            case .completion(let completion): return completion.id
             case .meeting: return "meeting-card"
             case .webSearch(let engine): return engine.entryID
             case .suggestion(let text): return SearchSuggestions.rowID(text)
@@ -175,6 +191,9 @@ struct LauncherScreen: PaletteScreen {
         case .suggestion: return webSearch.map { "Search \($0.name)" } ?? "Search"
         case .entry(let app): return app.kind.descriptor.openVerb
         case .fallback(let fallback, _): return fallback.openVerb
+        case .taskCapture(let preview):
+            return core.taskCaptureCoordinator.primaryActionTitle(for: preview.destination)
+        case .completion: return "Use"
         case nil: return "Open Application"
         }
     }
@@ -234,13 +253,14 @@ struct LauncherScreen: PaletteScreen {
 
     private func isCardSelected(_ selection: Int) -> Bool {
         switch row(at: selection) {
-        case .calc, .meeting, .color: return true
-        case .webSearch, .suggestion, .entry, .fallback, nil: return false
+        case .calc, .meeting, .color, .taskCapture: return true
+        case .webSearch, .suggestion, .entry, .fallback, .completion, nil: return false
         }
     }
 
     /// Whichever card leads, in the terms the list draws it in.
     private var leadCard: LauncherList.LeadCard? {
+        if let taskCapture { return .taskCapture(taskCapture) }
         if let calc { return .calc(calc) }
         if let color { return .color(color) }
         return meeting.map { .meeting($0, now: now) }
@@ -253,7 +273,8 @@ struct LauncherScreen: PaletteScreen {
         // An empty scoped query has nothing to search for yet; the row still invites text.
         case .webSearch(let engine):
             return core.webSearchCoordinator.canSearch(engine: engine, query: vm.query)
-        case .meeting, .color, .suggestion, .entry, .fallback, nil: return true
+        case .taskCapture(let preview): return preview.canCapture
+        case .meeting, .color, .suggestion, .entry, .fallback, .completion, nil: return true
         }
     }
 
@@ -279,8 +300,10 @@ struct LauncherScreen: PaletteScreen {
         case .fallback(let fallback, let app):
             return FallbackActionsMenu.content(
                 fallback: fallback, entry: app, query: vm.query, core: core)
+        case .taskCapture(let preview):
+            return preview.canCapture ? TaskCaptureActionsMenu.content(preview: preview, core: core) : nil
         // A search has one action, and ↵ already is it.
-        case .webSearch, .suggestion, nil:
+        case .webSearch, .suggestion, .completion, nil:
             return nil
         }
     }
@@ -303,6 +326,8 @@ struct LauncherScreen: PaletteScreen {
                 app, searchQuery: vm.query, arguments: argumentValues(for: app))
         case .fallback(let fallback, _):
             core.fallbackCoordinator.run(fallback, query: vm.query)
+        case .taskCapture(let preview): core.taskCaptureCoordinator.capture(preview)
+        case .completion(let completion): core.taskCaptureCoordinator.accept(completion, palette: vm)
         case nil: break
         }
     }
@@ -482,6 +507,15 @@ struct LauncherScreen: PaletteScreen {
                 onActivateWebSearch: { activate(at: 0) },
                 onActivateSuggestion: { text in
                     guard let index = rows.firstIndex(of: .suggestion(text)) else { return }
+                    vm.selection = index
+                    activate(at: index)
+                },
+                completions: rows.compactMap {
+                    if case .completion(let completion) = $0 { return completion }
+                    return nil
+                },
+                onActivateCompletion: { completion in
+                    guard let index = rows.firstIndex(of: .completion(completion)) else { return }
                     vm.selection = index
                     activate(at: index)
                 },

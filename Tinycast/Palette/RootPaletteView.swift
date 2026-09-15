@@ -317,6 +317,7 @@ struct RootPaletteView: View {
             .onChange(of: vm.scope) {
                 refreshSuggestions()
                 refreshLinearIssueSearch()
+                armTaskCapture()
             }
             .onChange(of: linearIssueSearchEnabled) { refreshLinearIssueSearch() }
             // The filter is part of the query, so narrowing re-runs it rather than thinning rows.
@@ -1186,6 +1187,14 @@ struct RootPaletteView: View {
             return
         }
         core.linear.updateIssueSearch(vm.query)
+    }
+
+    /// A capture scope reads its app's catalog on arming, not on every palette open.
+    private func armTaskCapture() {
+        guard let scope = vm.scope,
+            case .taskCapture(let destination) = ScopeCatalog.target(for: scope, settings: settings)
+        else { return }
+        core.taskCaptureCoordinator.scopeArmed(destination)
     }
 
     private func activateSelection() {

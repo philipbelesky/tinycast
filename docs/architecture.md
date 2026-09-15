@@ -217,6 +217,7 @@ Tinycast/
     Launcher/ Clipboard/ Calculator/ Calendar/ Emoji/ FileSearch/ MenuSearch/ Notes/
     Quicklinks/ Snippets/ Uninstall/ SystemActions/ CustomCommands/ HotKeys/ Backup/ Sync/
     WindowManagement/ Onboarding/ Updates/ Support/ AI/ Settings/ WebSearch/ Herdr/ VSCode/ Zed/ Linear/
+    TaskCapture/
     Extensions/
         Model/      pure — the harness inputs
         Service/    effects — stores, monitors, runners, AppKit glue

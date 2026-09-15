@@ -50,6 +50,7 @@ final class SettingsCoordinator {
             .environment(core.vsCode)
             .environment(core.zed)
             .environment(core.linear)
+            .environment(core.taskCaptureIndex)
             .environment(core.windowLayouts)
             .environment(core.calendarStore)
             .environment(core.aiSettings)

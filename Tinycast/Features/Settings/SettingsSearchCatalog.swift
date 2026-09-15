@@ -112,7 +112,7 @@ enum SettingsSearchCatalog {
         + systemActions + commands + quicklinks + fallbacks + ai + quickActions + fileSearch + notes
         + snippets + navigation + windowManagement + clipboard + emoji + calendar
         + extensions + permissions + backup + about + webSearch + herdr + vsCode + zed + linear
-        + miscellaneous
+        + taskCapture + miscellaneous
 
     private static let general: [SettingsSearchEntry] = [
         .init(pane: .general, keywords: ["preferences", "settings"]),
@@ -583,6 +583,18 @@ enum SettingsSearchCatalog {
     private static let linear: [SettingsSearchEntry] = [
         .init(pane: .linear, keywords: ["issues", "views", "tickets", "workspace"]),
         .init(.linearLinear, "Enable Linear", keywords: ["issues", "views", "tickets"])
+    ]
+
+    private static let taskCapture: [SettingsSearchEntry] = [
+        .init(pane: .taskCapture, keywords: ["omnifocus", "textflow", "todo", "tasks", "taskpaper"]),
+        .init(.taskCaptureOmniFocus, "Enable OmniFocus", keywords: ["tasks", "todo", "taskpaper"]),
+        .init(
+            group: .taskCaptureOmniFocus, "Suggest projects and tags",
+            keywords: ["omnifocus", "automation", "apple events", "completion"]),
+        .init(.taskCaptureTextFlow, "Enable TextFlow", keywords: ["tasks", "todo", "cli"]),
+        .init(
+            group: .taskCaptureGrammar, "Writing a Task",
+            keywords: ["syntax", "grammar", "due", "defer", "project", "tag", "flag", "note"])
     ]
 
     private static let miscellaneous: [SettingsSearchEntry] = [

@@ -137,6 +137,7 @@ If a change touches anything in the right column, the harness on the left is man
 | `vscode-test` | `VSCode/Model/VSCodeProject.swift` |
 | `zed-test` | `Zed/Model/ZedProject.swift` |
 | `linear-test` | Linear destination/issue models, credentials and cancellable process runner |
+| `task-capture-test` | `TaskCapture/Model/` — grammar, dates, TaskPaper, TextFlow arguments and both catalog parsers |
 
 The two harnesses that need a server to talk to bring their own: `Tests/ai-fixtures/codex-stub.js`
 and `mcp-stub.js`, each copied into a scratch directory and put in front of PATH so the locator finds

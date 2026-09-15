@@ -26,6 +26,16 @@ enum Permissions {
         NSWorkspace.shared.open(url)
     }
 
+    /// Apple-event consent has no API to request; the pane sends the user to the switch instead.
+    @MainActor
+    static func openAutomationSettings() {
+        guard
+            let url = URL(
+                string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation")
+        else { return }
+        NSWorkspace.shared.open(url)
+    }
+
     static func calendarAccess() -> CalendarAccess {
         switch EKEventStore.authorizationStatus(for: .event) {
         case .fullAccess: return .granted

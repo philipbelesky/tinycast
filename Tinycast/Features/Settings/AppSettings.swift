@@ -485,6 +485,27 @@ final class AppSettings {
         didSet { defaults.set(linearDestination.rawValue, forKey: Key.linearDestination.rawValue) }
     }
 
+    /// Both capture switches are local: a task goes to an app on this Mac, never off it.
+    var taskCaptureOmniFocusEnabled: Bool {
+        didSet {
+            defaults.set(taskCaptureOmniFocusEnabled, forKey: Key.taskCaptureOmniFocusEnabled.rawValue)
+        }
+    }
+
+    var taskCaptureTextFlowEnabled: Bool {
+        didSet {
+            defaults.set(taskCaptureTextFlowEnabled, forKey: Key.taskCaptureTextFlowEnabled.rawValue)
+        }
+    }
+
+    /// Reads OmniFocus's projects and tags for completion, which asks macOS's Automation grant.
+    var taskCaptureOmniFocusSuggestions: Bool {
+        didSet {
+            defaults.set(
+                taskCaptureOmniFocusSuggestions, forKey: Key.taskCaptureOmniFocusSuggestions.rawValue)
+        }
+    }
+
     /// Reads VS Code's own record of what it has opened; nothing leaves the machine.
     var vsCodeEnabled: Bool {
         didSet { defaults.set(vsCodeEnabled, forKey: Key.vsCodeEnabled.rawValue) }
@@ -613,6 +634,15 @@ final class AppSettings {
         linearDestination =
             defaults.string(forKey: Key.linearDestination.rawValue)
             .flatMap(LinearDestination.init(rawValue:)) ?? .app
+        taskCaptureOmniFocusEnabled =
+            defaults.object(forKey: Key.taskCaptureOmniFocusEnabled.rawValue) == nil
+            || defaults.bool(forKey: Key.taskCaptureOmniFocusEnabled.rawValue)
+        taskCaptureTextFlowEnabled =
+            defaults.object(forKey: Key.taskCaptureTextFlowEnabled.rawValue) == nil
+            || defaults.bool(forKey: Key.taskCaptureTextFlowEnabled.rawValue)
+        taskCaptureOmniFocusSuggestions =
+            defaults.object(forKey: Key.taskCaptureOmniFocusSuggestions.rawValue) == nil
+            || defaults.bool(forKey: Key.taskCaptureOmniFocusSuggestions.rawValue)
         scopeKeywords =
             defaults.dictionary(forKey: Key.scopeKeywords.rawValue) as? [String: String] ?? [:]
         searchScopes =

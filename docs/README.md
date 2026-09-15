@@ -41,6 +41,7 @@ open with an `## Invariants` section; read it before changing anything in that a
 [VS Code](features/vscode.md) ·
 [Zed](features/zed.md) ·
 [Linear](features/linear.md) ·
+[task capture](features/task-capture.md) ·
 [hotkeys](features/hotkeys.md) ·
 [navigation](features/navigation.md) ·
 [window management](features/window-management.md) ·

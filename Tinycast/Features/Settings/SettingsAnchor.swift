@@ -122,6 +122,10 @@ extension SettingsAnchor {
     static let linearLinear = Self(tab: .linear, title: "Linear")
     static let linearViews = Self(tab: .linear, title: "Views")
 
+    static let taskCaptureOmniFocus = Self(tab: .taskCapture, title: "OmniFocus")
+    static let taskCaptureTextFlow = Self(tab: .taskCapture, title: "TextFlow")
+    static let taskCaptureGrammar = Self(tab: .taskCapture, title: "Writing a Task")
+
     static let miscellaneousCalculator = Self(tab: .miscellaneous, title: "Calculator")
 }
 

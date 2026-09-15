@@ -1,6 +1,7 @@
 enum SettingsTab: CaseIterable, Identifiable {
     case general, applications, systemSettings, systemActions, commands, quicklinks, fallbacks, ai,
-        quickActions, fileSearch, webSearch, herdr, vsCode, zed, linear, notes, snippets, navigation,
+        quickActions, fileSearch, webSearch, herdr, vsCode, zed, linear, taskCapture, notes, snippets,
+        navigation,
         windowManagement, clipboard, emoji, calendar, extensions, permissions, backup,
         miscellaneous, about
     /// The case, never an index: a selectable `List` flattens section and row IDs together.
@@ -23,6 +24,7 @@ enum SettingsTab: CaseIterable, Identifiable {
         case .vsCode: return "VS Code"
         case .zed: return "Zed"
         case .linear: return "Linear"
+        case .taskCapture: return "Task Capture"
         case .notes: return "Notes"
         case .snippets: return "Snippets"
         case .navigation: return "Navigation"
@@ -55,6 +57,7 @@ enum SettingsTab: CaseIterable, Identifiable {
         case .vsCode: return "chevron.left.forwardslash.chevron.right"
         case .zed: return "cursorarrow.rays"
         case .linear: return "line.3.horizontal.decrease.circle"
+        case .taskCapture: return "checkmark.circle"
         case .notes: return "text.page"
         case .snippets: return "curlybraces"
         case .navigation: return "arrow.left.arrow.right"
@@ -95,8 +98,9 @@ enum SettingsSection: CaseIterable, Identifiable {
             ]
         case .features:
             return [
-                .ai, .quickActions, .fileSearch, .webSearch, .herdr, .vsCode, .zed, .linear, .notes,
-                .snippets, .navigation, .windowManagement, .clipboard, .emoji, .calendar, .extensions
+                .ai, .quickActions, .fileSearch, .webSearch, .herdr, .vsCode, .zed, .linear,
+                .taskCapture, .notes, .snippets, .navigation, .windowManagement, .clipboard, .emoji,
+                .calendar, .extensions
             ]
         case .advanced: return [.backup, .miscellaneous, .about]
         }

@@ -2,8 +2,8 @@
 
 A native macOS menu-bar launcher — a minimal Raycast: fuzzy app launcher, global and per-app hotkeys, a
 text/image clipboard history, an inline calculator, snippets, quicklinks, web search, a herdr workspace
-opener, a VS Code project opener, a Linear view opener, iCloud settings sync, a floating note, window
-management and an emoji picker. It also **runs Raycast extensions** natively, in JavaScriptCore.
+opener, a VS Code project opener, a Linear view opener, task capture into OmniFocus and TextFlow,
+iCloud settings sync, a floating note, window management and an emoji picker. It also **runs Raycast extensions** natively, in JavaScriptCore.
 SwiftUI + AppKit, running as an accessory with no Dock icon (`LSUIElement`). Zero third-party
 dependencies.
 
@@ -16,9 +16,9 @@ drops a DMG into iCloud Drive, which is how it reaches the author's other Macs, 
 distribution story ([release.md](docs/release.md)).
 
 The install base being known changes what is worth building. A feature that suits exactly one person's
-workflow — the herdr, VS Code and Linear openers — is the point rather than scope creep, and there is
-no stranger's data to migrate or old install to keep working, which is the same reason the
-latest-only posture below costs nothing.
+workflow — the herdr, VS Code and Linear openers, task capture — is the point rather than scope
+creep, and there is no stranger's data to migrate or old install to keep working, which is the same
+reason the latest-only posture below costs nothing.
 
 **Absorbing upstream is still a goal, so the fork stays cheap to merge.** Every upstream file touched
 is a future conflict: prefer additive, localized changes, put genuinely new work in its own

@@ -63,6 +63,9 @@ extension SettingsBackup {
             scopeKeywords: s.scopeKeywords,
             linearShowInLauncher: s.linearShowInLauncher,
             linearDestination: s.linearDestination.rawValue,
+            taskCaptureOmniFocusEnabled: s.taskCaptureOmniFocusEnabled,
+            taskCaptureTextFlowEnabled: s.taskCaptureTextFlowEnabled,
+            taskCaptureOmniFocusSuggestions: s.taskCaptureOmniFocusSuggestions,
             calendarShowInLauncher: s.calendarShowInLauncher,
             calendarLauncherLimit: s.calendarLauncherLimit.rawValue,
             calendarIncludesTomorrow: s.calendarIncludesTomorrow,
@@ -366,6 +369,18 @@ extension SettingsBackup {
         }
         if let destination = s.linearDestination.flatMap(LinearDestination.init(rawValue:)) {
             settings.linearDestination = destination
+            count += 1
+        }
+        if let flag = s.taskCaptureOmniFocusEnabled {
+            settings.taskCaptureOmniFocusEnabled = flag
+            count += 1
+        }
+        if let flag = s.taskCaptureTextFlowEnabled {
+            settings.taskCaptureTextFlowEnabled = flag
+            count += 1
+        }
+        if let flag = s.taskCaptureOmniFocusSuggestions {
+            settings.taskCaptureOmniFocusSuggestions = flag
             count += 1
         }
         if let flag = s.webSearchEnabled {

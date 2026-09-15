@@ -79,6 +79,9 @@ struct SettingsBackup: Codable {
         // Carried: neither is the Linear consent flag, which lives on the store and never leaves it.
         var linearShowInLauncher: Bool?
         var linearDestination: String?
+        var taskCaptureOmniFocusEnabled: Bool?
+        var taskCaptureTextFlowEnabled: Bool?
+        var taskCaptureOmniFocusSuggestions: Bool?
         // `calendarEnabled` is absent: an import must not grant calendar access.
         var calendarShowInLauncher: Bool?
         var calendarLauncherLimit: Int?

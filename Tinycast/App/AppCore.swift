@@ -104,6 +104,11 @@ final class AppCore {
 
     @ObservationIgnored private(set) lazy var settingsSync = SettingsSyncStore(core: self)
 
+    @ObservationIgnored private(set) lazy var taskCaptureIndex = TaskCaptureIndex()
+    @ObservationIgnored private(set) lazy var taskCaptureCoordinator = TaskCaptureCoordinator(
+        index: taskCaptureIndex, settings: settings, paletteCoordinator: paletteCoordinator,
+        core: self)
+
     @ObservationIgnored private(set) lazy var webSearchCoordinator = WebSearchCoordinator(
         paletteCoordinator: paletteCoordinator,
         clipboardHistory: { [unowned self] in self.snippetCoordinator.clipboardHistoryForExpansion() })
@@ -282,6 +287,7 @@ final class AppCore {
                 await vsCodeCoordinator.refresh()
                 await zedCoordinator.refresh()
                 await linearCoordinator.refresh()
+                await taskCaptureCoordinator.refresh()
                 // The registry follows the feature switches and the user's keywords, so it is
                 // re-read here rather than tracked from a dozen places.
                 applyScopePresence()
@@ -565,6 +571,11 @@ final class AppCore {
         track({ _ = $0.linearShowInLauncher }, reproject: { $0.linearCoordinator.applyLinearPresence() })
         track(
             {
+                _ = $0.taskCaptureOmniFocusEnabled
+                _ = $0.taskCaptureTextFlowEnabled
+            }, reproject: { $0.applyScopePresence() })
+        track(
+            {
                 _ = $0.quicklinksEnabled
                 _ = $0.quicklinksShowInLauncher
             }, reproject: { $0.quicklinkCoordinator.applyQuicklinksPresence() })
@@ -667,6 +678,7 @@ final class AppCore {
             switch ScopeCatalog.target(for: definition, settings: settings) {
             case .kinds(let kinds): return appIndex.hasEntries(ofAnyKind: kinds)
             case .linear: return linear.isEnabled && linear.isAvailable && linear.workspaceCount > 0
+            case .taskCapture(let destination): return taskCaptureCoordinator.isOffered(destination)
             case .mode, .webSearch, nil: return true
             }
         }

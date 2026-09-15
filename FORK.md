@@ -51,6 +51,7 @@ themselves are in [AGENTS.md](AGENTS.md#non-negotiables). This file covers only 
 | 21 | [Harnesses run in their own session](#21--harnesses-run-in-their-own-session) | Low — one line in the `--exec` worker | Yes — it fixes a suite that hangs in any terminal |
 | 22 | [Zed project opener](#22--zed-project-opener) | Medium — the same `AppEntry.Kind` surface as 4 | Yes, as a feature |
 | 23 | [Feature switch placement and sidebar status](#23--feature-switch-placement-and-sidebar-status) | Low — localized settings changes | Yes, as a usability improvement |
+| 24 | [Task capture into OmniFocus and TextFlow](#24--task-capture-into-omnifocus-and-textflow) | Medium — a new lead card and row kind in the launcher list | Yes, as a feature |
 
 Keep each divergence as **its own commit**, never squashed together. Rebasing `philip` onto a new
 `origin/main` then replays them one at a time, and a divergence that upstream has since made redundant
@@ -760,6 +761,16 @@ The source is `~/Library/Application Support/Zed/db/0-stable/db.sqlite`. It is r
 Feature panes put their master enable switch before their launcher item lists. Disabled features retain a selectable settings sidebar row with an “Off” label, so their status is visible and their controls remain reachable. The sidebar reads each feature's existing enable state; Linear's switch remains owned by its store.
 
 **On merge:** keep these localized settings changes unless upstream provides equivalent switch placement and disabled-state feedback.
+
+## 24 — Task capture into OmniFocus and TextFlow
+
+**Touches:** a new `Features/TaskCapture/` (a pure grammar, date parser, TaskPaper formatter, TextFlow command builder and two catalog parsers under `Model/` with a harness; an index and two runners under `Service/`; a coordinator, card and completion row under `UI/`; a settings pane), a new `Platform/CommandLineProcess.swift` extracted from Linear's process runner so both features share one subprocess shape, an Automation-pane opener in `Permissions`, `ScopeTarget.taskCapture` and the `o`/`t` entries in `ScopeCatalog`, a lead-card case and a completion row kind in `LauncherList` and `LauncherScreen`, a scope-armed hook in `RootPaletteView`, `AppCore` wiring, `SettingsTab`, and the settings/backup registries.
+
+`o` or `t` followed by a task — `Buy milk @Groceries #errands due fri 5pm !` — turns the launcher into a preview of that task and ↵ writes it into OmniFocus (a TaskPaper paste link, opened without activation) or TextFlow (its command line, launched in the background if needed). Project and tag completions are read from each app: TextFlow through its CLI, OmniFocus through JavaScript for Automation behind a suggestions switch, because that read is what triggers the macOS Automation prompt. `docs/features/task-capture.md` records the grammar, the date forms and what each sink keeps.
+
+This is the largest launcher-list change since divergence 4: the capture scope owns the query the way a web scope does, so the screen suppresses calculator, colour, meeting, results and fallbacks while it is armed, and the list gains a card that is not a calculator answer and a row that is not an entry.
+
+**On merge:** re-apply the `ScopeTarget` case and follow the compiler through `LauncherScreen`'s row and action switches and `LauncherList`'s lead-card and row enums; those are the only upstream files with more than a line of new logic. If upstream grows a generic "lead card" protocol, move the capture card onto it and delete the enum cases.
 
 ## Merging upstream
 

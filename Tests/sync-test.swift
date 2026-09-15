@@ -64,6 +64,9 @@ struct SyncTest {
             s.scopeKeywords = ["l": "linear"]
             s.linearShowInLauncher = true
             s.linearDestination = "app"
+            s.taskCaptureOmniFocusEnabled = true
+            s.taskCaptureTextFlowEnabled = true
+            s.taskCaptureOmniFocusSuggestions = true
             return s
         }
 

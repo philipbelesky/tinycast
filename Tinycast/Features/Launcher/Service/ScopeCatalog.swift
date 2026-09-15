@@ -10,6 +10,8 @@ enum ScopeTarget: Equatable, Sendable {
     case webSearch(WebSearchEngine)
     /// Keeps cached destinations local while a typed query also searches Linear tickets.
     case linear
+    /// The query is a task, not a search: the list becomes its preview. docs/features/task-capture.md
+    case taskCapture(TaskCaptureDestination)
 }
 
 /// The scope registry: keyword → id → target. See docs/features/palette.md#scope-keywords.
@@ -29,6 +31,8 @@ enum ScopeCatalog {
     static let vsCode = "scope:vscode"
     static let zed = "scope:zed"
     static let linear = "scope:linear"
+    static let omniFocus = "scope:omnifocus"
+    static let textFlow = "scope:textflow"
     static let emoji = "scope:emoji"
     static let clipboard = "scope:clipboard"
 
@@ -72,7 +76,17 @@ enum ScopeCatalog {
             definition: ScopeDefinition(
                 keyword: "l", id: linear, title: "Linear", symbol: "line.3.horizontal.decrease.circle",
                 tint: .indigo),
-            target: .linear)
+            target: .linear),
+        Entry(
+            definition: ScopeDefinition(
+                keyword: "o", id: omniFocus, title: "OmniFocus",
+                symbol: TaskCaptureDestination.omniFocus.symbol, tint: .purple),
+            target: .taskCapture(.omniFocus)),
+        Entry(
+            definition: ScopeDefinition(
+                keyword: "t", id: textFlow, title: "TextFlow",
+                symbol: TaskCaptureDestination.textFlow.symbol, tint: .teal),
+            target: .taskCapture(.textFlow))
     ]
 
     private static let modes: [Entry] = [
@@ -122,7 +136,7 @@ enum ScopeCatalog {
             case .kinds(let kinds): kinds.contains(kind)
             // Linear narrows by API rather than by kind, but its rows are still its category.
             case .linear: kind == .linearTarget
-            case .mode, .webSearch: false
+            case .mode, .webSearch, .taskCapture: false
             }
         }?.definition
     }
@@ -194,6 +208,8 @@ enum ScopeCatalog {
         case vsCode: return settings.vsCodeEnabled
         case zed: return settings.zedEnabled
         case linear: return settings.linearShowInLauncher
+        case omniFocus: return settings.taskCaptureOmniFocusEnabled
+        case textFlow: return settings.taskCaptureTextFlowEnabled
         default:
             return id.hasPrefix("scope:" + WebSearchEngine.entryIDPrefix)
                 ? settings.webSearchEnabled : true

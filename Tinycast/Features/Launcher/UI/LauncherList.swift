@@ -21,6 +21,9 @@ struct LauncherList: View {
     var suggestions: [String] = []
     var onActivateWebSearch: () -> Void = {}
     var onActivateSuggestion: (String) -> Void = { _ in }
+    /// Projects and tags for the token being typed, beneath a capture card. Empty otherwise.
+    var completions: [TaskCaptureCompletion] = []
+    var onActivateCompletion: (TaskCaptureCompletion) -> Void = { _ in }
     let onActivate: (AppEntry) -> Void
     let onActions: (AppEntry) -> Void
     /// The `Use "…" with` section, always last; nil when nothing is typed.
@@ -41,12 +44,15 @@ struct LauncherList: View {
         case calc(CalcResult)
         case meeting(MeetingEvent, now: Date)
         case color(ColorValue)
+        /// Owns the query like a web scope: the card and its completions are the whole list.
+        case taskCapture(TaskCapturePreview)
 
         var sectionTitle: String {
             switch self {
             case .calc: return "Calculator"
             case .meeting: return "Meeting"
             case .color: return "Color"
+            case .taskCapture(let preview): return preview.destination.title
             }
         }
 
@@ -55,6 +61,7 @@ struct LauncherList: View {
             case .calc: return "calc-card"
             case .meeting: return "meeting-card"
             case .color: return "color-card"
+            case .taskCapture: return "task-capture-card"
             }
         }
     }
@@ -75,6 +82,7 @@ struct LauncherList: View {
         case card(LeadCard)
         case webSearch(WebSearchPrompt)
         case suggestion(String)
+        case completion(TaskCaptureCompletion)
         /// `slot` is the row's ⌘-digit, carried from the section build rather than searched.
         case app(AppEntry, slot: Character?)
         case fallback(AppEntry, index: Int)
@@ -85,6 +93,7 @@ struct LauncherList: View {
             case .card(let card): return card.rowID
             case .webSearch(let prompt): return prompt.id
             case .suggestion(let text): return SearchSuggestions.rowID(text)
+            case .completion(let completion): return completion.id
             case .app(let app, _): return app.id
             case .fallback(let app, _): return "fallback-" + app.id
             }
@@ -112,6 +121,7 @@ struct LauncherList: View {
         }
         var cardRows: [Row] = []
         if let card { cardRows = [.header(card.sectionTitle), .card(card)] }
+        if case .taskCapture = card { return cardRows + completions.map(Row.completion) }
         guard showSections else {
             guard !results.isEmpty else { return cardRows + fallbackRows }
             return cardRows + [.header("Results")] + results.map { .app($0, slot: nil) }
@@ -187,6 +197,13 @@ struct LauncherList: View {
                                     .contentShape(Rectangle())
                                     .onTapGesture { onActivateSuggestion(text) }
                                     .selectionFrame(selectedRowID == SearchSuggestions.rowID(text))
+                                case .completion(let completion):
+                                    TaskCaptureCompletionRow(
+                                        completion: completion, selected: selectedRowID == completion.id
+                                    )
+                                    .contentShape(Rectangle())
+                                    .onTapGesture { onActivateCompletion(completion) }
+                                    .selectionFrame(selectedRowID == completion.id)
                                 case .app(let app, let slot):
                                     AppRow(
                                         app: app,
@@ -304,6 +321,8 @@ private struct LeadCardView: View {
             MeetingCard(meeting: meeting, now: now, selected: selected)
         case .color(let color):
             ColorCard(color: color, selected: selected)
+        case .taskCapture(let preview):
+            TaskCaptureCard(preview: preview, selected: selected)
         }
     }
 }
