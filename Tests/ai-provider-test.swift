@@ -83,6 +83,7 @@ struct AIProviderTests {
         modelCatalogSearchesWithoutRenderingEverything()
         endpointPolicyRejectsUnsafeRemoteURLs()
         storedKeysDoNotFollowARetargetedConnection()
+        savingAConnectionDecidesItsKey()
         sseFramesSurviveSplits()
         openAIAndAnthropicStreamsDecode()
         capturedStreamsDecodeHoweverTheyArrive()
@@ -99,6 +100,7 @@ struct AIProviderTests {
         toolCatalogsAndTurnsEncodePerProvider()
         toolArgumentsSurviveArrivingInFragments()
         toolCapabilitiesFollowTheRoute()
+        aGatewayOffersNoneAsItsReasoningEffort()
 
         print("\(passes) passed, \(failures) failed")
         if failures > 0 { exit(1) }
@@ -263,6 +265,48 @@ struct AIProviderTests {
         expect(
             (router["reasoning"] as? [String: String])?["effort"] == "low",
             "OpenRouter receives the reasoning effort its catalog offered")
+    }
+
+    /// A body that named the default would 400 on every endpoint without a thinking mode.
+    static func aGatewayOffersNoneAsItsReasoningEffort() {
+        let gateway = AIConnection(
+            provider: .openAI, baseURL: "https://api.fusioncode.app/v1", models: ["m"])
+        expect(
+            gateway.reasoningOptions(for: "m")?.efforts == ["default", "none"],
+            "a preset pointed away from its own API offers the one effort a gateway can honour")
+        expect(
+            gateway.reasoningOptions(for: "m")?.resolvedEffort(nil) == "default",
+            "and reasoning stays on until the reader picks None")
+        expect(
+            AIConnection(provider: .openAI, models: ["m"]).reasoningOptions(for: "m") == nil,
+            "a preset on its own API offers none, because a vendor rejects what it does not define")
+        expect(
+            AIConnection(provider: .anthropic, baseURL: "https://gateway.example", models: ["m"])
+                .reasoningOptions(for: "m") == nil,
+            "the Anthropic shape is out of scope whatever it points at")
+
+        let catalogued = AIConnection(
+            id: UUID(), provider: .openRouter, baseURL: "https://gateway.example", models: ["m"],
+            reasoningOptions: ["m": .init(efforts: ["high", "low"], defaultEffort: "high")])
+        expect(
+            catalogued.reasoningOptions(for: "m")?.efforts == ["high", "low"],
+            "a published catalog always wins over the synthesized switch")
+
+        let turn = AIRequest(messages: [AIMessage(role: .user, text: "hi")])
+        let url = URL(string: "https://api.fusioncode.app/v1")!
+        let on = AIRequestBody.make(
+            turn,
+            configuration: AIHTTPConfiguration(provider: .openAI, baseURL: url, model: "m"))
+        expect(on["thinking"] == nil, "reasoning left alone sends no key at all")
+
+        let off = AIRequestBody.make(
+            turn,
+            configuration: AIHTTPConfiguration(
+                provider: .openAI, baseURL: url, model: "m", effort: "none",
+                disablesThinking: true))
+        expect(
+            (off["thinking"] as? [String: String])?["type"] == "disabled",
+            "None asks the endpoint to answer directly")
     }
 
     static func providerPresetsResolveEndpoints() {
@@ -470,6 +514,48 @@ struct AIProviderTests {
         expect(
             AIEndpointPolicy.sameDestination(renamed, saved),
             "editing a label or the model list is not a retarget and keeps the saved key")
+    }
+
+    static func savingAConnectionDecidesItsKey() {
+        var remote = AIConnection()
+        remote.provider = .openAI
+        remote.baseURL = "https://api.openai.com/v1"
+        var local = remote
+        local.baseURL = "http://localhost:11434/v1"
+        var moved = remote
+        moved.baseURL = "https://gateway.example.com/v1"
+        typealias Policy = AIConnectionKeyPolicy
+
+        expect(
+            Policy.resolve(enteredKey: "  sk-new \n", connection: remote, saved: nil, hasStoredKey: false)
+                == .store("sk-new"),
+            "a typed key is stored trimmed")
+        expect(
+            Policy.resolve(enteredKey: "sk-new", connection: moved, saved: remote, hasStoredKey: true)
+                == .store("sk-new"),
+            "a retarget that brings its own key replaces the old one")
+        expect(
+            Policy.resolve(enteredKey: " ", connection: moved, saved: remote, hasStoredKey: true)
+                == .reject("Enter an API key for this endpoint — the saved key stays with the old one."),
+            "a remote retarget without a key is refused, so the old key never reaches the new host")
+        expect(
+            Policy.resolve(enteredKey: "", connection: local, saved: remote, hasStoredKey: true)
+                == .removeStored,
+            "a retarget to loopback drops the key issued for the remote endpoint")
+        expect(
+            Policy.resolve(enteredKey: "", connection: remote, saved: nil, hasStoredKey: false)
+                == .reject("Enter an API key for this remote provider."),
+            "a new remote connection needs a key")
+        expect(
+            Policy.resolve(enteredKey: "", connection: local, saved: nil, hasStoredKey: false) == .keep,
+            "a loopback endpoint saves without a key")
+        expect(
+            Policy.resolve(enteredKey: "", connection: remote, saved: remote, hasStoredKey: true) == .keep,
+            "an unchanged endpoint keeps its saved key")
+        expect(
+            Policy.resolve(enteredKey: "", connection: moved, saved: remote, hasStoredKey: false)
+                == .reject("Enter an API key for this remote provider."),
+            "with no saved key there is nothing to retarget, only a missing key")
     }
 
     static func sseFramesSurviveSplits() {

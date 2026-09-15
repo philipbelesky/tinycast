@@ -19,10 +19,16 @@ if [ "${1:-}" = "--exec" ]; then
     shift
     name=$1 opt=$2
     shift 2
-    if ! swiftc -swift-version 6 "$opt" "$@" "Tests/$name.swift" -o "$BIN/$name" > "$BIN/$name.log" 2>&1; then
-        printf '\033[31mFAIL\033[0m  %-22s did not compile\n' "$name"
+    : > "$BIN/$name.running"
+    trap 'rm -f "$BIN/$name.running" "$BIN/$name.time"' EXIT
+    fail() {
+        printf '\033[31mFAIL\033[0m  %-25s %s\n' "$name" "$1"
         : > "$BIN/$name.failed"
         exit 0
+    }
+    TIMEFORMAT=%1R
+    if ! compiled=$( { time swiftc -swift-version 6 "$opt" "$@" "Tests/$name.swift" -o "$BIN/$name" > "$BIN/$name.log" 2>&1; } 2>&1 ); then
+        fail "did not compile"
     fi
     # Run the harness in its own session, with no controlling terminal. custom-command-test spawns
     # `/bin/zsh -ilc ...`; an interactive shell in a background process group that touches the
@@ -32,19 +38,32 @@ if [ "${1:-}" = "--exec" ]; then
     # this restores the environment the code actually runs in. Redirecting stdin alone does not do
     # it (the terminal is still reachable through /dev/tty), and neither bash nor macOS provides
     # setsid, hence borrowing the system python for the one syscall before exec.
-    if ! /usr/bin/python3 -c 'import os, sys; os.setsid(); os.execv(sys.argv[1], sys.argv[1:])' \
-            "$BIN/$name" < /dev/null > "$BIN/$name.log" 2>&1; then
-        printf '\033[31mFAIL\033[0m  %-22s assertion failed\n' "$name"
-        : > "$BIN/$name.failed"
-        exit 0
-    fi
-    printf '\033[32mok\033[0m    %-22s\n' "$name"
+    { time /usr/bin/python3 -c 'import os, sys; os.setsid(); os.execv(sys.argv[1], sys.argv[1:])' \
+            "$BIN/$name" < /dev/null > "$BIN/$name.log" 2>&1; } 2> "$BIN/$name.time" &
+    pid=$!
+    # macOS ships no `timeout`, so the worker polls; a wedged harness must fail, not stall the suite.
+    ticks=0
+    while kill -0 "$pid" 2>/dev/null; do
+        if [ "$ticks" -ge $((TINYCAST_TEST_TIMEOUT * 5)) ]; then
+            { pkill -KILL -P "$pid"; kill -KILL "$pid"; wait "$pid"; } 2>/dev/null
+            printf '\n[run-tests] killed after %ss without finishing\n' "$TINYCAST_TEST_TIMEOUT" >> "$BIN/$name.log"
+            fail "timed out after ${TINYCAST_TEST_TIMEOUT}s"
+        fi
+        ticks=$((ticks + 1))
+        sleep 0.2
+    done
+    wait "$pid"
+    status=$?
+    took=$(< "$BIN/$name.time")
+    if [ "$status" -gt 128 ]; then fail "crashed (signal $((status - 128))) after ${took}s"; fi
+    if [ "$status" -ne 0 ]; then fail "assertion failed after ${took}s"; fi
+    printf '\033[32mok\033[0m    %-25s %5ss  \033[2m(compile %ss)\033[0m\n' "$name" "$took" "$compiled"
     exit 0
 fi
 
 QUEUE="$BIN/queue"
 : > "$QUEUE"
-rm -f "$BIN"/*.failed
+rm -f "$BIN"/*.failed "$BIN"/*.running
 
 failed=()
 ran=0
@@ -84,6 +103,11 @@ run file-search-session-test Tinycast/Platform/Signposts.swift \
                              $L/SearchRelevance.swift \
                              Tinycast/Features/FileSearch/Model/*.swift \
                              Tinycast/Features/FileSearch/Service/*.swift
+run menu-search-test       $L/SearchRelevance.swift \
+                           Tinycast/Features/MenuSearch/Model/*.swift \
+                           Tinycast/Features/MenuSearch/Service/*.swift
+run window-switch-test     $L/SearchRelevance.swift \
+                           Tinycast/Features/WindowSwitcher/Model/*.swift
 run index file-search-performance Tinycast/Platform/Signposts.swift \
                            $L/SearchRelevance.swift \
                            Tinycast/Features/FileSearch/Model/*.swift \
@@ -106,6 +130,13 @@ run clipboard-test         Tinycast/Features/Clipboard/Model/ClipboardStore.swif
                            Tinycast/Features/Clipboard/Model/ColorValue.swift \
                            Tinycast/Features/Clipboard/Model/ColorFormat.swift \
                            Tinycast/Features/Clipboard/Model/ColorSpaces.swift
+# `Q` is the URL detector a drag payload builds its link with, rather than a second one.
+Q=Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift
+run clipboard-search-test  Tinycast/Features/Clipboard/Model/*.swift $Q
+run clipboard-text-test    Tinycast/Features/Clipboard/Model/*.swift $Q \
+                           Tinycast/Features/Clipboard/Service/ClipboardTextExtractor.swift \
+                           Tinycast/Features/Clipboard/Service/ClipboardTextIndexer.swift \
+                           Tinycast/Features/Clipboard/Service/ClipboardTextWorker.swift
 run pasteboard-test        Tinycast/Platform/PasteboardFiles.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFilter.swift \
@@ -125,18 +156,41 @@ run index clipboard-file-performance \
 run emoji-test             Tinycast/Features/Emoji/Model/EmojiCatalog.swift \
                            Tinycast/Features/Emoji/Model/EmojiGridGeometry.swift \
                            Tinycast/Features/Emoji/Model/EmojiData.generated.swift
+run emoji-search-test      Tinycast/Features/Emoji/Model/EmojiCatalog.swift \
+                           Tinycast/Features/Emoji/Model/EmojiData.generated.swift \
+                           Tinycast/Features/Emoji/Service/EmojiIndex.swift \
+                           Tinycast/Features/Emoji/Service/FrequentEmojiStore.swift \
+                           Tinycast/Features/Launcher/Model/SearchRelevance.swift \
+                           Tinycast/Platform/AppPaths.swift Tinycast/Platform/Memo.swift
+run index emoji-search-performance \
+                           Tinycast/Features/Emoji/Model/EmojiCatalog.swift \
+                           Tinycast/Features/Emoji/Model/EmojiData.generated.swift \
+                           Tinycast/Features/Emoji/Service/EmojiIndex.swift \
+                           Tinycast/Features/Emoji/Service/FrequentEmojiStore.swift \
+                           Tinycast/Features/Launcher/Model/SearchRelevance.swift \
+                           Tinycast/Platform/AppPaths.swift Tinycast/Platform/Memo.swift
 run palette-selection-test Tinycast/Features/PaletteRowIndex.swift \
                            Tinycast/Features/Emoji/Model/EmojiGridGeometry.swift
 run appearance-test        Tinycast/Platform/Appearance.swift \
                            Tinycast/DesignSystem/Theme.swift \
                            $L/ScopeTint.swift \
+                           Tinycast/DesignSystem/InterfaceMetrics.swift \
                            Tinycast/Features/Settings/AppAppearance.swift
+run interface-size-test    Tinycast/Platform/Appearance.swift \
+                           Tinycast/DesignSystem/Theme.swift \
+                           $L/ScopeTint.swift \
+                           Tinycast/DesignSystem/InterfaceMetrics.swift \
+                           Tinycast/Features/Settings/InterfaceSize.swift \
+                           Tinycast/Features/Extensions/Model/ExtensionFormMetrics.swift
 run palette-placement-test Tinycast/Platform/Appearance.swift \
                            Tinycast/DesignSystem/Theme.swift \
                            $L/ScopeTint.swift \
+                           Tinycast/DesignSystem/InterfaceMetrics.swift \
+                           Tinycast/Features/Settings/InterfaceSize.swift \
                            Tinycast/Palette/PalettePlacement.swift
 run scroll-reveal-test     Tinycast/DesignSystem/Scrolling/SelectionReveal.swift
 run redaction-test         Tinycast/DesignSystem/RedactedPlaceholder.swift
+run keyboard-focus-test    Tinycast/DesignSystem/Interaction/KeyboardFocus.swift
 run ai-instructions-test   Tinycast/Features/AI/Model/AIInstructions.swift \
                            Tinycast/Features/AI/Model/AIPreamble.swift
 run hover-arming-test      Tinycast/Palette/HoverArming.swift \
@@ -146,6 +200,7 @@ run hover-arming-test      Tinycast/Palette/HoverArming.swift \
                            $L/ScopeTint.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFilter.swift \
+                           Tinycast/Features/FileSearch/Model/FileSearchFilter.swift \
                            Tinycast/Features/Clipboard/Model/ColorValue.swift \
                            Tinycast/Features/Clipboard/Model/ColorFormat.swift \
                            Tinycast/Features/Clipboard/Model/ColorSpaces.swift \
@@ -166,6 +221,7 @@ run palette-navigation-test Tinycast/Palette/PaletteState.swift \
                            $L/ScopeTint.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFilter.swift \
+                           Tinycast/Features/FileSearch/Model/FileSearchFilter.swift \
                            Tinycast/Features/Clipboard/Model/ColorValue.swift \
                            Tinycast/Features/Clipboard/Model/ColorFormat.swift \
                            Tinycast/Features/Clipboard/Model/ColorSpaces.swift \
@@ -177,6 +233,7 @@ run palette-filter-test    Tinycast/Palette/PaletteMode.swift \
                            Tinycast/Features/Quicklinks/Model/Quicklink.swift \
                            Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift \
                            Tinycast/Features/CustomCommands/Model/CustomCommand.swift
+run palette-shortcut-test  Tinycast/Palette/PaletteShortcut.swift
 run palette-tab-test       Tinycast/Palette/PaletteMode.swift \
                            Tinycast/Palette/PaletteTabAction.swift \
                            Tinycast/Features/Quicklinks/Model/Quicklink.swift \
@@ -186,6 +243,8 @@ run fallback-test          Tinycast/Features/Launcher/Model/Fallback.swift \
                            Tinycast/Features/Launcher/Model/CommandID.swift \
                            Tinycast/Features/HotKeys/Model/HotKeyAction.swift \
                            Tinycast/Features/QuickActions/Model/QuickAction.swift \
+                           Tinycast/Features/QuickActions/Model/BuiltInQuickAction.swift \
+                           Tinycast/Features/QuickActions/Model/CustomQuickAction.swift \
                            Tinycast/Features/Quicklinks/Model/Quicklink.swift \
                            Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift \
                            Tinycast/Features/SystemActions/Model/SystemAction.swift \
@@ -197,6 +256,8 @@ run hotkey-test            Tinycast/Features/HotKeys/Model/DoubleTapModifier.swi
                            Tinycast/Features/HotKeys/Service/KeyShortcut.swift \
                            Tinycast/Features/HotKeys/Model/HotKeyAction.swift \
                            Tinycast/Features/QuickActions/Model/QuickAction.swift \
+                           Tinycast/Features/QuickActions/Model/BuiltInQuickAction.swift \
+                           Tinycast/Features/QuickActions/Model/CustomQuickAction.swift \
                            Tinycast/Features/Launcher/Model/CommandID.swift \
                            Tinycast/Features/Quicklinks/Model/Quicklink.swift \
                            Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift \
@@ -205,6 +266,7 @@ run hotkey-test            Tinycast/Features/HotKeys/Model/DoubleTapModifier.swi
 run callout-test           Tinycast/Platform/Appearance.swift \
                            Tinycast/DesignSystem/Theme.swift \
                            $L/ScopeTint.swift \
+                           Tinycast/DesignSystem/InterfaceMetrics.swift \
                            Tinycast/Features/HotKeys/UI/CalloutPlacement.swift
 run icon-cache-test        Tinycast/Platform/Appearance.swift \
                            Tinycast/DesignSystem/Theme.swift \
@@ -220,6 +282,7 @@ run ext-icon-test          Tinycast/Platform/Appearance.swift \
                            $L/ScopeTint.swift \
                            Tinycast/Platform/Images/IconCache.swift \
                            Tinycast/Platform/Compression/Zlib.swift \
+                           Tinycast/DesignSystem/InterfaceMetrics.swift \
                            Tinycast/Features/Extensions/Model/ExtensionBootConfig.swift \
                            Tinycast/Features/Extensions/Model/ExtensionLaunchType.swift \
                            Tinycast/Features/Extensions/Model/ExtensionManifest.swift \
@@ -238,11 +301,13 @@ run ext-icon-test          Tinycast/Platform/Appearance.swift \
 run system-action-test     Tinycast/Features/SystemActions/Model/SystemAction.swift
 run volume-test            Tinycast/Features/SystemActions/Model/VolumeLevel.swift
 run window-command-test    Tinycast/Features/WindowManagement/Model/WindowCommand.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowCycle.swift \
                            Tinycast/Features/WindowManagement/Model/WindowPlacementEngine.swift \
                            Tinycast/Features/WindowManagement/Model/WindowActionMemory.swift
 run space-gesture-test     Tinycast/Features/WindowManagement/Model/WindowCommand.swift \
                            Tinycast/Features/WindowManagement/Model/SpaceGesture.swift
 run window-layout-test     Tinycast/Features/WindowManagement/Model/WindowCommand.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowCycle.swift \
                            Tinycast/Features/WindowManagement/Model/WindowPlacementEngine.swift \
                            Tinycast/Features/WindowManagement/Model/WindowLayoutAnchor.swift \
                            Tinycast/Features/WindowManagement/Model/WindowLayoutDisplay.swift \
@@ -279,6 +344,8 @@ run notes-editor-test      Tinycast/Platform/Signposts.swift \
                            Tinycast/Platform/Appearance.swift \
                            Tinycast/DesignSystem/Theme.swift \
                            $L/ScopeTint.swift \
+                           Tinycast/DesignSystem/InterfaceMetrics.swift \
+                           Tinycast/Features/TextInjection/Service/InjectableTextView.swift \
                            Tinycast/Features/Notes/Model/NoteDocument.swift \
                            Tinycast/Features/Notes/UI/NoteTextView.swift \
                            Tinycast/Features/Notes/UI/NoteEditorView.swift
@@ -327,7 +394,9 @@ run slow ext-test          -parse-as-library \
                            Tinycast/Platform/Images/IconCache.swift \
                            Tinycast/DesignSystem/Theme.swift \
                            $L/ScopeTint.swift \
+                           Tinycast/DesignSystem/InterfaceMetrics.swift \
                            $E/Model/ExtensionBootConfig.swift \
+                           $E/Model/ExtensionDeepLink.swift \
                            $E/Model/ExtensionLaunchType.swift \
                            $E/Model/ExtensionFormField.swift \
                            $E/Model/ExtensionGridLayout.swift \
@@ -355,7 +424,8 @@ run settings-history-test  Tinycast/Features/Settings/SettingsTab.swift \
                            Tinycast/Features/Settings/SettingsNavigationState.swift \
                            Tinycast/Features/Settings/SettingsSearchCatalog.swift \
                            $L/SearchRelevance.swift
-run updates-test           Tinycast/Features/Updates/Model/*.swift
+run updates-test           Tinycast/Features/Updates/Model/*.swift \
+                           Tinycast/Features/Updates/Service/BundleSignature.swift
 run support-test           Tinycast/Features/Support/Model/*.swift
 run ai-provider-test       Tinycast/Features/Settings/AppSettingsKey.swift \
                            Tinycast/Features/AI/Model/*.swift \
@@ -447,6 +517,8 @@ run sync-test              Tinycast/Features/Sync/Model/SyncEnvelope.swift \
                            Tinycast/Features/HotKeys/Service/KeyShortcut.swift \
                            Tinycast/Features/Launcher/Model/CommandID.swift \
                            Tinycast/Features/QuickActions/Model/QuickAction.swift \
+                           Tinycast/Features/QuickActions/Model/BuiltInQuickAction.swift \
+                           Tinycast/Features/QuickActions/Model/CustomQuickAction.swift \
                            Tinycast/Features/HotKeys/Model/HotKeyAction.swift \
                            Tinycast/Features/SystemActions/Model/SystemAction.swift \
                            Tinycast/Features/WindowManagement/Model/*.swift
@@ -462,11 +534,36 @@ fi
 
 # `sort -s` is stable, so the slow harnesses lead and everything else keeps its declaration order.
 JOBS="${TINYCAST_TEST_JOBS:-$(sysctl -n hw.ncpu)}"
+export TINYCAST_TEST_TIMEOUT="${TINYCAST_TEST_TIMEOUT:-300}"
+started=$SECONDS
+
+# Numbers each result, and names what is still running whenever the output goes quiet.
+report() {
+    local finished=0 line asked running file
+    while :; do
+        asked=$SECONDS
+        if IFS= read -r -t 15 line; then
+            case "$line" in "dispatch "*) return "${line#dispatch }";; esac
+            finished=$((finished + 1))
+            printf '[%*d/%d] %s\n' "${#ran}" "$finished" "$ran" "$line"
+            continue
+        fi
+        # Bash 3.2 returns the same status for a timeout and EOF; only EOF comes back at once.
+        if [ $((SECONDS - asked)) -lt 10 ]; then return 1; fi
+        running=""
+        for file in "$BIN"/*.running; do
+            [ -e "$file" ] && running="$running $(basename "$file" .running)"
+        done
+        printf '        \033[2mstill running after %ds:%s\033[0m\n' $((SECONDS - started)) "$running"
+    done
+}
+
 # Without this the suite reports "all passed" whenever dispatch itself dies and no harness ran.
-if ! sort -s -k1,1n "$QUEUE" | cut -d' ' -f2- | xargs -P "$JOBS" -L1 "$SELF" --exec; then
+if ! { sort -s -k1,1n "$QUEUE" | cut -d' ' -f2- | xargs -P "$JOBS" -L1 "$SELF" --exec; echo "dispatch $?"; } | report; then
     echo "harness dispatch failed; no result below can be trusted" >&2
     exit 1
 fi
+elapsed=$((SECONDS - started))
 
 # A compiler diagnostic is far longer than PIPE_BUF, so the workers log it and it is replayed here.
 while read -r _ name _; do
@@ -478,8 +575,8 @@ if [ ${#failed[@]} -gt 0 ]; then
         printf '\n\033[31m--- %s ---\033[0m\n' "$name"
         cat "$BIN/$name.log"
     done
-    printf '\n%d harness(es) failed: %s\n' "${#failed[@]}" "${failed[*]}" >&2
+    printf '\n\033[31mFAILED\033[0m  %d of %d harness(es) failed in %ds: %s\n' \
+        "${#failed[@]}" "$ran" "$elapsed" "${failed[*]}" >&2
     exit 1
 fi
-echo
-if [ -n "$only" ]; then echo "$only passed."; else echo "All $ran harnesses passed."; fi
+printf '\n\033[32mPASSED\033[0m  All %d harness(es) passed in %ds.\n' "$ran" "$elapsed"

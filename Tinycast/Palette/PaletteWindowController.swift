@@ -10,6 +10,8 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
     /// Our key window at summon time, so hiding hands focus back to Settings, not a stale app.
     private weak var previousOwnWindow: NSWindow?
     private var popToRootTimer: Timer?
+    // Reopen beat the timeout, so select the preserved query.
+    private var queryWasPreserved = false
     /// Resolved once per show; the top edge is the one that must not drift.
     private var anchor: CGPoint?
     /// Live only between mouse-down and mouse-up on a drag handle; nil means a move was ours.
@@ -28,6 +30,8 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
     private struct DragSession {
         var home: CGPoint
         var screenFrame: CGRect
+        var visibleFrame: CGRect
+        var displayKey: String
         var armed = false
         /// The guides wait for this, so a click that never moves the panel doesn't flash them.
         var moved = false
@@ -38,6 +42,11 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
     }
 
     var isVisible: Bool { panel?.isVisible ?? false }
+
+    /// What the palette covered when it was summoned, for anything it expands into on dismissal.
+    var previousTarget: InjectionTarget? {
+        InjectionTarget.behindPalette(ownWindow: previousOwnWindow, app: previousApp)
+    }
 
     func show() {
         Signposts.interval("PaletteWindowController.show") {
@@ -67,6 +76,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
             // Events go stale while the palette is closed, and the countdown only ticks while up.
             core.calendarCoordinator.paletteDidShow()
             core.palette.noteVisible(true)
+            core.clipboardStore.setTextSearchActive(true)
             // Only while we are on screen: a system-wide tap has no business outliving the window.
             commandEscapeTap.enable()
             // Non-activating, so summoning never raises our own aux windows behind it.
@@ -121,6 +131,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         core.inputSourceSwitcher.endSession()
         core.calendarCoordinator.paletteDidHide()
         core.palette.noteVisible(false)
+        core.clipboardStore.setTextSearchActive(false)
         // Drop the anchor, so the next summon re-resolves for the screen in use then.
         anchor = nil
         // The guides must never outlive the panel they point at.
@@ -178,6 +189,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         guard let timer = popToRootTimer else { return false }
         timer.invalidate()
         popToRootTimer = nil
+        queryWasPreserved = true
         return true
     }
 
@@ -210,6 +222,10 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
             if let context = panel?.fieldEditorContext {
                 core.inputSourceSwitcher.applySession(to: context)
             }
+            if queryWasPreserved {
+                queryWasPreserved = false
+                panel?.selectAllFieldEditorText()
+            }
         }
     }
 
@@ -224,10 +240,12 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
 
     // MARK: - Dragging
 
-    /// A drag handle took the mouse down. Nothing shows yet — the guides wait for a real move.
+    /// A press on a drag handle passed the slop that makes it a drag; the guides follow the move.
     func beginDrag() {
         guard let screen = panel?.screen ?? targetScreen() else { return }
-        drag = DragSession(home: defaultAnchor(on: screen), screenFrame: screen.frame)
+        drag = DragSession(
+            home: defaultAnchor(on: screen), screenFrame: screen.frame,
+            visibleFrame: screen.visibleFrame, displayKey: screen.displayKey)
     }
 
     /// Release: snap home and forget the stored position, or remember where it was dropped.
@@ -238,12 +256,14 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         dropGuides.hide()
         guard let panel, let session, session.moved else { return }
         guard session.armed else {
-            core.settings.palettePosition = anchor
+            core.settings.setPalettePosition(
+                anchor.map { PalettePlacement.offset(of: $0, on: session.visibleFrame) },
+                on: session.displayKey)
             return
         }
         anchor = session.home
         positionPanel(panel, collapsed: core.paletteCoordinator.paletteIsCollapsed)
-        core.settings.palettePosition = nil
+        core.settings.setPalettePosition(nil, on: session.displayKey)
     }
 
     /// Keep the guides on the panel's screen, armed only while a release would snap it home.
@@ -251,6 +271,8 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         guard var session = drag else { return }
         if let screen = panel?.screen, screen.frame != session.screenFrame {
             session.screenFrame = screen.frame
+            session.visibleFrame = screen.visibleFrame
+            session.displayKey = screen.displayKey
             session.home = defaultAnchor(on: screen)
         }
         session.armed = PalettePlacement.isSnapping(
@@ -261,7 +283,8 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         } else {
             session.moved = true
             dropGuides.show(
-                home: session.home, screenFrame: session.screenFrame, armed: session.armed)
+                home: session.home, width: metrics.size.panelWidth,
+                screenFrame: session.screenFrame, armed: session.armed)
         }
         drag = session
     }
@@ -278,7 +301,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         panel.onFieldEditorFocused = { [weak self] context in
             self?.core.inputSourceSwitcher.applySession(to: context)
         }
-        // Backspace in an empty search takes the same back step Escape does.
+        // Backspace takes Escape's back step but never closes: a root screen falls to the launcher.
         panel.onBareBackspace = { [weak self] in
             guard let core = self?.core, core.palette.query.isEmpty else { return false }
             // A form field owns the key: the text it deletes is the field's, not a query's.
@@ -306,9 +329,18 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
             if core.palette.mode == .ai, core.aiChatCoordinator.removeLastAttachment() {
                 return true
             }
-            return core.palette.pop()
+            if core.palette.pop() { return true }
+            guard core.palette.mode != .launcher else { return false }
+            core.palette.prepare(mode: .launcher)
+            return true
         }
         installPasteMonitor()
+        // Handled at the panel: a focused preview answers Escape before the palette's own handler.
+        panel.onEscape = { [weak self] in
+            guard let self, core.palette.fileSearchQuickLook else { return false }
+            core.palette.fileSearchQuickLook = false
+            return true
+        }
         // Handled at the panel: the field editor or a missing main menu eats these first.
         panel.onCommandShortcut = { [weak self] event in
             guard let self, Self.commandCharacter(from: event) != nil else { return false }
@@ -344,12 +376,20 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         positionPanel(panel, collapsed: collapsed)
     }
 
+    /// A new width invalidates the placement the cached anchor encoded, so re-resolve it.
+    func applyInterfaceSize() {
+        guard let panel else { return }
+        anchor = nil
+        positionPanel(panel, collapsed: core.paletteCoordinator.paletteIsCollapsed)
+    }
+
     /// Size to height and place against the session anchor, so the list grows downward.
     private func positionPanel(_ panel: NSPanel, collapsed: Bool) {
         guard let anchor = resolveAnchor() else { return }
-        let height = collapsed ? Theme.Size.compactHeight : Theme.Size.panelHeight
+        let size = metrics.size
+        let height = collapsed ? size.compactHeight : size.panelHeight
         let frame = NSRect(
-            x: anchor.x, y: anchor.y - height, width: Theme.Size.panelWidth, height: height)
+            x: anchor.x, y: anchor.y - height, width: size.panelWidth, height: height)
         panel.setFrame(frame, display: true)
     }
 
@@ -361,25 +401,39 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
     /// Cached until hide, so both placements read one `visibleFrame`; a drag outranks the setting.
     private func resolveAnchor() -> CGPoint? {
         if let anchor { return anchor }
-        let resolved = restoredAnchor() ?? targetScreen().map(defaultAnchor(on:))
+        let resolved = targetScreen().flatMap { restoredAnchor(on: $0) ?? defaultAnchor(on: $0) }
         anchor = resolved
         return resolved
     }
 
-    /// Where the last drag left it, unless no display still shows enough of the bar to grab.
-    private func restoredAnchor() -> CGPoint? {
-        guard let stored = core.settings.palettePosition else { return nil }
+    /// This display's own corner, unless too little of the bar would stay grabbable.
+    private func restoredAnchor(on screen: NSScreen) -> CGPoint? {
+        guard let offset = core.settings.palettePosition(on: screen.displayKey) else { return nil }
         return PalettePlacement.restored(
-            stored,
-            graspable: CGSize(width: Theme.Size.panelWidth, height: Theme.Size.compactHeight),
-            visibleFrames: NSScreen.screens.map(\.visibleFrame),
+            PalettePlacement.anchor(for: offset, on: screen.visibleFrame),
+            graspable: CGSize(width: metrics.size.panelWidth, height: metrics.size.compactHeight),
+            visibleFrame: screen.visibleFrame,
             minimumVisible: Theme.Size.paletteMinimumVisible)
     }
 
     /// The untouched placement on one display; the summon path and the drop guides share it.
     private func defaultAnchor(on screen: NSScreen) -> CGPoint {
         PalettePlacement.defaultAnchor(
-            in: screen.visibleFrame, width: Theme.Size.panelWidth,
+            in: screen.visibleFrame, width: metrics.size.panelWidth,
             topMarginFraction: Theme.Size.paletteTopMarginFraction)
+    }
+
+    private var metrics: InterfaceMetrics { core.settings.interfaceSize.metrics }
+}
+
+extension NSScreen {
+    /// Survives a replug; the display ID is a session-only fallback.
+    fileprivate var displayKey: String {
+        let number = deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber
+        guard let id = number?.uint32Value else { return "primary" }
+        guard let uuid = CGDisplayCreateUUIDFromDisplayID(id)?.takeRetainedValue(),
+            let string = CFUUIDCreateString(nil, uuid) as String?
+        else { return String(id) }
+        return string.lowercased()
     }
 }

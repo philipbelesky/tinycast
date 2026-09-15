@@ -32,6 +32,7 @@ open with an `## Invariants` section; read it before changing anything in that a
 [camera](features/camera.md) ·
 [emoji](features/emoji.md) ·
 [file search](features/file-search.md) ·
+[menu search](features/menu-search.md) ·
 [notes](features/notes.md) ·
 [snippets](features/snippets.md) ·
 [quicklinks](features/quicklinks.md) ·
@@ -41,6 +42,7 @@ open with an `## Invariants` section; read it before changing anything in that a
 [Zed](features/zed.md) ·
 [Linear](features/linear.md) ·
 [hotkeys](features/hotkeys.md) ·
+[navigation](features/navigation.md) ·
 [window management](features/window-management.md) ·
 [window layouts](features/window-layouts.md) ·
 [custom commands](features/custom-commands.md) ·

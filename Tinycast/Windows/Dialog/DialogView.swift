@@ -26,7 +26,7 @@ struct DialogView: View {
                 }
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                     Text(request.title)
-                        .font(Theme.Typography.dialogTitle)
+                        .font(.headline)
                     if let message = request.message {
                         Text(message)
                             .font(Theme.Typography.rowTrailing)

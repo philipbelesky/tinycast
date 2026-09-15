@@ -200,7 +200,8 @@ struct LauncherScreen: PaletteScreen {
         return ExtensionArgumentsAccessory.make(
             entry: entry, coordinator: core.extensionCoordinator,
             values: { name in headerFieldBinding(entry: entry, name: name) },
-            focus: focus, onSubmit: { activate(at: selection) })
+            focus: focus, metrics: core.settings.interfaceSize.metrics,
+            onSubmit: { activate(at: selection) })
     }
 
     private func headerFieldBinding(entry: AppEntry, name: String) -> Binding<String> {
@@ -273,7 +274,8 @@ struct LauncherScreen: PaletteScreen {
                     core.launcherCoordinator.resetRanking(for: app)
                     // Reset can move the item; keep the highlight on the item whose action ran.
                     if let index = rows.firstIndex(of: .entry(app)) { vm.selection = index }
-                })
+                },
+                onHideFromSearch: { _ = hideFromSearch(at: selection) })
         case .fallback(let fallback, let app):
             return FallbackActionsMenu.content(
                 fallback: fallback, entry: app, query: vm.query, core: core)
@@ -320,22 +322,33 @@ struct LauncherScreen: PaletteScreen {
         return app
     }
 
+    func perform(_ shortcut: PaletteShortcut, at selection: Int) -> Bool {
+        switch shortcut {
+        case .toggleFavorite: return toggleFavorite(at: selection)
+        case .hideFromSearch: return hideFromSearch(at: selection)
+        case .quit: return quit(at: selection)
+        case .restart: return restart(at: selection)
+        case .favoriteSlot(let index): return launchFavorite(at: index)
+        default: return false
+        }
+    }
+
     /// ⌃⇧Q — the screen owns the chord, but only a running application has anything to quit.
-    func quit(at selection: Int) -> Bool {
+    private func quit(at selection: Int) -> Bool {
         guard let app = runningApplication(at: selection) else { return false }
         core.launcherCoordinator.quit(app)
         return true
     }
 
     /// ⌘R — mirrors the Restart Application row.
-    func restart(at selection: Int) -> Bool {
+    private func restart(at selection: Int) -> Bool {
         guard let app = runningApplication(at: selection) else { return false }
         core.launcherCoordinator.restart(app)
         return true
     }
 
     /// The highlight stays in Favorites: the top on add, the neighbour above on remove.
-    func toggleFavorite(at selection: Int) -> Bool {
+    private func toggleFavorite(at selection: Int) -> Bool {
         guard let app = entry(at: selection), !CommandCatalog.isQueryDriven(app),
             !isLinearIssue(app)
         else { return false }
@@ -348,7 +361,7 @@ struct LauncherScreen: PaletteScreen {
     }
 
     /// ⌘1–⌘9/⌘0 — launch a favorite by position, in either palette size.
-    func launchFavorite(at index: Int) -> Bool {
+    private func launchFavorite(at index: Int) -> Bool {
         guard let app = pinnedFavorites.dropFirst(index).first else { return false }
         core.launcherCoordinator.launch(app)
         return true
@@ -386,6 +399,16 @@ struct LauncherScreen: PaletteScreen {
     private func favoriteIndex(of app: AppEntry) -> Int? {
         guard let index = results.firstIndex(of: app), index < favoriteCount else { return nil }
         return index
+    }
+
+    /// ⇧⌘H — the row leaves the list for good, so the highlight takes the place it vacated.
+    private func hideFromSearch(at selection: Int) -> Bool {
+        guard let app = entry(at: selection), app.canHideFromSearch,
+            !CommandCatalog.isQueryDriven(app), let index = results.firstIndex(of: app)
+        else { return false }
+        visibility.setItemVisible(false, for: app)
+        select(row: min(index, max(reorderedResults().count - 1, 0)))
+        return true
     }
 
     /// The list reorders under an action; keep the highlight and the scroll on the row that moved.

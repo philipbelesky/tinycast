@@ -30,6 +30,8 @@ struct SettingsBackup: Codable {
         var popToRootSeconds: Int?
         var escapeKeyBehavior: String?
         var appearance: String?
+        var interfaceSize: String?
+        var paletteTransparency: Int?
         var compactMode: Bool?
         var showFavoritesInCompactMode: Bool?
         var searchScopes: [String]?
@@ -45,10 +47,13 @@ struct SettingsBackup: Codable {
         var customCommandsShowInLauncher: Bool?
         var snippetsShowInLauncher: Bool?
         // Safe to carry: it grants no permission class paste doesn't already prompt for.
+        var navigationEnabled: Bool?
+        var menuSearchDisabledApps: [String]?
+        var menuSearchShowsAppleMenu: Bool?
         var windowManagementEnabled: Bool?
         var windowManagementShowInLauncher: Bool?
         var windowGap: Int?
-        var windowCycleOnRepeat: Bool?
+        var windowCycle: String?
         var windowLayoutsShowInLauncher: Bool?
         // Carried, unlike `snippetsEnabled`: opening a link grants no permission class of its own.
         var quicklinksEnabled: Bool?

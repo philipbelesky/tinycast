@@ -1,14 +1,15 @@
 import SwiftUI
 
-/// Scroll-driven edge dissolve for a scroll view underlapping the palette's floating bars, a port of Raycast's scroll-area mask (see `docs/ui.md` → The edge dissolve).
+/// Scroll-driven edge mask for a list underlapping the palette's floating bars. See `docs/ui.md`.
 struct EdgeDissolveMask: ViewModifier {
     /// The header's own height: it carries no material, so content has to be *gone* by its bottom edge rather than ghosting through the search field.
-    var topBand: CGFloat = Theme.Size.headerHeight + Theme.Size.headerPadding
+    private var topBand: CGFloat { metrics.size.headerHeight + metrics.size.headerPadding }
     /// How far past the header the ramp runs, and how far the list scrolls before that band is clear.
-    var topOvershoot: CGFloat = 20
+    private var topOvershoot: CGFloat { metrics.scaled(20) }
     /// The footer is floating glass, so content still dissolves *into* it across Raycast's 28px overshoot.
-    var bottomFade: CGFloat = Theme.Size.bottomBarHeight + 28
+    private var bottomFade: CGFloat { metrics.size.bottomBarHeight + metrics.scaled(28) }
     private static let bottomMinAlpha: CGFloat = 0.25
+    @Environment(\.metrics) private var metrics
 
     /// How much content is hidden beyond each edge, 0 when the list rests against it.
     @State private var topDistance: CGFloat = 0

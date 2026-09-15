@@ -46,6 +46,10 @@ Xcode, prefix with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` (t
 project settings in `project.yml`, run `xcodegen generate` and commit the result. There is no
 `Package.swift`, and `Bundle.module` must never be used.
 
+The app target builds and embeds `ClipboardTextHelper` under `Contents/Helpers`, signing it on copy.
+Build the app scheme to include it; copying only the main executable omits OCR support. The helper's
+executable name stays fixed even when release builds override the app's product name for a channel.
+
 ### The dev channel
 
 Debug builds are a separate channel: **`Tinycast Dev.app`**, bundle id `com.belesky.tinycast.dev`. Every
@@ -102,7 +106,7 @@ The comment policy in [standards.md](standards.md#comments) is deliberately not 
 root tunes it to this tree; without it the stock config defaults to 2-space indent and rewrites all 200
 files.
 
-Both `*.generated.swift` files are excluded: formatting one is hand-editing it, and the next
+Every `*.generated.swift` file is excluded: formatting one is hand-editing it, and the next
 `node Scripts/gen-emoji.js` would revert it. swift-format also refuses any file that does not parse, so
 a failure from either command is a syntax error rather than a tooling problem.
 
@@ -125,13 +129,17 @@ finding out from a review.
 
 ## Generated data
 
-Two Swift files are emitted by scripts and must never be hand-edited. Both download their source, so
+Three Swift files are emitted by scripts and must never be hand-edited. Each downloads its source, so
 run them online, then commit the result:
 
 ```sh
 node Scripts/gen-emoji.js            # -> Tinycast/Features/Emoji/Model/EmojiData.generated.swift
 node Scripts/gen-currencies.js       # -> Tinycast/Features/Calculator/Model/CurrencyData.generated.swift
+node Scripts/gen-countries.js        # -> Tinycast/Features/Calculator/Model/CountryZoneData.generated.swift
 ```
+
+`gen-countries.js` joins IANA's `zone.tab` with CLDR's `en` territory names on the ISO 3166 code. Re-run
+it when IANA adds or moves a country's zone; see [calculator.md](features/calculator.md#time-zones).
 
 `gen-currencies.js` joins three sources on the ISO code: the **fiat rate feed**'s own quote list — the
 same feed `CurrencyRateStore` fetches rates from, so the table and the rate source cannot drift apart

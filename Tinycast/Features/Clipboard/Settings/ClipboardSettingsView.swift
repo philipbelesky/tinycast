@@ -5,7 +5,6 @@ struct ClipboardSettingsView: View {
     @Environment(AppCore.self) private var core
     @Environment(AppSettings.self) private var settings
     @State private var confirmingClear = false
-    @State private var showingAppPicker = false
 
     var body: some View {
         @Bindable var settings = settings
@@ -19,19 +18,15 @@ struct ClipboardSettingsView: View {
                 SettingsSectionHeader(.clipboardClipboard)
             }
 
+            FeatureCommandsSection(owner: .clipboard, anchor: .clipboardCommands)
+                .settingsEnabled(settings.clipboardEnabled)
+
             Section {
-                SettingsRow(title: "Clipboard History", anchor: .clipboardGlobalShortcuts) {
-                    ShortcutRecorder(action: .command(.clipboardHistory))
-                }
                 SettingsRow(title: "Clipboard History (second shortcut)") {
                     ShortcutRecorder(action: .commandAlternate(.clipboardHistory))
                 }
-            } header: {
-                SettingsSectionHeader(.clipboardGlobalShortcuts)
             } footer: {
-                Text(
-                    "Open the clipboard history browser. Either shortcut opens it, so two keyboards "
-                        + "can each have one that fits.")
+                Text("Either shortcut opens the history, so two keyboards can each have one that fits.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -49,6 +44,10 @@ struct ClipboardSettingsView: View {
                 .onChange(of: settings.clipboardRetention) {
                     core.clipboardCoordinator.applyRetention(settings.clipboardRetention)
                 }
+                Toggle(isOn: $settings.clipboardTextSearchEnabled) {
+                    SettingsRowTitle(.clipboardHistory, "Search text in images and PDFs")
+                    Text("Recognize text on this Mac while idle and include it in clipboard searches.")
+                }
                 Picker(selection: $settings.clipboardDefaultAction) {
                     ForEach(ClipboardDefaultAction.allCases) { action in
                         Text(action.title).tag(action)
@@ -62,27 +61,11 @@ struct ClipboardSettingsView: View {
             }
             .settingsEnabled(settings.clipboardEnabled)
 
-            Section {
-                ForEach(settings.clipboardDisabledApps, id: \.self) { bundleID in
-                    DisabledAppRow(bundleID: bundleID) {
-                        settings.clipboardDisabledApps.removeAll { $0 == bundleID }
-                    }
-                }
-
-                Button("Add Application…") { showingAppPicker = true }
-                    .popover(isPresented: $showingAppPicker, arrowEdge: .bottom) {
-                        AppPickerPopover(excluded: Set(settings.clipboardDisabledApps)) { bundleID in
-                            if let bundleID { settings.clipboardDisabledApps.append(bundleID) }
-                            showingAppPicker = false
-                        }
-                    }
-            } header: {
-                SettingsSectionHeader(.clipboardDisabledApplications)
-            } footer: {
-                Text("Clipboard changes from these apps won't be recorded.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+            DisabledApplicationsSection(
+                bundleIDs: $settings.clipboardDisabledApps,
+                anchor: .clipboardDisabledApplications,
+                footer: "Clipboard changes from these apps won't be recorded."
+            )
             .settingsEnabled(settings.clipboardEnabled)
 
             Section {
@@ -112,34 +95,6 @@ struct ClipboardSettingsView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This can't be undone.")
-        }
-    }
-}
-
-/// One excluded app; only the bundle ID is stored, so name and icon resolve on the fly.
-private struct DisabledAppRow: View {
-    let bundleID: String
-    let onRemove: () -> Void
-
-    @Environment(AppIndex.self) private var appIndex
-
-    var body: some View {
-        let (name, icon) = AppPresentation.resolve(bundleID: bundleID, in: appIndex)
-        LabeledContent {
-            Button(action: onRemove) {
-                Image(systemName: "xmark.circle.fill")
-                    .foregroundStyle(.tertiary)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Stop excluding \(name)")
-        } label: {
-            Label {
-                Text(name).lineLimit(1)
-            } icon: {
-                Image(nsImage: icon)
-                    .resizable()
-                    .frame(width: 18, height: 18)
-            }
         }
     }
 }

@@ -1,6 +1,6 @@
 enum SettingsTab: CaseIterable, Identifiable {
     case general, applications, systemSettings, systemActions, commands, quicklinks, fallbacks, ai,
-        quickActions, fileSearch, webSearch, herdr, vsCode, zed, linear, notes, snippets,
+        quickActions, fileSearch, webSearch, herdr, vsCode, zed, linear, notes, snippets, navigation,
         windowManagement, clipboard, emoji, calendar, extensions, permissions, backup,
         miscellaneous, about
     /// The case, never an index: a selectable `List` flattens section and row IDs together.
@@ -25,6 +25,7 @@ enum SettingsTab: CaseIterable, Identifiable {
         case .linear: return "Linear"
         case .notes: return "Notes"
         case .snippets: return "Snippets"
+        case .navigation: return "Navigation"
         case .windowManagement: return "Window Management"
         case .clipboard: return "Clipboard"
         case .emoji: return "Emoji & Symbols"
@@ -56,6 +57,7 @@ enum SettingsTab: CaseIterable, Identifiable {
         case .linear: return "line.3.horizontal.decrease.circle"
         case .notes: return "text.page"
         case .snippets: return "curlybraces"
+        case .navigation: return "arrow.left.arrow.right"
         case .windowManagement: return "macwindow"
         case .clipboard: return "doc.on.clipboard"
         case .emoji: return "face.smiling"
@@ -94,7 +96,7 @@ enum SettingsSection: CaseIterable, Identifiable {
         case .features:
             return [
                 .ai, .quickActions, .fileSearch, .webSearch, .herdr, .vsCode, .zed, .linear, .notes,
-                .snippets, .windowManagement, .clipboard, .emoji, .calendar, .extensions
+                .snippets, .navigation, .windowManagement, .clipboard, .emoji, .calendar, .extensions
             ]
         case .advanced: return [.backup, .miscellaneous, .about]
         }

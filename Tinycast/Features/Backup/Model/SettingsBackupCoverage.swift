@@ -15,6 +15,8 @@ enum SettingsBackupCoverage {
         "popToRootSeconds": .popToRootTimeout,
         "escapeKeyBehavior": .escapeKeyBehavior,
         "appearance": .appearance,
+        "interfaceSize": .interfaceSize,
+        "paletteTransparency": .paletteTransparency,
         "compactMode": .compactMode,
         "showFavoritesInCompactMode": .showFavoritesInCompactMode,
         "searchScopes": .searchScopes,
@@ -27,10 +29,13 @@ enum SettingsBackupCoverage {
         "customCommandsEnabled": .customCommandsEnabled,
         "customCommandsShowInLauncher": .customCommandsShowInLauncher,
         "snippetsShowInLauncher": .snippetsShowInLauncher,
+        "navigationEnabled": .navigationEnabled,
+        "menuSearchDisabledApps": .menuSearchDisabledApps,
+        "menuSearchShowsAppleMenu": .menuSearchShowsAppleMenu,
         "windowManagementEnabled": .windowManagementEnabled,
         "windowManagementShowInLauncher": .windowManagementShowInLauncher,
         "windowGap": .windowGap,
-        "windowCycleOnRepeat": .windowCycleOnRepeat,
+        "windowCycle": .windowCycle,
         "windowLayoutsShowInLauncher": .windowLayoutsShowInLauncher,
         "quicklinksEnabled": .quicklinksEnabled,
         "quicklinksShowInLauncher": .quicklinksShowInLauncher,
@@ -71,6 +76,8 @@ enum SettingsBackupCoverage {
 
     /// Keys kept out of a backup on purpose, each with the reason it has to stay out.
     static let deliberatelyExcluded: [String: String] = [
+        AppSettingsKey.clipboardTextSearchEnabled.rawValue:
+            "Background OCR is an opt-in processing choice on this Mac; a backup must not enable it.",
         AppSettingsKey.snippetsEnabled.rawValue:
             "Doubles as keyword-expansion consent; an import must not enable keystroke listening.",
         AppSettingsKey.extensionPackageManager.rawValue:
@@ -83,7 +90,7 @@ enum SettingsBackupCoverage {
         AppSettingsKey.extensionsEnabled.rawValue:
             "Doubles as consent to run third-party JavaScript; an import must not switch it on.",
         AppSettingsKey.palettePosition.rawValue:
-            "Machine-local geometry: a point restored onto another display layout lands nowhere.",
+            "Machine-local geometry: every entry names a display this Mac has, and no other one.",
         AppSettingsKey.autoSwitchInputSource.rawValue:
             "Names a keyboard input source installed on this Mac; another Mac may not have it.",
         AppSettingsKey.calendarEnabled.rawValue:
@@ -131,6 +138,9 @@ enum SettingsBackupCoverage {
         AppSettingsKey.quickActionModel.rawValue:
             "Names an external AI destination for text taken from whatever app is frontmost; an "
             + "import must not choose one.",
+        AppSettingsKey.quickActionModelOverrides.rawValue:
+            "Sends one action's text to its own AI destination, some keyed by actions that exist only "
+            + "on the Mac that made them.",
         AppSettingsKey.quickActionPreviews.rawValue:
             "Says which actions may rewrite a document without showing the result first, which is a "
             + "decision each Mac makes about its own text.",

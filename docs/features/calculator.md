@@ -23,14 +23,17 @@ in (see Currency below).
   entries and its `BDT` is the Bangladeshi taka. The home zone is read off the **injected calendar**,
   never `TimeZone.current`, which is what keeps the path pure and the harness deterministic.
   `localizedName` needs a `Locale`, so a badge is the identifier's own city component instead.
+  Countries are the one exception: Foundation carries no country for a zone, so
+  `CountryZoneData.generated.swift` comes from `node Scripts/gen-countries.js` and is never hand-edited.
 - **A workday is 8 hours, and nothing consults a calendar.** Weekends and public holidays would make
   the same query answer differently on two Macs, and the only supported source for them is EventKit,
   whose Full Calendar Access grant a calculator must never provoke mid-keystroke. `workdays` is
   therefore an ordinary time unit, and `calendarEnabled` stays the Calendar feature's own consent.
 - **`CurrencyData.generated.swift` is emitted by `node Scripts/gen-currencies.js`** and never hand-edited.
-  Three currency tables are hand-maintained, all in `CalcCurrency`: `contested`, the nouns several
+  Four currency tables are hand-maintained, all in `CalcCurrency`: `contested`, the nouns several
   currencies share (`dollars`, `pounds`); `isoNames`, the standard's own names where CLDR substitutes
-  a different one (ISO 4217 calls CNY "Yuan Renminbi"); and `crypto`, which no standards body names.
+  a different one (ISO 4217 calls CNY "Yuan Renminbi"); `signCodes`, the codes daily use spells from
+  CLDR's sign instead (`NT$` makes TWD `ntd`); and `crypto`, which no standards body names.
   Do not add slang or synonyms to any of them — no source of truth, so they rot.
 
 ## Evaluation pipeline
@@ -328,6 +331,19 @@ currency and a zone abbreviation both outrank an airport, the same ordering the 
 follows. The compiler enforces the rest: a duplicate key in the literal is a warning, which is what
 caught `syd` and `hkg` already being nicknames.
 
+**Countries** answer with their main clock: `time in uk`, `time in japan`, `5pm uk in japan`.
+Foundation knows every zone but not which country owns it, so `gen-countries.js` joins IANA's
+`zone.tab` — which names a country's zones, most populous first — with CLDR's English country names,
+short forms included (`UK`, `US`, `Bosnia`). Diacritics fold as they do for cities, and `&` also
+reads as `and`. The badge stays the clock's city, which is what says *which* clock answered.
+
+Where `zone.tab`'s geographic order puts a remote edge first — Lord Howe for Australia, Kaliningrad
+for Russia — the generator's `CAPITAL_ZONES` substitutes the capital's clock, and fails if IANA stops
+listing it. Antarctica and the US Minor Outlying Islands have no capital and no single clock, so they
+stay silent. ISO codes are deliberately not keys: two letters collide with `in`, `at`, `to` and `la`,
+and three with airports (`fra`, `per`); `usa` and `uae` are ordinary entries in `aliases`. Lookup
+order is `aliases`, then `cities`, then countries, so no curated name is ever shadowed.
+
 Order settles the collisions. Time zones run **last** among the named paths, after units and
 currency, so `10 cordoba to usd` stays money and `1 cup to ml` stays volume. `cordoba` is the one
 word the zone and currency tables both claim.
@@ -447,6 +463,11 @@ currency and CLDR substitutes a different word, the standard's name is carried w
 its source — CNY is "Yuan Renminbi" to ISO 4217, so `rmb` and `renminbi` resolve, while CLDR's own
 "Chinese Yuan" supplies `yuan` through the generator.
 
+`signCodes` is the same exception read off the other source. CLDR's sign for a currency is sometimes
+a letter pair the region spells as a code — it writes TWD `NT$`, and Taiwan writes `NTD` where the
+standard says `TWD`. The single-character `signs` table cannot carry a two-letter prefix, so the code
+it implies is carried here instead, with CLDR as its source. The standard code always keeps working.
+
 ### Crypto
 
 `CalcCurrency.crypto` is the third hand-written table, and the only one with no external source at
@@ -484,7 +505,7 @@ ever asks for location, and a `Model/` file never performs it.
 Where the region names the currency already written, the amount pairs with the **dollar** instead —
 the **euro** where the dollar is the one that was typed. Converting is the only reason to write a
 lone amount, so `25 eur` on a European Mac answering `25.00 EUR` said nothing at all; it now reads
-`28.95 USD`, which is what Raycast answers for the same query.
+`28.95 USD`.
 
 The target only applies where there is genuinely nothing else to say. An operator keeps the currency
 written (`$10 + €5` stays euros), an explicit target overrides everything, a trailing operator holds

@@ -10,7 +10,7 @@ Read this before touching any view body, `Theme` value, or the panel chrome.
 
 ## The look, in one paragraph
 
-Tinycast is a **Raycast-style command palette**: a borderless floating panel whose surface is just the
+Tinycast is a **command palette**: a borderless floating panel whose surface is just the
 OS behind-window blur under a 40% black scrim — there is no gray chrome. Everything on that surface is
 white at a fixed alpha ramp. The header and bottom bar **float over the list as fully transparent
 overlays**; there are no hard-edged bars, strips, or dividers. Rows don't clip under the bars, they
@@ -37,11 +37,11 @@ These are the things that quietly break the look if changed. Preserve them unles
 
 - **Dark is the baseline and its values are frozen.** Every `Theme.Colors` token resolves per appearance, and its **dark branch is the literal the forced-dark build shipped** — restated, never recomputed. Retune a light branch freely; touch a dark one only when the task is to change Dark. `AppCore.applyAppearance()` is the only place an appearance is assigned, from `AppSettings.appearance`; `.system` assigns `nil` so AppKit follows macOS.
 - **New colors go through `Theme.Colors.ramp(dark:light:)`** (an alpha that inverts) or `adaptive(dark:light:)` (two explicit `NSColor`s, for anything that isn't a plain inversion — `panelScrim`, `glassFrost`). Never a bare `Color.white.opacity(…)` in a view: it disappears in Light.
-- **No grays, no opaque fills on the surface.** Reach for `Theme.Colors.*` (black-alpha) instead of `.gray`, `NSColor.windowBackground`, etc.
-- **Mask gradients and saturated tiles are exceptions to the ink ramp.** `EdgeDissolve` and `OverflowFade` encode mask luminance, while tinted category and extension tiles keep white ink for contrast.
-- **System icon style can still change while Tinycast stays light.** `IconStyleMonitor` waits until `NSWorkspace` actually vends different pixels, then invalidates styled icon cache entries. Any view drawing an app icon must observe the cache generation so it cannot keep a stale bitmap.
-- **No hard dividers between the list and the bars.** The header and bottom bar are `safeAreaInset` overlays with no background; separation comes from `edgeDissolve()`, nothing else. (One deliberate exception: the vertical hairline between the clipboard list and its preview pane.)
-- **The panel corner is clipped once, at the root.** `RootPaletteView.body` ends with `.background(panelScrim) → .background(VisualEffectView()) → .clipShape(RoundedRectangle(26, .continuous))`. Keep that order; the scrim goes _over_ the vibrancy, and the clip is last.
+- **No grays, no opaque fills on the surface.** Reach for `Theme.Colors.*` instead of `.gray`, `NSColor.windowBackground`, etc.
+- **Three things stay fixed in both appearances, on purpose.** The `EdgeDissolve`/`OverflowFade` gradients are **mask luminance, not color** — inverting them breaks the dissolve everywhere. `ExtensionTintColors` and a tinted `IconCache` tile keep white ink, because a saturated tile carries its own contrast. And `IconCache` cannot use a dynamic `NSColor` at all: it rasterizes off-main, so the surface is carried explicitly and is part of the cache key.
+- **An icon is drawn for a surface *and* a system icon style, and both move under you.** macOS restyles the icons `NSWorkspace` hands out when System Settings → Appearance → **Icon & widget style** changes, so `IconStyleMonitor` and Tinycast's own appearance both call `IconCache.invalidateStyled()`. **The monitor may not invalidate on the notification itself.** AppKit posts `NSWorkspaceIconAppearanceConfigurationDidChange` before IconServices has swapped what `NSWorkspace` vends — measured at 25–120ms behind, jittering run to run — and the images it hands back are live objects macOS restyles in place, so flattening one on the signal freezes the *outgoing* style into a bitmap nothing ever invalidates again. `IconStyleMonitor` therefore polls `IconCache.styleFingerprint()` until the pixels actually move, and only then invalidates. Waiting also sidesteps the cost: re-flattening every icon the instant a restyle begins forces a cold IconServices regeneration, measured at 160× the settled draw cost. That drops the cached bitmaps, bumps every cache key so an in-flight decode cannot repopulate a stale one, and moves `IconCache.style.generation`. **Any view that draws an icon must key its fetch on that generation** — wrap the view's own key in `IconRequest`, or call `IconCache.observeStyle()` where the icon is resolved synchronously in a `body`. It is reached through `IconCache` rather than injected precisely because icons are drawn in menus, popovers and every list, where a missed injection would be a silent staleness bug.
+- **No hard dividers between the list and the bars.** The header and bottom bar are `safeAreaInset` overlays with no background; separation comes from `edgeDissolve()`, nothing else. (One deliberate exception: the vertical hairline between a list and its preview pane, as the clipboard and file search screens draw.)
+- **The panel corner is clipped once, at the root.** `RootPaletteView.body` ends with `.background(PaletteBackground(window:)) → .clipShape(RoundedRectangle(26, .continuous))`. `PaletteBackground` puts `panelScrim(transparency:)` over `VisualEffectView()`; the center setting returns the original tint. Keep that order, with the clip last.
 - **Don't use the native scroll edge effect.** Inside a transparent panel it renders a hard-bounded rectangle. Use `edgeDissolve()`, or a gradient `mask` where a surface owns its own fade — `scrollEdgeEffectStyle` draws a *material* where a scroll view meets a safe area, so over a panel that already has `panelScrim` + `VisualEffectView` it composites to nothing. Tried and rejected on `QuickActionResultView`, with and without `safeAreaBar`. This is a rule about the borderless panels; the Settings window is a titled `NSWindow` whose system titlebar draws the band itself (see "Settings").
 - **Test over a light desktop.** Transparency and corner masking bugs only show over bright wallpaper. Dark wallpaper hides them.
 - **No `NSAlert`, no `NSSlider`, no system popovers.** Every confirmation, failure report, value prompt and transient readout is Tinycast's own SwiftUI surface (see "Dialogs & HUD"). An Aqua alert on an alpha-over-vibrancy app reads as a different product, and its `runModal` run loop keeps Carbon hotkeys firing underneath.
@@ -60,56 +60,26 @@ Source: `Tinycast/DesignSystem/Theme.swift`.
 `Theme` is the single source of truth. **Never hardcode a spacing/radius/size/color that has a token.**
 Add a token rather than a magic number when introducing a new value.
 
-### Scale (`Theme.scale`)
+### Interface Size (`InterfaceMetrics`)
 
-One compile-time constant multiplies **every length and font size** in `Theme`. `1.0` ships; raise it and
-the palette, its dialogs and both HUDs grow together — panel frame, row icons, keycaps, glyph point
-sizes, and the icons `IconCache` rasterizes. The numbers quoted below are all at `scale 1.0`.
+`AppSettings.interfaceSize` scales the palette and the surfaces that float with it — the ⌘K menu, the
+extension list panel, Quick Actions, the snippet prompt, dialogs and HUDs. Settings, Onboarding,
+Support, Update, About and Notes never scale.
 
-Three kinds of value are deliberately exempt, because scaling them would be wrong rather than merely
-unnecessary: **ratios** (`paletteTopMarginFraction`), **alphas** (all of `Theme.Colors`) and **durations**
-(all of `Theme.Duration`). Hairlines stay 1pt, and the custom scrollbar keeps its own widths — both are
-chrome rather than content.
+`DesignSystem/InterfaceMetrics.swift` stores **only a scale** and derives every value from the `Theme`
+literal, so `Theme` stays the one place a number is written down. **In any view a scaled surface can
+reach, read `@Environment(\.metrics)` rather than `Theme.Spacing/Radius/Size/Typography`** — the key
+defaults to `.standard`, so a shared `DesignSystem/` component renders unscaled in Settings without
+being forked. An AppKit site reads `settings.interfaceSize.metrics` where it computes its frame.
 
-#### Why a constant, and why derived point sizes
+A length measured against the **screen** does not scale; a length measured against **our own content**
+does. So `hairline`, `paletteTopMarginFraction`, `paletteSnapDistance`, `paletteMinimumVisible`, the
+drop-guide dashes, `hudEdgeOffset` and every row *count* stay on `Theme`, as does every chrome token.
 
-`Theme.scale` is a compile-time `CGFloat` that multiplies every length and font size in `Theme`. There is
-no setting, no environment value and no observability: changing the UI's size means editing one line and
-rebuilding.
-
-`Theme.Typography` therefore stopped being a list of semantic text styles. A token is now
-`.system(size: NSFont.preferredFont(forTextStyle: style).pointSize * scale, weight:design:)` — the
-platform's own metric, taken through the multiplier. `Font.body` cannot be scaled; a point size can.
-
-**Why a constant rather than a setting:** the two hard parts of a live scale are invalidation and
-geometry. `Theme`'s tokens are `static let`, so a runtime change would not repaint SwiftUI, and the
-palette's `NSPanel` frame is set imperatively from `panelWidth`/`panelHeight` — it would need recreating
-on every change. A constant has neither problem and costs one line to move.
-
-**Why derived point sizes rather than `.dynamicTypeSize()`:** macOS has no system Dynamic Type control,
-and the environment value only steps through discrete sizes. It also could not touch the panel frame, the
-row icons or the bitmaps `IconCache` rasterizes, so half the UI would scale and half would not.
-
-**Why not `scaleEffect` on the hosting view:** it is a layer transform over rasterized text. It is one
-line, and it looks like one.
-
-The cost is that a text style's tracking and leading do not survive the conversion: `compactKeyCap` is
-~1pt narrower than `Font.caption2` and `emptyGlyph` has 1pt less line height than `Font.largeTitle`.
-Every other token is pixel-identical at `scale 1.0`, which was checked by measuring `NSHostingView`
-fitting sizes for old and new side by side. Note that `Font.headline` is **bold** on macOS, not semibold.
-
-Ratios, alphas and durations are exempt, as are 1pt hairlines and the custom scrollbar's widths. Settings
-scales only partly on purpose: its rows are stock `Form` controls that macOS sizes itself, so `Theme`
-moves their padding and Tinycast's own controls while the system-drawn rows keep their metrics.
-
-**What would change this:** a user-facing size preference, which would mean moving `scale` onto an
-observable and teaching `PaletteWindowController` to re-place the panel when it changes.
-
-This is why a magic number in a view is a real defect and not a style nit: a literal `8` no longer tracks
-the rest of the UI. **Anything a scaled surface draws must come from a token.** Settings is the one
-partial surface — its panes are stock `Form` rows macOS sizes itself, so `Theme` moves their padding and
-custom controls while the system-drawn rows keep their own metrics. See
-the reasoning under [Scale](#why-a-constant-and-why-derived-point-sizes) above.
+Scaling rounds to whole points, once, at the leaf accessor. A **derived** token composes already
+scaled parts (`compactHeight`, `menuRowHeight`) rather than scaling the derived result, so an AppKit
+frame can never disagree with the SwiftUI view inside it by a point. `interface-size-test` pins all of
+this, member by member, including that `.standard` is `Theme` verbatim.
 
 ### Spacing (`Theme.Spacing`)
 
@@ -176,14 +146,11 @@ panel, the shortcut-recorder callout and the Notes switcher, and `menuRow` is de
 ### Size (`Theme.Size`)
 
 `panelWidth 750` · `panelHeight 475` · `headerHeight 44` · `bottomBarHeight 52` · `barButtonHeight 28` ·
-`rowIcon 24` · `runningDot 3` · `keyCap 18` · `recorderKeyCap 16` · `menuButton 36` ·
-`clipboardListWidth 290` · `previewRowIcon 20` · `menuWidth 276` · `clipboardFilterMenuWidth 200` · `menuIcon 20` ·
+`rowIcon 24` · `keyCap 18` · `recorderKeyCap 16` · `menuButton 36` · `clipboardListWidth 290` ·
+`menuWidth 276` · `clipboardFilterMenuWidth 200` · `menuIcon 20` ·
+`menuOverflowFade 30` ·
 `settingsSidebar 215` · `settingsRowIcon 20` · `dialogWidth 420` · `dialogIcon 32` · `hudWidth 200` ·
 `hudHeight 100` · `volumeTrackHeight 6` · `volumeKnob 16` · `volumeReadout 38`
-
-The menu circle's two-line glyph is hand-drawn from four of its own tokens (`menuGlyphWide 14`,
-`menuGlyphNarrow 8`, `menuGlyphWeight 1.5`, `menuGlyphGap 3`) rather than stray frames, so it scales with
-the circle it sits in.
 
 Notes adds `noteWindow 440×180` (opening size and minimum), `noteEditorInset 16`, `noteEditorTopInset 6`, `noteSwitcher 300×240`, `noteSwitcherEmptyHeight 96`, `noteSwitcherDrop 56`, `noteTitlebar 52`, `noteTitleInset 120`, `noteTrafficLightInset 20`, `noteSearchHeight 34`, `noteFooterHeight 28`, `noteGlyph 16`, and `noteEmptyGlyph 28`.
 
@@ -191,18 +158,16 @@ Notes adds `noteWindow 440×180` (opening size and minimum), `noteEditorInset 16
 
 ### Typography (`Theme.Typography`)
 
-**Every font in a scaled surface is a `Theme.Typography` token — no `.font(.body)`, no
-`.font(.system(size:))` in a view.** A token is `.system(size:weight:design:)` at
-`NSFont.preferredFont(forTextStyle:).pointSize * scale`, so the point sizes are the platform's own
-metrics and `scale` is the only departure from them. Named for role, not for size: `rowTitle`,
-`sectionHeader`, `rowTrailing`, `bar`, `menuRow`, `keyCap`, `dialogTitle`, `previewBody`, `emptyGlyph`,
-`tileGlyph` and the rest. Reach for a new token rather than an inline size.
+System text styles only — **no fixed point sizes in views**. Two named exceptions are explicit:
+`searchField` (20pt Regular) and the optical SF Symbol treatment `menuSymbol` (14pt Medium). Use
+`rowTitle` (`.body`), `sectionHeader` (`.subheadline.medium`),
+`rowTrailing`/`bar`/`menuRow`/`keyCap` etc. as named.
 
-Two tokens are a hair off the text style they replaced, because `.system(size:)` reproduces a style's
-point size but not its tracking or leading: `compactKeyCap` measures ~1pt narrower than `Font.caption2`
-(invisible behind the chip's `minWidth`), and `emptyGlyph` has 1pt less line height than
-`Font.largeTitle` (both call sites draw an `Image`, where it doesn't apply). Everything else is
-pixel-identical at `scale 1.0`.
+`InterfaceMetrics.Typography` scales a style by rebuilding its `NSFont` **from that font's own
+descriptor** at the scaled point size. Never reconstruct one as `.system(size:weight:)` from a
+hand-written weight table: on macOS `.headline` is Bold and `.caption2` is Medium, so a table
+*lightens* them the moment the user leaves the default size. `menuSymbol` is the deliberate exception:
+it is an explicitly-sized glyph treatment, not a system text style, so scaling preserves Medium.
 
 ### Colors (`Theme.Colors`) — the alpha ramp
 
@@ -215,12 +180,13 @@ shipped. Light is the same stop with the ink inverted, and is the only column op
 | `selection`       | white 0.10     | black 0.09     | selected row fill (keyboard/active selection)    |
 | `rowHover`        | white 0.05     | black 0.045    | mouse-hover fill (always fainter than selection) |
 | `menuHover`       | white 0.10     | black 0.09     | popover-menu row hover                           |
-| `separator`       | white 0.10     | black 0.12     | the clipboard list↔preview hairline              |
+| `separator`       | white 0.10     | black 0.12     | a list↔preview hairline (clipboard, file search) |
 | `controlSurface`  | white 0.10     | black 0.08     | filled keycaps, glyph tiles                      |
 | `border`          | white 0.20     | black 0.18     | outlined keycap borders                          |
 | `textPrimary`     | white 1.00     | black 1.00     | search text and caret, volume fill and knob      |
 | `textSecondary`   | white 0.60     | black 0.60     | secondary labels                                 |
 | `textTertiary`    | white 0.40     | black 0.42     | placeholders, trailing kind labels               |
+| `menuSymbol`      | white 0.70     | black 0.70     | native popover-menu symbols                      |
 | `iconPlaceholder` | white 0.06     | black 0.06     | the empty tile a row paints while an icon decodes |
 | `sheen`           | white 0.04     | black 0.04     | the wash behind the Onboarding header            |
 | `cardFill`        | white 0.05     | black 0.04     | settings/calc card fill                          |
@@ -246,7 +212,7 @@ An extension's own surfaces live in `ExtensionColors` (`Features/Extensions/UI/`
 
 Source: `Palette/PalettePanel.swift`, `Palette/RootPaletteView.swift`.
 
-- **`PalettePanel`** is a borderless `NSPanel`: `isOpaque = false`, `backgroundColor = .clear`, `.floating` level, `hasShadow`, `animationBehavior = .none`. It hosts SwiftUI via `NSHostingView`. `PaletteWindowController` centers it slightly above screen center (`+8%`) and dismisses it on `windowDidResignKey`.
+- **`PalettePanel`** is a borderless `NSPanel`: `isOpaque = false`, `backgroundColor = .clear`, `.floating` level, `hasShadow`, `animationBehavior = .none`. The two more transparent Dark detents turn off the native shadow and its black outline, adding a one-point white gradient border with a brighter upper edge. It hosts SwiftUI via `NSHostingView`. `PaletteWindowController` centers it slightly above screen center (`+8%`) and dismisses it on `windowDidResignKey`.
 - **The results layer fills the whole panel.** The header and bottom bar attach via `.safeAreaInset(edge: .top/.bottom)` as transparent overlays that float _over_ the list. The list underlaps them and dissolves at the edges.
 - **Header** (`headerHeight 44`): a back-chevron _or_ mode glyph, then the plain `TextField` (no border/background). Sub-screens (Clipboard, Calculator History) show the back chevron; the launcher shows a magnifying glass. The search icon aligns horizontally with row content.
 - **Compact keyboard entry:** pressing `↓` in the collapsed launcher expands the results and selects the first row without replacing or defocusing the shared search field.
@@ -328,11 +294,14 @@ Source: `DesignSystem/Scrolling/OverflowFade.swift`.
 The counterpart for any list with no bars over it — the Settings lists and the Notes switcher — and
 deliberately a separate type: sharing one modifier would tie such a list to geometry that only means
 something under a bar. Attach with `.overflowFade()` on the `ScrollView`, before `.thinScrollbar()`,
-same as the edge dissolve.
+or pass `includingTop: true` for a bounded popup whose title and rows scroll together.
 
-- **Bottom only.** Nothing sits over the top of these lists; fading the first row reads as "this one can't be chosen", which in a list of checkboxes is a lie.
-- Fade band: a flat **24px**, borrowed from no bar because there is no bar.
-- **No alpha floor.** The fade is purely an affordance for content past the edge, so it eases in with how much is hidden and clears completely once the list rests at the bottom.
+- **Bottom by default.** Settings and Notes have nothing above their lists; popups opt into the top
+  edge because their content, including the title, can scroll past it.
+- Fade band: **24px** with the original single-stop curve by default; popups opt into the progressive
+  top-and-bottom curve and their own 30pt band.
+- **No alpha floor.** Each enabled edge eases with how much content is hidden there and clears
+  completely once the list rests against it.
 - No `.ignoresSafeArea()`: a Settings list carries no bar insets to correct for.
 
 ---
@@ -378,11 +347,11 @@ Glass is **only** for floating controls, never the main surface.
 - `View.frosted(in:)` = `glassEffect(.regular.interactive().tint(glassFrost), in:)` + `.tint(.clear)` — interactive lensing with a whitish frost tint (`glassFrost`) so the glass reads brighter than clear. Used on the action-group capsule, the menu circle, `PopoverMenu` and a dialog's buttons — always _inside_ a window that already has a `VisualEffectView` behind it. Neither HUD uses it: on a panel of its own, glass has no backdrop to lens and falls back to an opaque backing that reads as a hard edge, so both take the panel recipe instead (see "Dialogs & HUD"). Tune the frost amount via the `glassFrost` token, not per call site.
 - **Menus are in-window overlays, not system popovers.** `.contextMenu`/`NSMenu` stall clicks for seconds inside a `LazyVStack` and spill outside the panel. Use `PopoverMenu` anchored to a corner via `.overlay`, inset `menuInset` (8pt) so its own corner isn't clipped by the panel's. A menu hung off a control instead of a corner — the clipboard type filter, `.topTrailing` — insets by that control's own metrics so their edges line up.
 - **A menu's `width` is fixed, never intrinsic**, so it can't jitter as its rows change: `menuWidth 276` by default, or a token of its own where that reads too wide (`clipboardFilterMenuWidth 200`).
-- **`PopoverMenu`** uses `glassEffect(.regular, in: RoundedRectangle(menuPanel 16))` with **no hand-tuned shadow** — Tahoe glass carries its own elevation; adding a drop shadow reads heavy and non-native.
-- `PopoverMenuRow`: leading glyph, label, trailing shortcut glyph, `menuHover` fill on hover, `menuRow 10` corner. Menus animate in with `.opacity + .scale(0.96)` from the anchored corner, `easeOut 0.14`.
-- The glyph is a `PopoverMenuIcon`: `.symbol` (SF Symbol, `hierarchical`, secondary — or **red** when `isDestructive`) or `.file` (a real app icon via `IconCache`, used by the paste rows to show the paste target). `PopoverMenuItem` keeps a `systemImage:` convenience init, so symbol rows read exactly as before.
-- **Both glyph kinds share one square `menuIcon` (20) slot**, which is what makes symbol and app-icon rows read as the same size and pins a single row height. 20 is deliberately larger than the artwork looks: an `IconCache` icon paints only ~85% of its canvas (13pt visible at a 16pt slot), while a `.body` SF Symbol renders 17–18pt tall — at 20 the icon lands on 17pt and the two match. Measure before changing it.
-- Menu rows are the one place that uses `sm` for the icon→label gap instead of the row-standard `lg`, because that slot's built-in slack already contributes 2–3pt of apparent space.
+- **`PopoverMenu`** uses `glassEffect(.regular)` with `menuPanel 16` corners and **no hand-tuned shadow** — Tahoe glass carries its own elevation; adding a drop shadow reads heavy and non-native. A footer menu raises only its attached bottom corner to the controls' 18-point radius, so the two silhouettes meet exactly.
+- `PopoverMenuRow`: leading glyph, label, trailing shortcut glyph, `menuHover` fill on hover, `menuRow 10` corner. Menus animate in with opacity and scale from the anchored corner, stretching briefly to 1.003 before settling; `Theme.MenuMotion` owns the entry, settle and shorter exit timings.
+- The glyph is a `PopoverMenuIcon`: `.symbol` (SF Symbol, `monochrome`, `menuSymbol` — or **red** when `isDestructive`) or `.file` (a real app icon via `IconCache`, used by the paste rows to show the paste target). `PopoverMenuItem` keeps a `systemImage:` convenience init, so symbol rows read exactly as before.
+- **Both glyph kinds share one square `menuIcon` (20) slot**, which pins one row height. A native SF Symbol uses the dedicated 14pt Medium `menuSymbol` font; file and brand icons keep their own artwork sizing inside the same slot.
+- Menu rows use the `md` icon→label gap; the fixed slot adds the remaining optical slack.
 
 ---
 
@@ -425,7 +394,7 @@ sole owner rule) and is the only presenter, so every confirmation in the app loo
   recipe**, and so does the **message pill**. That is the line: glass needs a backdrop to lens, so it
   only works _inside_ a window that already has a `VisualEffectView` behind it — the action capsule,
   the menu circle, `PopoverMenu`, a dialog's buttons. On a bare borderless panel of its own it falls
-  back to an opaque backing that shows as a hard edge outside the shape, which is exactly what the
+  back to an opaque backing that shows as a dark edge outside the shape, which is exactly what the
   pill did before it moved to the recipe.
 - **Layout.** Leading glyph (`dialogIcon 32`), title (`.headline`) + wrapped secondary message,
   optional volume slider, then buttons at the trailing edge with **Cancel rendered leading** among
@@ -523,8 +492,8 @@ style; `.thinScrollbar()` on the scroll view draws a hairline thumb (`Color.prim
 0.42 hover → 0.5 drag) that fattens on hover, with a faint rail revealed only while hovering/dragging.
 
 Routing: the palette lists (App Launcher, Clipboard history, Emoji, File Search, Calculator history) use
-`.thinScrollbar()` + `.hideNativeScrollers()`; the Clipboard preview (right pane) and every Settings
-pane take the native scroller as-is. Don't reintroduce native scrollers on the palette lists.
+`.thinScrollbar()` + `.hideNativeScrollers()`; the Clipboard preview (right pane), every Settings
+pane and the update window take the native scroller as-is. Don't reintroduce native scrollers on the palette lists.
 
 **Native scrollers are overlay app-wide, set once.** `AppDelegate.applicationWillFinishLaunching`
 writes `AppleShowScrollBars = WhenScrolling` into Tinycast's own defaults domain, which outranks the

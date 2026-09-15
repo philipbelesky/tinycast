@@ -7,6 +7,8 @@ final class PaletteCoordinator {
     private let settings: AppSettings
     private let appIndex: AppIndex
     private let fileSearch: FileSearchSession
+    private let menuSearch: MenuSearchSession
+    private let windowSwitch: WindowSwitchSession
     private let windowController: PaletteWindowController
     /// Set by `AppCore`, so the coordinator stays ignorant of which feature wants the notice.
     var onShow: (@MainActor () async -> Void)?
@@ -16,12 +18,16 @@ final class PaletteCoordinator {
         settings: AppSettings,
         appIndex: AppIndex,
         fileSearch: FileSearchSession,
+        menuSearch: MenuSearchSession,
+        windowSwitch: WindowSwitchSession,
         windowController: PaletteWindowController
     ) {
         self.palette = palette
         self.settings = settings
         self.appIndex = appIndex
         self.fileSearch = fileSearch
+        self.menuSearch = menuSearch
+        self.windowSwitch = windowSwitch
         self.windowController = windowController
     }
 
@@ -57,9 +63,9 @@ final class PaletteCoordinator {
         }
     }
 
-    /// A palette already up is being navigated, not summoned: the screen under it is the back step.
+    /// Navigating keeps the screen under as the back step; the launcher is the root and never has one.
     func navigate(to mode: PaletteMode) {
-        if windowController.isVisible, palette.mode != mode {
+        if windowController.isVisible, palette.mode != mode, mode != .launcher {
             palette.push(mode: mode)
         } else {
             palette.prepare(mode: mode)
@@ -78,6 +84,8 @@ final class PaletteCoordinator {
         if let query { palette.query = query }
         windowController.show()
         if palette.mode == .fileSearch { fileSearch.search(palette.query) }
+        if palette.mode == .menuSearch { menuSearch.filter(palette.query) }
+        if palette.mode == .switchWindows { windowSwitch.filter(palette.query) }
         // Re-scan on open so an app uninstalled since the last scan drops out of the launcher.
         // herdr's session moves far faster than the app list, so it re-reads on the same trigger.
         if palette.mode == .launcher {
@@ -88,6 +96,8 @@ final class PaletteCoordinator {
 
     func hidePalette(restoreFocus: Bool = true) {
         fileSearch.cancel()
+        menuSearch.reset()
+        windowSwitch.reset()
         windowController.hide(restoreFocus: restoreFocus)
     }
 

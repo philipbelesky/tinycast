@@ -2,34 +2,50 @@ import SwiftUI
 
 /// Row icon decoding off the main thread; warm icons seed synchronously, so no flash.
 struct AppIconView: View {
+    @Environment(\.metrics) private var metrics
+    @Environment(\.displayScale) private var displayScale
     let app: AppEntry
     /// What to draw: `iconSource` unless the caller passes the launcher list's category answer.
     private let source: EntryIcon
-    @State private var image: NSImage?
+    /// Nil keeps the shared 96px bitmap; a size gets this row its own, far smaller one.
+    var pointSize: CGFloat?
+    @State private var loaded: Loaded?
 
-    init(app: AppEntry, source: EntryIcon? = nil) {
+    init(app: AppEntry, source: EntryIcon? = nil, pointSize: CGFloat? = nil) {
         self.app = app
         self.source = source ?? app.iconSource
-        // Cache-only, so a warm icon paints on the same frame.
-        _image = State(initialValue: IconCache.cached(self.source, fileURL: app.url))
+        self.pointSize = pointSize
+    }
+
+    private struct Key: Hashable {
+        let icon: String
+        let size: IconSize?
+    }
+
+    private struct Loaded {
+        let request: IconRequest<Key>
+        let image: NSImage?
     }
 
     var body: some View {
+        let size = pointSize.map { IconSize(points: $0, scale: displayScale) }
+        // Keyed on the icon, not the entry: re-skinning an extension leaves `id` untouched.
+        let request = IconRequest(Key(icon: "\(app.id)|\(source)", size: size))
+        let warm = IconCache.cached(source, fileURL: app.url, size: size)
+        let image = warm ?? (loaded?.request == request ? loaded?.image : nil)
         Group {
             if let image {
                 Image(nsImage: image).resizable()
             } else {
-                RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
+                RoundedRectangle(cornerRadius: metrics.radius.row, style: .continuous)
                     .fill(Theme.Colors.iconPlaceholder)
             }
         }
-        // Keyed on the icon, not the entry: re-skinning an extension leaves `id` untouched.
-        .task(id: IconRequest("\(app.id)|\(source)")) {
-            if let warm = IconCache.cached(source, fileURL: app.url) {
-                image = warm
-                return
-            }
-            image = await IconCache.loadAsync(source, fileURL: app.url)
+        .task(id: request) {
+            guard warm == nil else { return }
+            let image = await IconCache.loadAsync(source, fileURL: app.url, size: size)
+            guard !Task.isCancelled else { return }
+            loaded = Loaded(request: request, image: image)
         }
     }
 }

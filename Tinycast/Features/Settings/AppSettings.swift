@@ -134,6 +134,10 @@ final class AppSettings {
         didSet { defaults.set(clipboardEnabled, forKey: Key.clipboardEnabled.rawValue) }
     }
 
+    var clipboardTextSearchEnabled: Bool {
+        didSet { defaults.set(clipboardTextSearchEnabled, forKey: Key.clipboardTextSearchEnabled.rawValue) }
+    }
+
     var clipboardRetention: ClipboardRetention {
         didSet {
             defaults.set(clipboardRetention.rawValue, forKey: Key.clipboardRetention.rawValue)
@@ -193,6 +197,15 @@ final class AppSettings {
         didSet { defaults.set(appearance.rawValue, forKey: Key.appearance.rawValue) }
     }
 
+    /// Scales the palette and its floating siblings only. Read through `InterfaceSize.metrics`.
+    var interfaceSize: InterfaceSize {
+        didSet { defaults.set(interfaceSize.rawValue, forKey: Key.interfaceSize.rawValue) }
+    }
+
+    var paletteTransparency: Int {
+        didSet { defaults.set(paletteTransparency, forKey: Key.paletteTransparency.rawValue) }
+    }
+
     /// Summon the launcher as a slim search bar that expands into the full list on typing.
     var compactMode: Bool {
         didSet { defaults.set(compactMode, forKey: Key.compactMode.rawValue) }
@@ -226,16 +239,21 @@ final class AppSettings {
         didSet { defaults.set(paletteDraggable, forKey: Key.paletteDraggable.rawValue) }
     }
 
-    /// Where a drag left the panel's top-left; nil means the default placement.
-    var palettePosition: CGPoint? {
-        didSet {
-            guard let palettePosition else {
-                defaults.removeObject(forKey: Key.palettePosition.rawValue)
-                return
-            }
-            defaults.set(
-                [palettePosition.x, palettePosition.y], forKey: Key.palettePosition.rawValue)
+    /// Where a drag left the panel's top-left, per display and relative to it.
+    var palettePositions: [String: [Double]] {
+        didSet { defaults.set(palettePositions, forKey: Key.palettePosition.rawValue) }
+    }
+
+    func palettePosition(on display: String) -> CGPoint? {
+        palettePositions[display].flatMap { $0.count == 2 ? CGPoint(x: $0[0], y: $0[1]) : nil }
+    }
+
+    func setPalettePosition(_ offset: CGPoint?, on display: String) {
+        guard let offset else {
+            palettePositions.removeValue(forKey: display)
+            return
         }
+        palettePositions[display] = [offset.x, offset.y]
     }
 
     // Feature switches, off out of the box, and off means fully off.
@@ -291,6 +309,22 @@ final class AppSettings {
 
     var snippetsShowInLauncher: Bool {
         didSet { defaults.set(snippetsShowInLauncher, forKey: Key.snippetsShowInLauncher.rawValue) }
+    }
+
+    var navigationEnabled: Bool {
+        didSet { defaults.set(navigationEnabled, forKey: Key.navigationEnabled.rawValue) }
+    }
+
+    /// Bundle IDs whose menu bar Search Menu Bar Items refuses to read at all.
+    var menuSearchDisabledApps: [String] {
+        didSet { defaults.set(menuSearchDisabledApps, forKey: Key.menuSearchDisabledApps.rawValue) }
+    }
+
+    /// Off: the Apple menu is the same on every app, so it would only pad every snapshot.
+    var menuSearchShowsAppleMenu: Bool {
+        didSet {
+            defaults.set(menuSearchShowsAppleMenu, forKey: Key.menuSearchShowsAppleMenu.rawValue)
+        }
     }
 
     /// Consent to run third-party JavaScript: it confirms, defaults off, rides no backup.
@@ -420,9 +454,9 @@ final class AppSettings {
         }
     }
 
-    /// Re-triggering a half steps it through ⅓ and ⅔ instead of re-applying the same frame.
-    var windowCycleOnRepeat: Bool {
-        didSet { defaults.set(windowCycleOnRepeat, forKey: Key.windowCycleOnRepeat.rawValue) }
+    /// What re-triggering a half does: nothing, step its size, or walk it across the displays.
+    var windowCycle: WindowCycle {
+        didSet { defaults.set(windowCycle.rawValue, forKey: Key.windowCycle.rawValue) }
     }
 
     /// Reads the running herdr session over its local socket; nothing leaves the machine.
@@ -530,6 +564,7 @@ final class AppSettings {
             defaults.object(forKey: Key.clipboardEnabled.rawValue) == nil
             || defaults.bool(forKey: Key.clipboardEnabled.rawValue)
         // `integer(forKey:)` returns 0 when unset, which no case matches.
+        clipboardTextSearchEnabled = defaults.bool(forKey: Key.clipboardTextSearchEnabled.rawValue)
         clipboardRetention =
             ClipboardRetention(rawValue: defaults.integer(forKey: Key.clipboardRetention.rawValue))
             ?? .threeMonths
@@ -562,6 +597,10 @@ final class AppSettings {
             ?? .navigateBackOrClose
         appearance =
             defaults.string(forKey: Key.appearance.rawValue).flatMap(AppAppearance.init) ?? .system
+        interfaceSize =
+            defaults.string(forKey: Key.interfaceSize.rawValue).flatMap(InterfaceSize.init)
+            ?? .standard
+        paletteTransparency = max(-100, min(100, defaults.integer(forKey: Key.paletteTransparency.rawValue)))
         compactMode = defaults.bool(forKey: Key.compactMode.rawValue)
         // Defaults to true, so absence must be distinguished from a stored `false`.
         showFavoritesInCompactMode =
@@ -583,9 +622,9 @@ final class AppSettings {
             || defaults.bool(forKey: Key.openOnCursorScreen.rawValue)
         autoSwitchInputSourceID = defaults.string(forKey: Key.autoSwitchInputSource.rawValue)
         paletteDraggable = defaults.bool(forKey: Key.paletteDraggable.rawValue)
-        // A half-written pair is no position at all, so both coordinates have to be there.
-        palettePosition = (defaults.array(forKey: Key.palettePosition.rawValue) as? [Double])
-            .flatMap { $0.count == 2 ? CGPoint(x: $0[0], y: $0[1]) : nil }
+        palettePositions =
+            defaults.dictionary(forKey: Key.palettePosition.rawValue)
+            as? [String: [Double]] ?? [:]
         fileSearchEnabled = defaults.bool(forKey: Key.fileSearchEnabled.rawValue)
         // Unset seeds home; a stored empty array is a cleared list that searches nothing.
         fileSearchScopes =
@@ -653,13 +692,18 @@ final class AppSettings {
             defaults.object(forKey: Key.hideCurrentEvent.rawValue)
             .flatMap { $0 as? Int }
             .flatMap(HideCurrentEvent.init(rawValue:)) ?? .dontHide
+        navigationEnabled = defaults.bool(forKey: Key.navigationEnabled.rawValue)
+        menuSearchDisabledApps =
+            defaults.stringArray(forKey: Key.menuSearchDisabledApps.rawValue) ?? []
+        menuSearchShowsAppleMenu = defaults.bool(forKey: Key.menuSearchShowsAppleMenu.rawValue)
         windowManagementEnabled = defaults.bool(forKey: Key.windowManagementEnabled.rawValue)
         windowManagementShowInLauncher =
             defaults.object(forKey: Key.windowManagementShowInLauncher.rawValue) == nil
             || defaults.bool(forKey: Key.windowManagementShowInLauncher.rawValue)
         // Unset reads as 0, which is the intended default anyway — no gap.
         windowGap = defaults.integer(forKey: Key.windowGap.rawValue)
-        windowCycleOnRepeat = defaults.bool(forKey: Key.windowCycleOnRepeat.rawValue)
+        windowCycle =
+            defaults.string(forKey: Key.windowCycle.rawValue).flatMap(WindowCycle.init) ?? .off
         windowLayoutsShowInLauncher =
             defaults.object(forKey: Key.windowLayoutsShowInLauncher.rawValue) == nil
             || defaults.bool(forKey: Key.windowLayoutsShowInLauncher.rawValue)

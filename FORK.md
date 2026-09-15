@@ -30,7 +30,7 @@ themselves are in [AGENTS.md](AGENTS.md#non-negotiables). This file covers only 
 | --- | --- | --- | --- |
 | 1 | [Apple Development signing, Developer ID export](#1--apple-development-signing-developer-id-export) | Low, but silently reverted by `xcodegen` | No — machine-specific |
 | 2 | ~~Forced light appearance~~ — [retired](#2--forced-light-appearance-retired) | None — the fork now takes upstream's | n/a |
-| 3 | [`Theme.scale`](#3--themescale-and-derived-typography) | **High** — rewrites `Theme.swift` wholesale | Plausibly yes |
+| 3 | ~~`Theme.scale`~~ — [retired](#3--themescale-and-derived-typography-retired) | None — the fork now takes upstream's `InterfaceMetrics` | n/a |
 | 4 | [Scope keywords + web search](#4--scope-keywords-and-web-search) | Medium — hooks into `AppIndex`, `RootPaletteView`, `AppEntry.Kind` | Yes, as a feature |
 | 5 | [herdr opener](#5--herdr-opener) | Medium — the same `AppEntry.Kind` surface as 4 | Unlikely — niche third-party tool |
 | 6 | [VS Code project opener](#6--vs-code-project-opener) | Medium — the same `AppEntry.Kind` surface as 4 | Yes, as a feature |
@@ -160,36 +160,29 @@ divergence 11. None of those depended on the appearance being fixed.
 Kept as a numbered slot rather than renumbered away, so every "divergence N" reference written before
 today still points at what it meant.
 
-## 3 — `Theme.scale` and derived typography
+## 3 — `Theme.scale` and derived typography (retired)
 
-**Touches:** `Theme.swift` (rewritten), `IconCache.swift`, `RootPaletteView.swift`, eight further view
-files and `docs/ui.md`.
+**Retired 2026-09-15, merging upstream #597.** This divergence multiplied every length and font size in
+`Theme` by one compile-time constant (`1.25` here) and derived `Theme.Typography` from
+`NSFont.preferredFont(forTextStyle:)` point sizes, because upstream had no way to make the palette
+larger and the doc reasoned that a runtime setting was the hard version of the same idea.
 
-One compile-time constant multiplies every length and font size in `Theme`, so the whole UI — panel
-frame, row icons, keycaps, glyph point sizes, rasterized bitmaps — grows together from a one-line edit.
-`Theme.Typography` consequently stopped naming semantic text styles and now derives point sizes from
-`NSFont.preferredFont(forTextStyle:)` times the scale, because `Font.body` cannot be scaled and a point
-size can. Full reasoning, including the two tokens that are not pixel-identical at `scale 1.0`, is in
-[ui.md](docs/ui.md#why-a-constant-and-why-derived-point-sizes), which is fork-local prose inside a
-section upstream also edits.
+**Upstream then built the runtime setting.** `DesignSystem/InterfaceMetrics.swift` stores a scale and
+derives every value from the `Theme` literal, `AppSettings.interfaceSize` offers Default / Large /
+Larger at 1.0 / 1.1 / 1.2, views read `@Environment(\.metrics)`, AppKit sites read
+`settings.interfaceSize.metrics`, and `PaletteWindowController` re-places the panel when it changes —
+the two problems this divergence's prose called hard. The fork took all of it and dropped everything it
+held: the `* scale` spellings in `Theme.swift`, the derived `Typography`, the fork-only tokens
+(`runningDot`, `menuGlyph*`, `calcArrow`, `emptyGlyph`, `tileGlyph`, `dialogTitle`, …) and the
+de-magic-numbered views that existed only to carry them, and the "a magic number is a defect" rule in
+[ui.md](docs/ui.md). Upstream's literals came back where upstream has them.
 
-This one is a **conflict magnet**: it rewrites most of `Theme.swift` and de-magic-numbers views across
-the app, which is exactly the code upstream also churns. It is also the divergence most worth offering
-upstream, since it is a pure improvement to a file upstream already treats as the single token source.
-Until then, expect `Theme.swift` merges to be resolved by hand, structurally: take upstream's *new
-tokens*, keep the fork's `* scale` multiplication and derived `Typography`.
+What it costs: **Larger is 1.2, not 1.25**, and the setting is per-machine state rather than a build
+constant — though `interfaceSize` is in the settings backup, so iCloud sync (divergence 10) carries it.
+If 1.2 reads too small, a fourth `InterfaceSize` case is a one-enum edit and a divergence of its own,
+not a reason to bring the constant back.
 
-The corollary the fork now depends on: **a magic number in a view is a real defect, not a style nit** — a
-literal `8` no longer tracks the rest of the UI. Upstream code merged in will contain magic numbers.
-Converting them to tokens is part of finishing the merge, not a follow-up.
-
-The same applies to upstream's new *typography*, and it is easier to miss: a `Font.body` token merged
-into `Theme.Typography` renders at 100% while everything around it renders at `scale`, so upstream's
-additions have to be re-spelled through `scaled(_:_:_:)`. Where a value is genuinely chrome and should
-not scale, say so on the line — `dropGuideDash`, `dropGuideWidth` and `hairline` are the three that
-carry that exemption. **Views under `Features/*/Settings/` and the standalone `Windows/` surfaces are
-outside this**: they are system-sized AppKit chrome, and both the fork's own panes and upstream's use
-bare `.font(.caption)` there. The rule binds on palette surfaces.
+Kept as a numbered slot rather than renumbered away, as with divergence 2.
 
 ---
 
@@ -359,7 +352,8 @@ adopt it rather than keep a parallel one.
 ## 9 — Header-clearing edge dissolve
 
 **Touches:** the top half of `DesignSystem/Scrolling/EdgeDissolve.swift` — `topFade`/`topMinAlpha`
-became `topBand`/`topOvershoot`, and the two top gradient stops moved. The bottom half is untouched.
+became `topBand`/`topOvershoot` (both read through `metrics`, so Interface Size still moves them), and
+the two top gradient stops moved. The bottom half is untouched.
 
 Upstream fades the top band to a floor of **0.15 at mid-band** and only reaches full opacity 32pt
 *below* the header, which leaves scrolled content 45–95% opaque at the search field's own edge and
@@ -469,7 +463,7 @@ the deletion rather than keeping the file, so there is no permanent doc divergen
 
 Four entries were fork-authored, and those could not simply be deleted with it. They moved to the doc
 that owns their subject: **33** (`Theme.scale`, and why point sizes are derived) into
-[ui.md](docs/ui.md#why-a-constant-and-why-derived-point-sizes), **34** (adopt-on-transition) into
+[ui.md](docs/ui.md) — since gone with divergence 3's retirement, **34** (adopt-on-transition) into
 [palette.md](docs/features/palette.md), **35** (why the suggest feed is its own switch) into
 [web-search.md](docs/features/web-search.md), and **36** (settings sync) into
 [sync.md](docs/features/sync.md). References to *upstream's* entries — 7, 8, 9, 10, 11, 15, 21, 28 —
@@ -801,6 +795,8 @@ time once the fork's `ScopeChip` sat on top of upstream's growth; its key handli
 
 **The 2026-09-07 absorption of upstream `3d5cecf..a9c1708` (17 commits) was a merge.** The new launcher ranking keeps word reorderings as subsequence evidence, with the fork's regression tests using upstream's new alias model. Scope rows and fork destinations receive the same naming pass as upstream entries. Window layouts join the window-management scope; their settings, bindings and records, plus the clipboard enable flag, flow through the fork's extracted backup service. New palette colour and attachment surfaces follow the fork's scale tokens. Upstream also removed the expired storage relocation, absorbing divergence 19.
 
+**The 2026-09-15 absorption of upstream `1855c81..979d09e` (75 commits) was a merge, and the first since 2026-08-26 to retire a divergence.** Upstream's #597 shipped an Interface Size setting — `InterfaceMetrics` behind `@Environment(\.metrics)`, a `PaletteWindowController` that re-places the panel on change — which is divergence 3 built properly, so `Theme.swift`, `IconCache`, `QuicklinkArgumentsRow`, `QuicklinkListView`, `ClipboardView`, `SnippetsListView` and `ColorCard` were taken whole from upstream and every other fork-tokenised literal was put back the way upstream spells it; only the `Theme.Colors.tile` map (divergence 4) went back onto `Theme.swift`. Twenty-eight conflicts otherwise. `EdgeDissolve` (divergence 9) now reads its bands through `metrics`. Upstream's #577 replaced each pane's shortcut rows with `FeatureCommandsSection`, so the clipboard's second chord (divergence 16) is a section of its own beneath it. #678 moved the launcher's ⇧⌘F/⌃⇧Q/⌘R chords into `LauncherScreen`, which took the fork's `launcherChord(_:)` with it; `toggleFavorite` there keeps the Linear-issue guard. `VisibilityStore.allowsHotKey` binds `.command`/`.commandAlternate` in one arm over upstream's new `id.owner` check, and the new `.quickAction` case joins the fork's three chords. `AppEntry.KindDescriptor` gained `canHideFromSearch`, false for every fork kind. The website's five stale forced-light pages (divergence 2, missed at its retirement) were taken from upstream. Upstream's #620/#635/#641 entitlements — JIT, Apple events, camera, calendars — were mirrored into `TinycastFork.entitlements`, and the Release-only hardened runtime came with them.
+
 **The 2026-09-10 absorption of upstream `a9c1708..1855c81` (20 commits) was a merge, and the cheapest one yet — ten conflicts, no re-litigated divergence.** Upstream's #493 moved a quicklink's arguments off their own screen into a header accessory, deleting `QuicklinkArgumentSession` and the two views around it; the fork took the deletion whole, losing that view's two previews (divergence 11) and the fixture only they used, and `PreviewChrome` swapped the retired session for `CustomCommandArgumentSession`. The replace-on-import button (divergence 7) now sits on top of upstream's extracted `addImportedQuicklinks`. Upstream also split `RootPaletteView.body` again, into `stateObservers(_:)` and `keyHandlers(_:selection:)` — which supersedes the fork's own `keyChords(_:selection:)` split from the previous drop, so the file was taken whole from upstream and the fork's scope chip, suggestion and Linear observers, `launcherChord(_:)` and scale tokens re-applied onto it. The new inline argument strip arrived full of magic numbers (divergence 3): `QuicklinkArgumentsRow`'s field box and width envelope and `QuicklinkPreview`'s glyph now multiply by `Theme.scale`, and its chevron takes `Theme.Typography.disclosure`. `palette-navigation-test` is the latest upstream harness to compile `PaletteState.swift` and so to need `$L/QueryScope.swift` and `$L/ScopeTint.swift` in its source list. Upstream's `--index` mode came back in a new shape — a `run index <name>` keyword registering benchmarks that stay out of the suite — so divergence 14 now keeps the keyword and drops only the compile-database emission.
 
 **The 2026-08-20 absorption of rewritten upstream `42eb238..793bb1f` is the second merge exception.**
@@ -822,13 +818,12 @@ Then, before calling it done — the standard gate from
 - [ ] **No bare `Color.white.opacity(…)` reached a view** — it vanishes in Light. New colours go
       through `Theme.Colors.ramp(dark:light:)` or `adaptive(dark:light:)`; the only bare whites left
       are ink over a saturated fill (the category tile, the Support capsule, the tint picker's ring).
-- [ ] **New or merged views carry no magic numbers** — every length and font size comes from `Theme` (divergence 3).
 - [ ] **Signing survived** — if `xcodegen` ran, re-apply divergence 1.
 - [ ] **New upstream harnesses compile against the fork's types.** `ScopeTint` and `ScopeDefinition`
       are fork-local but reach into `Theme.swift`, `IconCache.swift` and `PaletteState.swift`, so any
       upstream harness compiling those needs `$L/ScopeTint.swift` (and sometimes `$L/QueryScope.swift`)
       added to its source list in `Scripts/run-tests.sh` — `palette-placement-test`, `icon-cache-test`
-      and `hover-arming-test` all needed it (divergences 3, 4).
+      and `hover-arming-test` all needed it (divergence 4).
 - [ ] **Every fork-local Settings pane is listed in `SettingsSearchCatalog`** — Web Search, herdr,
       VS Code, Zed, Linear and Miscellaneous, each with a `SettingsAnchor` its `Form` claims, or
       `settings-history-test` fails on *every pane is reachable from Settings search*

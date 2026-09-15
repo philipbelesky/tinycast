@@ -11,8 +11,8 @@ enum ExtensionStoreResponse {
         components?.queryItems = [
             URLQueryItem(name: "q", value: query),
             URLQueryItem(name: "page", value: String(page)),
-            // Tinycast is macOS-only, so windows-only extensions are noise in the results.
-            URLQueryItem(name: "platform", value: "macos")
+            // Case-sensitive: any other spelling returns only extensions listing no platforms.
+            URLQueryItem(name: "platform", value: "macOS")
         ]
         return components?.url
     }
@@ -100,9 +100,11 @@ enum ExtensionStoreResponse {
             let path: String
             let type: String
             let sha: String
+            let mode: String?
 
             var isDirectory: Bool { type == "tree" }
             var isFile: Bool { type == "blob" }
+            var isExecutable: Bool { isFile && mode == "100755" }
         }
 
         func directorySHA(named name: String) -> String? {

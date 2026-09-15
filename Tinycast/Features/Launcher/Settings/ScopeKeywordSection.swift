@@ -61,7 +61,7 @@ struct ScopeKeywordField: View {
         }
     }
 
-    private static let fieldWidth: CGFloat = 56 * Theme.scale
+    private static let fieldWidth: CGFloat = 56
 
     private func commit(_ typed: String) {
         let candidate = ScopeKeywords.normalized(typed)

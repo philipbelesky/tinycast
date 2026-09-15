@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct LauncherList: View {
+
+    @Environment(\.metrics) private var metrics
     let results: [AppEntry]
     /// The flat row id the screen has selected, not an entry id: a fallback can repeat a result.
     let selectedRowID: String?
@@ -132,7 +134,7 @@ struct LauncherList: View {
             .scope, .meeting,
             .application, .systemSettings, .extensionCommand, .quicklink, .vsCodeProject, .zedProject,
             .herdrTarget, .linearTarget, .webSearch, .snippet,
-            .systemAction, .windowLayout, .windowCommand, .customCommand, .command
+            .systemAction, .windowLayout, .windowCommand, .customCommand, .quickAction, .command
         ]
         for kind in kinds {
             guard let group = grouped[kind], !group.isEmpty else { continue }
@@ -170,7 +172,7 @@ struct LauncherList: View {
                                         .contentShape(Rectangle())
                                         .onTapGesture(perform: onActivateCard)
                                         .onRightClick(perform: onCardActions)
-                                        .padding(.bottom, Theme.Spacing.xs)
+                                        .padding(.bottom, metrics.spacing.xs)
                                         .selectionFrame(cardSelected)
                                 case .webSearch(let prompt):
                                     WebSearchRow(prompt: prompt, selected: selectedRowID == prompt.id)
@@ -208,9 +210,9 @@ struct LauncherList: View {
                                 }
                             }
                         }
-                        .padding(.horizontal, Theme.Spacing.md)
-                        .padding(.top, Theme.Spacing.xs)
-                        .padding(.bottom, Theme.Spacing.md)
+                        .padding(.horizontal, metrics.spacing.md)
+                        .padding(.top, metrics.spacing.xs)
+                        .padding(.bottom, metrics.spacing.md)
                         .hideNativeScrollers()
                         .scrollOriginAnchor()
                     }
@@ -307,6 +309,8 @@ private struct LeadCardView: View {
 }
 
 private struct AppRow: View {
+
+    @Environment(\.metrics) private var metrics
     let app: AppEntry
     let selected: Bool
     let running: Bool
@@ -340,39 +344,39 @@ private struct AppRow: View {
     }
 
     var body: some View {
-        HStack(spacing: Theme.Spacing.lg) {
-            AppIconView(app: app, source: app.categoryIconSource)
-                .frame(width: Theme.Size.rowIcon, height: Theme.Size.rowIcon)
+        HStack(spacing: metrics.spacing.lg) {
+            AppIconView(app: app, source: app.categoryIconSource, pointSize: metrics.size.rowIcon)
+                .frame(width: metrics.size.rowIcon, height: metrics.size.rowIcon)
                 .overlay(alignment: .bottom) {
                     if running {
                         Circle()
                             .fill(.secondary)
-                            .frame(width: Theme.Size.runningDot, height: Theme.Size.runningDot)
-                            .offset(y: Theme.Size.runningDot)
+                            .frame(width: 3, height: 3)
+                            .offset(y: 3)
                     }
                 }
             Text(app.name)
-                .font(Theme.Typography.rowTitle)
+                .font(metrics.typography.rowTitle)
                 .lineLimit(1)
             if let subtitle = app.subtitle {
                 Text(subtitle)
-                    .font(Theme.Typography.rowTrailing)
+                    .font(metrics.typography.rowTrailing)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
             if let alias = aliases.alias(for: app.preferenceKey) {
                 Text(alias)
-                    .font(Theme.Typography.rowTrailing)
+                    .font(metrics.typography.rowTrailing)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
-                    .padding(.horizontal, Theme.Spacing.sm)
-                    .padding(.vertical, Theme.Spacing.xxs)
+                    .padding(.horizontal, metrics.spacing.sm)
+                    .padding(.vertical, metrics.spacing.xxs)
                     .background(
-                        RoundedRectangle(cornerRadius: Theme.Radius.menu, style: .continuous)
+                        RoundedRectangle(cornerRadius: metrics.radius.menu, style: .continuous)
                             .fill(Theme.Colors.controlSurface))
             }
             if let caps = shortcutCaps {
-                HStack(spacing: Theme.Spacing.xxs) {
+                HStack(spacing: metrics.spacing.xxs) {
                     ForEach(Array(caps.enumerated()), id: \.offset) { _, cap in
                         KeyCapChip(text: cap, style: .outline)
                     }
@@ -381,24 +385,24 @@ private struct AppRow: View {
             Spacer()
             if let refresh = app.backgroundRefresh {
                 ExtensionRefreshIndicator(state: refresh)
-                    .font(Theme.Typography.rowTrailing)
+                    .font(metrics.typography.rowTrailing)
             }
             // Holding ⌘ turns the trailing label into the chord that launches this row.
             if let slot, palette.commandHeld {
-                HStack(spacing: Theme.Spacing.xxs) {
+                HStack(spacing: metrics.spacing.xxs) {
                     KeyCapChip(text: "⌘", style: .outline)
                     KeyCapChip(text: String(slot), style: .outline)
                 }
             } else {
                 Text(app.kindLabel)
-                    .font(Theme.Typography.rowTrailing)
+                    .font(metrics.typography.rowTrailing)
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(.horizontal, Theme.Spacing.md)
-        .padding(.vertical, Theme.Spacing.sm)
+        .padding(.horizontal, metrics.spacing.md)
+        .padding(.vertical, metrics.spacing.sm)
         .background(
-            RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
+            RoundedRectangle(cornerRadius: metrics.radius.row, style: .continuous)
                 .fill(fill)
         )
         .armedHover($hovered)

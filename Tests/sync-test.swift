@@ -45,7 +45,7 @@ struct SyncTest {
             s.windowManagementEnabled = true
             s.windowManagementShowInLauncher = true
             s.windowGap = 8
-            s.windowCycleOnRepeat = true
+            s.windowCycle = "sizes"
             s.quicklinksEnabled = true
             s.quicklinksShowInLauncher = true
             s.quicklinkOpensNewWindow = true

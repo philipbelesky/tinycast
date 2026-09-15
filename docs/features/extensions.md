@@ -6,7 +6,8 @@ produces, rendered natively into the palette. No Electron, no browser, no Node.j
 - [How it works](#how-it-works) · [The JS runtime](#the-js-runtime) ·
   [The Swift host](#the-swift-host) · [Rendering](#rendering)
 - [Turning it on](#turning-it-on) · [Installing extensions](#installing-extensions) ·
-  [Registries](#registries) · [Shortcuts](#shortcuts) · [What's supported](#whats-supported) ·
+  [Registries](#registries) · [Shortcuts](#shortcuts) · [Aliases](#aliases) · [Deeplinks](#deeplinks) ·
+  [What's supported](#whats-supported) ·
   [What isn't](#what-isnt-supported-yet) · [Working on the runtime](#working-on-the-runtime)
 
 ## Invariants
@@ -72,8 +73,9 @@ would add ~1 MB plus a build-system detour, for an engine that is slower and no 
 work is not in the interpreter, it's in the `@raycast/api` shim and the Node surface, which are the
 same either way. A bare `JSContext` has the full modern language (checked: `Object.groupBy`,
 `Array.fromAsync`, `Intl`, lookbehind regex) and nothing else, so the runtime supplies `console`,
-timers, `fetch`, `URL`, `URLSearchParams`, `TextEncoder`/`TextDecoder`, `AbortController`, `atob`/
-`btoa`, `ReadableStream`/`WritableStream`/`TransformStream` and `structuredClone` itself.
+timers, `fetch`, `URL`, `URLSearchParams`, `Blob`/`File`/`FormData`, `DOMException`,
+`TextEncoder`/`TextDecoder`, `AbortController`, `atob`/`btoa`,
+`ReadableStream`/`WritableStream`/`TransformStream` and `structuredClone` itself.
 
 ## The JS runtime
 
@@ -110,8 +112,8 @@ Two host-call flavours:
 | --- | --- |
 | `Service/ExtensionRuntime.swift` | the `JSContext`, host-function installation, timers, exception reporting |
 | `Service/ExtensionHostBridge.swift` | main-actor host APIs (clipboard, storage, cache, window, toasts, system, oauth) |
-| `Service/ExtensionNodeShims.swift` | the synchronous `fs` / `child_process` / `crypto` / `zlib` services |
-| `Service/ExtensionFetcher.swift` | `fetch` over `URLSession`, plus the async `exec` and the shared PATH resolver |
+| `Service/ExtensionNodeShims.swift` | the synchronous `fs` / `os` / `child_process` / `crypto` / `zlib` services |
+| `Service/ExtensionFetcher.swift` | `fetch` over `URLSession`, plus collecting async `exec` children and the shared PATH resolver |
 | `Service/ExtensionOAuthKeychain.swift` | secure OAuth token storage backed by macOS Keychain |
 | `Service/ExtensionOAuthSession.swift` | PKCE state tracking, browser launch, and callback redirect resolution |
 | `Service/ExtensionStorage.swift` | per-extension `LocalStorage`, `Cache` and preference values (one JSON file each) |
@@ -164,6 +166,10 @@ screens hold (see [palette.md](palette.md)).
   whole signal. `ExtensionScreen.Item`
   carries both the flat `selection` index and the scroll id, and is the `ForEach` identity of the row
   and the grid cell alike — see the scroll-id rule in [ui.md](../ui.md#rows-selection-hover).
+  A matching `selectedItemId` seeds the palette highlight when the screen first appears.
+  `onSelectionChange` is reported with that visible item's string id. The observer keys on the id,
+  not just the numeric index, because local filtering can replace row zero without changing the
+  palette selection; an empty result reports `null`, matching the API contract.
 - **Search-bar dropdown** — `List.Dropdown` and `Grid.Dropdown` draw as
   `ExtensionSearchAccessoryButton` at the header's trailing edge and drop `ExtensionPickerList` as one
   of the palette's `OpenMenu` cases, so the arrows, ↵, Escape and the click-away come from the one menu
@@ -244,7 +250,9 @@ screens hold (see [palette.md](palette.md)).
   in-window overlay sampled the form and read as a different material however its fill was tuned.
   With its own borderless child panel it samples the desktop, and a picker and the actions menu are
   the same surface by construction rather than by matching. It keeps the panel's row pitch, icon
-  slot and overflow fade, and a focused control takes the system accent edge that Settings and the
+  slot and overflow fade; overflowing lists keep the native elastic boundary, while short lists do
+  not bounce against empty space. Its menu symbols are 14pt Medium and monochrome unless the
+  extension supplied a tint. A focused control takes the system accent edge that Settings and the
   shortcut recorder already draw. Opening a long list reveals its current selection; updates to
   row titles, icons, sections and date details refresh an open panel even when row IDs stay the same.
   Its metrics are restated in `ExtensionFormMetrics` rather than read off the panel: an extension's
@@ -292,22 +300,30 @@ screens hold (see [palette.md](palette.md)).
   a Form Lab extension covering every control, sectioned and empty and 40-option lists, validation
   errors, wrapping labels, and forms taller than the palette, in both appearances.
 - **ActionPanel** — flattened (sections and submenus included) into `ExtensionActionsPanel`, the
-  feature's own scrolling ⌘K panel. Its rows are `ExtensionActionItem`, not `PopoverMenuItem`: an
+  feature's own scrolling ⌘K panel. A separator marks each change of `ActionPanel.Section` node,
+  titled or not, including to or from loose actions. A submenu's actions stay in their section, and
+  an empty section draws nothing. Its rows are `ExtensionActionItem`, not `PopoverMenuItem`: an
   action's `icon` is a full `ImageLike`, so it resolves through `ExtensionImage` like every other
   extension icon and keeps its `tintColor` — which is what makes a palette of `{Icon.Circle, tintColor}`
-  rows read as colours rather than a column of grey circles. A destructive action with no tint of its
-  own falls back to red. The first action is the primary ↵ action; an action's own `shortcut` is
-  matched against modified keystrokes. `ExtensionCommandScreen.menuContent` hands the whole panel to
-  the palette as a `PaletteMenuContent`, so the palette never learns the row type — and a row's
-  handler is taken from the flattened `ExtensionAction` list rather than the drawn rows, so ↵ and the
-  panel fire the same one without resolving an icon per arrow key.
+  rows read as colours rather than a column of grey circles. Untinted symbols use the extension's
+  14pt Medium monochrome treatment; a destructive action with no tint of its own falls back to red.
+  Section boundaries add 6pt above and below their separator without moving ordinary rows. The
+  title shares the elastic scroller with the actions. The panel opens and closes from its
+  bottom-right attachment with extension-owned opacity and scale timing, briefly reaching 1.003;
+  its attached corner matches the footer button. The first action is the primary ↵ action; an
+  action's own `shortcut` is matched against modified keystrokes.
+  `ExtensionCommandScreen.menuContent` hands the whole panel to the palette as a
+  `PaletteMenuContent`, so the palette never learns the row type — and a row's handler is taken from
+  the flattened `ExtensionAction` list rather than the drawn rows, so ↵ and the panel fire the same
+  one without resolving an icon per arrow key. Header accessory menus use the same extension-owned
+  transition, anchored to the control that opened them.
 - **Feedback** — `showToast` stacks above the footer, `showHUD` is a centred pill, and `confirmAlert`
   goes through `DialogController` like every other question the app asks. Its dialog sits at
   `.modalPanel`, above the palette's `.floating`, so a view command keeps its screen behind it — and
   the palette does not dismiss while it is up (`AppCore.isShowingDialog`), because dismissing pops to
   root, which would tear the command down before its `await confirmAlert(…)` ever returns.
 - **Command arguments** — a command declaring `arguments` shows inline fields sized to their
-  placeholders, right after the typed text, exactly as Raycast does. Tab walks search field → each
+  placeholders, right after the typed text. Tab walks search field → each
   argument → back; Left/Right do the same only when their caret reaches a field boundary. Returning
   to the search field selects its query, so Right first places the caret at its end and then enters
   the first argument. ↵ from any of them runs the command with the values as `props.arguments`; a blank
@@ -333,7 +349,11 @@ on confirms first — it is consent to run third-party code, and a running comma
 engine in memory until you leave it, which is the one standing cost this app has.
 
 `Show in launcher` is separate, and independent: it decides whether the commands reach launcher search
-at all, without unloading anything.
+at all, without unloading anything. Below it, each extension has a `Show in launcher` switch of its
+own, and each command a checkbox beside its shortcut — an extension ships many commands, and a user
+often wants a few. Both write `VisibilityStore`, so a hidden command keeps its shortcut and ⇧⌘H in
+the launcher unticks the same checkbox. The
+extension's switch reads on while any command is shown, and flipping it shows or hides every one.
 
 A published row carries the extension's own title in `AppEntry.ownerName`, which both labels the row
 and makes the extension a keyword for every command it ships — `lucide` finds *Search Icons*. It is
@@ -444,17 +464,39 @@ asynchronously and only while extensions are on, so at launch "not installed yet
 identical, and pruning there would quietly drop a working binding. Uninstalling clears its own instead,
 along with the extension's stored preferences and its chosen icon.
 
+## Aliases
+
+A user alias binds to a **command**, keyed by the launcher entry id
+(`extension:<extension>/<command>`) — the same key the shortcut, favorite and ranking stores use.
+Settings › Extensions › the command › Alias is the writer; `AppIndex` already ranks it as
+`.userAlias`. The field sits beside the shortcut recorder on the command's title row, the same
+pairing Settings ▸ Commands uses. It dims when the command is hidden from launcher search — the
+global Show in launcher switch, or this extension's — because the ranker never sees the entry then.
+
+## Deeplinks
+
+`raycast://extensions/<owner>/<extension>/<command>` runs an installed command from outside the app —
+a browser link, another app, a Shortcut — and `tinycast://` mirrors it so our own links never depend
+on Raycast winning the scheme. Both accept Raycast's query parameters: `arguments` as URL-encoded
+JSON, `fallbackText`, and `launchType=background`, which only a no-view command receives — a view
+command always takes over the palette, so it launches as `userInitiated`. The owner is a hint: a
+scoped install matches by `owner/extension` first and falls back to the bare slug, so short links
+keep working. Anything else on a claimed scheme just reopens the palette, and an unknown command says
+so rather than failing silently. `ExtensionDeepLink` owns the claimed schemes and the parsing,
+covered by `Tests/ext-test.swift`; an extension's own `open("raycast://…")` resolves through the same
+`ExtensionManager.resolve(_:)` instead of launching Raycast.
+
 ## Background refresh
 
 A `no-view` command declaring `interval` (`"90s"`, `"1m"`, `"12h"`, `"1d"`) re-runs headlessly on that
-schedule, exactly as Raycast's background refresh: the same bundle runs to completion with
+schedule, on the semantics extensions are authored against: the same bundle runs to completion with
 `environment.launchType` and `props.launchType` set to `Background`, and `updateCommandMetadata` is
 the only thing that escapes it — the subtitle it writes appears beside the command's name in launcher
 search, unless it merely restates the owning extension, which the row already carries on the right.
 Coffee's "Caffeinate Status" is the reference case: every minute it rewrites its subtitle to
 `✔ Caffeinated (…)` or `✖ Decaffeinated`.
 
-Like Raycast, refresh is opt-in per command: off until the first manual run or the Settings toggle
+Refresh is opt-in per command: off until the first manual run or the Settings toggle
 (Settings › Extensions › the command › Background refresh), which also shows the last refresh and the
 last error. The launcher row carries the state too: a dot while refresh is on, its dimmed twin
 while it is off, a warning with the error as its tooltip when the last background run failed, and
@@ -518,12 +560,14 @@ this). `ExtensionHostBridge` keeps those inside Tinycast: `raycast://extensions/
 runs that command when it's installed, anything else reopens the palette. Handing them to the workspace
 would launch Raycast itself.
 
-**Node built-ins** — `path`, `fs` (+ `fs/promises`, and `createReadStream`/`createWriteStream`), `os`,
-`child_process` (`exec`, `execFile`, `execSync`, `execFileSync`, `spawnSync`, and a buffered `spawn`),
-`crypto` (hashes, HMAC, random, UUID), `zlib` (gzip/zlib/raw deflate, both directions), `http`/`https`
-(`request` and `get`, buffered over the same URLSession bridge as `fetch`), `stream` (`Readable`,
-`Writable`, `Duplex`, `Transform`, `PassThrough`, `pipeline`, `finished`, plus `stream/promises` and
-`stream/web`), `util`, `events`, `buffer`, `url`, `querystring`, `punycode`, `assert`,
+**Node built-ins** — `path`, `fs` (+ `fs/promises`, `createReadStream`/`createWriteStream`, and the
+descriptor calls `tar` unpacks through), `os`,
+`child_process` (`exec`, `execFile`, `execSync`, `execFileSync`, `spawnSync`, and a buffered `spawn`,
+each async form reporting the child's real `pid` for `process.kill` — Timers pauses that way),
+`crypto` (hashes, HMAC, PBKDF2, AES-CBC/ECB, random, UUID), `zlib` (gzip/zlib/raw deflate, both
+directions), `http`/`https` (`request`, `get` and `Agent`, buffered over the same URLSession bridge
+as `fetch`), `stream` (`Readable`, `Writable`, `Duplex`, `Transform`, `PassThrough`, `pipeline`,
+`finished`, plus `stream/promises` and `stream/web`), `util`, `events`, `buffer`, `url`, `querystring`, `punycode`, `assert`,
 `string_decoder`, `timers`. Every other built-in resolves to a stub that throws only when used, so a
 bundle that merely references `dgram` or `http2` still loads.
 
@@ -542,16 +586,33 @@ host rather than returning a wrong path. Node's `windows` override is absent: Ti
 macOS, so drive-letter and UNC output would be unreachable. `url.pathToFileURL` escapes `?` and `#`
 so a filename holding either survives the round trip.
 
+The `fs` functions hand URL arguments to that same validator: a URL whose scheme is not `file:`
+throws `ERR_INVALID_URL_SCHEME` instead of degrading to its pathname, and `fs.existsSync` counts
+that as absence, like Node. Raycast's Visual Studio Code extension leans on the guard — a
+`vscode-remote://` workspace whose stripped pathname exists locally (an SSH host opened at `/`
+always does) would otherwise pass `isFolderEntry` and reach `fileURLToPath`, which took the whole
+Search Recent Projects command down.
+
 A bundle that ships its own HTTP client rather than calling `fetch` — node-fetch travels inside
 `@raycast/utils`, and axios has a Node adapter — reaches the network through `http.request`, so the
 shim answers it: one request when the body ends, one response chunk when the bridge replies. The
 transport decodes for us, so the response drops `content-encoding` and `content-length` rather than
 have the client gunzip plaintext.
 
-**Bundled Swift helpers** — an extension that imports `swift:../swift/<package>` ships the compiled
-Mach-O in `assets/`, and the wrapper Raycast generates chmods it to `755` before spawning it. Store
-zips ship that binary `644`, so the chmod is what makes it runnable at all; the buffered `spawn`
-covers the rest of the wrapper. Color Picker is the reference case.
+Two things decide whether it gets there. Axios enables that adapter only when
+`Object.prototype.toString.call(process)` reads `[object process]`, so `process` carries the tag; and
+follow-redirects inherits with `Writable.call(this)`, so `stream` hands out callable constructors.
+
+`http.Agent` is a real class whose `addRequest` does nothing, because the bridge owns every socket.
+A request calls it only for an `http.Agent` subclass, which is where axios-cookiejar-support's
+http-cookie-agent reads and writes its jar — Hide My Email is the reference case. URLSession folds
+repeated `Set-Cookie` headers into one line, so the response splits it back into Node's array.
+
+**Bundled helpers** — compiled Mach-O files and shebang scripts live in `assets/`. GitHub's raw-file
+downloads and some store zips lose their executable mode, so installation preserves Git tree mode
+`100755`; discovery also repairs known executable payloads already installed as `644`. That covers
+both generated wrappers and extensions that call a helper directly with `execFile`. The buffered
+`spawn` covers the rest of a Swift wrapper. Color Picker is the reference case.
 
 **Command modes** — `view` renders into the palette; `no-view` runs headless with the palette closed.
 Both receive `props.arguments` and `props.launchType`. A `no-view` command declaring `interval`

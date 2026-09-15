@@ -22,7 +22,8 @@ depends on neither, and Quick Actions carries its own route rather than borrowin
 - **Every request carries Tinycast's own preamble, and the user's text goes after it.**
   `AIInstructions.compose` builds `AIRequest.instructions`: a fixed preamble that tells the model
   where it is running and what the app can do, then whatever Settings → AI holds. The preamble
-  states capabilities and asks for honest comparisons; it does not instruct the model to favour
+  keeps the model a general-purpose assistant — the app facts are reference for when the user asks,
+  never a scope limit — and asks for honest comparisons; it does not instruct the model to favour
   Tinycast over anything else. It is not shown in the pane, and `AIPreamble.swift` holds the only
   copy of it — edit the prompt there, not here. `compose` returns `nil` when the user has turned
   the system prompt off, and every transport drops a nil instruction, so a turn then carries none.
@@ -158,6 +159,17 @@ manually. Tinycast does not ship or guess an API catalog that can become stale. 
 and reasoning efforts from `model/list`; OpenCode gets identifiers and model-specific variants from
 `opencode models --pure --verbose`. Claude exposes the CLI's stable `sonnet`, `opus` and `haiku`
 aliases, with the CLI's effort levels on the supported Opus and Sonnet families.
+
+Turning thinking off is a reasoning effort, not a second control: `reasoningOptions(for:)` answers with
+the connection's catalogued efforts, or — for a connection with no catalog to publish one — `Default`
+and `None`. `takesThinkingField` decides who gets that pair: an OpenAI-shaped preset whose base URL is
+not that preset's own, because a preset pointed away from its own API is a gateway, and a gateway is
+the only destination Tinycast can offer the switch to honestly. Picking `None` sends
+`"thinking": {"type": "disabled"}`, which is how DeepSeek and the endpoints that copied its contract
+answer without reasoning first. A vendor API is never offered the pair and so is never sent a field it
+does not define — which matters precisely because the preset alone says nothing about the destination
+when every base URL is editable. Only `None` is ever written, so every other body is the one it always
+was, and the choice rides in `AIModelSelection.effort` like every other route's.
 
 ## Provider interface
 

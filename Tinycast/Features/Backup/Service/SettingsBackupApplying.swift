@@ -22,6 +22,8 @@ extension SettingsBackup {
             popToRootSeconds: s.popToRootTimeout.rawValue,
             escapeKeyBehavior: s.escapeKeyBehavior.rawValue,
             appearance: s.appearance.rawValue,
+            interfaceSize: s.interfaceSize.rawValue,
+            paletteTransparency: s.paletteTransparency,
             compactMode: s.compactMode,
             showFavoritesInCompactMode: s.showFavoritesInCompactMode,
             searchScopes: s.searchScopes,
@@ -34,10 +36,13 @@ extension SettingsBackup {
             customCommandsEnabled: s.customCommandsEnabled,
             customCommandsShowInLauncher: s.customCommandsShowInLauncher,
             snippetsShowInLauncher: s.snippetsShowInLauncher,
+            navigationEnabled: s.navigationEnabled,
+            menuSearchDisabledApps: s.menuSearchDisabledApps,
+            menuSearchShowsAppleMenu: s.menuSearchShowsAppleMenu,
             windowManagementEnabled: s.windowManagementEnabled,
             windowManagementShowInLauncher: s.windowManagementShowInLauncher,
             windowGap: s.windowGap,
-            windowCycleOnRepeat: s.windowCycleOnRepeat,
+            windowCycle: s.windowCycle.rawValue,
             windowLayoutsShowInLauncher: s.windowLayoutsShowInLauncher,
             quicklinksEnabled: s.quicklinksEnabled,
             quicklinksShowInLauncher: s.quicklinksShowInLauncher,
@@ -208,8 +213,16 @@ extension SettingsBackup {
             settings.escapeKeyBehavior = behavior
             count += 1
         }
+        if let raw = s.interfaceSize, let size = InterfaceSize(rawValue: raw) {
+            settings.interfaceSize = size
+            count += 1
+        }
         if let raw = s.appearance, let appearance = AppAppearance(rawValue: raw) {
             settings.appearance = appearance
+            count += 1
+        }
+        if let value = s.paletteTransparency, (-100...100).contains(value) {
+            settings.paletteTransparency = value
             count += 1
         }
         if let flag = s.compactMode {
@@ -261,6 +274,18 @@ extension SettingsBackup {
             settings.snippetsShowInLauncher = flag
             count += 1
         }
+        if let flag = s.navigationEnabled {
+            settings.navigationEnabled = flag
+            count += 1
+        }
+        if let apps = s.menuSearchDisabledApps {
+            settings.menuSearchDisabledApps = apps
+            count += 1
+        }
+        if let flag = s.menuSearchShowsAppleMenu {
+            settings.menuSearchShowsAppleMenu = flag
+            count += 1
+        }
         if let flag = s.windowManagementEnabled {
             settings.windowManagementEnabled = flag
             count += 1
@@ -273,8 +298,8 @@ extension SettingsBackup {
             settings.windowGap = gap
             count += 1
         }
-        if let flag = s.windowCycleOnRepeat {
-            settings.windowCycleOnRepeat = flag
+        if let raw = s.windowCycle, let cycle = WindowCycle(rawValue: raw) {
+            settings.windowCycle = cycle
             count += 1
         }
         if let flag = s.windowLayoutsShowInLauncher {

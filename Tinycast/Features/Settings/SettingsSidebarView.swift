@@ -98,6 +98,7 @@ private struct SettingsSidebarTabRow: View {
         case .zed: !settings.zedEnabled
         case .linear: !core.linear.isEnabled
         case .notes: !settings.notesEnabled
+        case .navigation: !settings.navigationEnabled
         case .snippets: !settings.snippetsEnabled
         case .windowManagement: !settings.windowManagementEnabled
         case .clipboard: !settings.clipboardEnabled

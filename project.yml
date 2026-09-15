@@ -18,10 +18,11 @@ settings:
     # Stays development for every config: Developer ID is applied by build-dmg.sh at export, because
     # automatic signing only ever picks a development identity during a build. FORK.md divergence 1.
     CODE_SIGN_IDENTITY: "Apple Development"
-    ENABLE_HARDENED_RUNTIME: NO
     SWIFT_STRICT_CONCURRENCY: complete
   configs:
     Release:
+      # Release-only: library validation refuses Debug's `.debug.dylib`, whose team never matches.
+      ENABLE_HARDENED_RUNTIME: YES
       # Strip the shipped binary (dSYM is still generated first) and drop unused code.
       DEPLOYMENT_POSTPROCESSING: YES
       STRIP_INSTALLED_PRODUCT: YES
@@ -34,9 +35,22 @@ targets:
     platform: macOS
     sources:
       - path: Tinycast
+        # The helper's own sources: compiling them in would link Vision and PDFKit into the app,
+        # which is the whole thing running recognition out of process avoids.
+        excludes:
+          - Features/Clipboard/Service/ClipboardTextExtractor.swift
+          - Features/Clipboard/Service/ClipboardTextHelper.swift
       # The MIT mark's licence asks the notice to travel with the binary, not just the repo.
       - path: NOTICE.md
         buildPhase: resources
+    dependencies:
+      - target: ClipboardTextHelper
+        link: false
+        embed: true
+        codeSign: true
+        copy:
+          destination: wrapper
+          subpath: Contents/Helpers
     settings:
       base:
         # Fork-local ids: com.tinycast.app is another team's App ID, which iCloud provisioning needs.
@@ -56,3 +70,18 @@ targets:
         Debug:
           PRODUCT_NAME: Tinycast Dev
           PRODUCT_BUNDLE_IDENTIFIER: com.belesky.tinycast.dev
+
+  ClipboardTextHelper:
+    type: tool
+    platform: macOS
+    sources:
+      - Tinycast/Features/Clipboard/Service/ClipboardTextExtractor.swift
+      - Tinycast/Features/Clipboard/Service/ClipboardTextHelper.swift
+    settings:
+      base:
+        # release.yml passes PRODUCT_NAME on the xcodebuild line, which hits every target: without
+        # these two pinned, a channel build renames the executable `ClipboardTextWorker` looks for
+        # and gives the module a name with a space in it.
+        EXECUTABLE_NAME: ClipboardTextHelper
+        PRODUCT_MODULE_NAME: ClipboardTextHelper
+        SKIP_INSTALL: YES
