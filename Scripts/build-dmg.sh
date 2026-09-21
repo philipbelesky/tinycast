@@ -7,6 +7,15 @@ cd "$(dirname "$0")/.." || exit 1
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 DROP="${TINYCAST_DMG_DROP:-$HOME/Library/Mobile Documents/com~apple~CloudDocs/Resources}"
 DERIVED="build/DerivedData"
+# The shared personal-Xcode signing helper loads each identity from 1Password into a temporary
+# keychain, so every Mac builds with the same certificates and none has to keep them in its login
+# keychain. This fork is not stamped from that template, so it names the canonical copy directly.
+XCODE_SIGN="${XCODE_SIGN:-$HOME/.settings/agents/template-xcode-personal/scripts/xcode-sign}"
+
+if [ ! -x "$XCODE_SIGN" ]; then
+    echo "✗ Signing helper not found at $XCODE_SIGN — check out ~/.settings or set XCODE_SIGN." >&2
+    exit 1
+fi
 # Read rather than repeat: the team owns the Developer ID identity and must not drift from project.yml.
 TEAM="$(awk '/DEVELOPMENT_TEAM:/ { print $2; exit }' project.yml)"
 
@@ -21,7 +30,7 @@ fi
 echo "▸ Archiving Tinycast.app (Release)…"
 ARCHIVE="build/Tinycast.xcarchive"
 rm -rf "$ARCHIVE"
-xcodebuild -project Tinycast.xcodeproj -scheme Tinycast -configuration Release \
+"$XCODE_SIGN" run -- xcodebuild -project Tinycast.xcodeproj -scheme Tinycast -configuration Release \
     -derivedDataPath "$DERIVED" \
     -archivePath "$ARCHIVE" \
     -allowProvisioningUpdates \
@@ -44,7 +53,7 @@ cat > "$OPTDIR/ExportOptions.plist" <<PLIST
 </dict>
 </plist>
 PLIST
-xcodebuild -exportArchive -archivePath "$ARCHIVE" -exportPath "$EXPORT" \
+"$XCODE_SIGN" --identity developer-id run -- xcodebuild -exportArchive -archivePath "$ARCHIVE" -exportPath "$EXPORT" \
     -exportOptionsPlist "$OPTDIR/ExportOptions.plist" -allowProvisioningUpdates
 rm -rf "$OPTDIR"
 
