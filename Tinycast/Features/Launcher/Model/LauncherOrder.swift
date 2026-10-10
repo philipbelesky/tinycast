@@ -9,14 +9,45 @@ enum LauncherOrder {
         /// Alternate titles and aliases compare against the text as typed.
         let typed: SearchText
         let term: String
+        /// The query's words in every other order, tried only on an entry the typed order misses.
+        let reorderings: [Query]
 
         var isEmpty: Bool { typed.isEmpty }
 
         init(_ raw: String) {
-            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-            latin = SearchText(trimmed, transliterated: true)
-            typed = SearchText(trimmed, transliterated: false)
+            self.init(spelling: raw.trimmingCharacters(in: .whitespacesAndNewlines), reordering: true)
+        }
+
+        private init(spelling: String, reordering: Bool) {
+            latin = SearchText(spelling, transliterated: true)
+            typed = SearchText(spelling, transliterated: false)
             term = typed.string
+            reorderings =
+                reordering
+                ? Self.reorderedSpellings(of: spelling).map { Query(spelling: $0, reordering: false) } : []
+        }
+
+        /// Past three words the factorial stops being cheap, and a query that long is specific already.
+        private static let maximumReorderedWords = 3
+
+        /// Word order is the user's habit, not the entry's: `pr terminal` has to find `Terminal PRs`.
+        private static func reorderedSpellings(of text: String) -> [String] {
+            let words = text.split(whereSeparator: \.isWhitespace).map(String.init)
+            guard words.count > 1, words.count <= maximumReorderedWords else { return [] }
+            var seen: Set<String> = [words.joined(separator: " ")]
+            return permutations(of: words).compactMap { order in
+                let spelling = order.joined(separator: " ")
+                return seen.insert(spelling).inserted ? spelling : nil
+            }
+        }
+
+        private static func permutations(of words: [String]) -> [[String]] {
+            guard words.count > 1 else { return [words] }
+            return words.indices.flatMap { index -> [[String]] in
+                var rest = words
+                let word = rest.remove(at: index)
+                return permutations(of: rest).map { [word] + $0 }
+            }
         }
     }
 
@@ -59,11 +90,19 @@ enum LauncherOrder {
         guard !query.isEmpty else { return [] }
         let scored = items.enumerated().compactMap { position, item -> (Item, Candidate)? in
             let signals = signals(item)
-            guard
-                let facts = Facts(
-                    profile: profile(item), signals: signals, query: query, sensitivity: sensitivity)
-            else { return nil }
-            return (item, Candidate(facts: facts, signals: signals, position: position))
+            let profile = profile(item)
+            if let facts = Facts(profile: profile, signals: signals, query: query, sensitivity: sensitivity) {
+                return (item, Candidate(facts: facts, signals: signals, position: position))
+            }
+            // FORK.md divergence 17: a reordered hit is evidence too, but always below an in-order one.
+            for variant in query.reorderings {
+                guard
+                    let facts = Facts(
+                        profile: profile, signals: signals, query: variant, sensitivity: sensitivity)
+                else { continue }
+                return (item, Candidate(facts: facts, signals: signals, position: position, isReordered: true))
+            }
+            return nil
         }
         let length = query.latin.units.count
         return
@@ -90,6 +129,8 @@ enum LauncherOrder {
         let facts: Facts?
         let signals: Signals
         let position: Int
+        /// Matched only with the query's words in another order.
+        var isReordered = false
     }
 
     private enum AliasHit: Equatable {
@@ -220,6 +261,7 @@ enum LauncherOrder {
     /// Negative puts `a` first; the first rule that separates the two decides.
     private static func compare(_ a: Candidate, _ b: Candidate, length: Int) -> Int {
         guard let x = a.facts, let y = b.facts else { return tiebreak(a, b) }
+        if a.isReordered != b.isReordered { return a.isReordered ? 1 : -1 }
         if x.alias != y.alias, x.alias == .exact || y.alias == .exact {
             return x.alias == .exact ? -1 : 1
         }

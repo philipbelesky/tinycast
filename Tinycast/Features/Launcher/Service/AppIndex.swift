@@ -1012,7 +1012,7 @@ final class AppIndex {
         }
     }
 
-    private static let ownBundlePrefix = "com.tinycast."
+    private static let ownBundlePrefix = "com.belesky.tinycast"  // FORK.md: the fork's bundle ids
 
     private func signals(
         for entry: AppEntry, usage: LauncherRankingStore.Snapshot

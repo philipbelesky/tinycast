@@ -537,6 +537,24 @@ struct FuzzTest {
             "only subsequence is non-literal",
             [FuzzyMatch.Tier.exact, .prefix, .wordStart, .substring].allSatisfy(\.isLiteral)
                 && !FuzzyMatch.Tier.subsequence.isLiteral)
+
+        // The launcher's half, through `LauncherOrder`.
+        let projects = ["Visual Studio Code", "Terminal PRs", "Screen Sharing", "Chess"].map { Item(name: $0) }
+        check(
+            "the launcher finds an entry by its words in another order",
+            first("code visual", projects) == "Visual Studio Code", "got \(rank("code visual", projects))")
+        check("two words reorder in the launcher", first("prs terminal", projects) == "Terminal PRs")
+        check(
+            "an in-order hit outranks a reordered one, whatever the usage",
+            rank("annual report", [
+                Item(name: "Report Annual", frecency: 900), Item(name: "Annual Reporting Notes")
+            ]) == ["Annual Reporting Notes", "Report Annual"])
+        check(
+            "four words do not reorder in the launcher",
+            rank("d c b a", [Item(name: "a b c d")]).isEmpty)
+        check(
+            "a reordering cannot pull in an unrelated entry",
+            !rank("sharing screen", projects).contains("Chess"))
     }
 
     // MARK: - Randomized properties
