@@ -274,7 +274,7 @@ Like every keyboard tap it needs the **Accessibility** grant and never prompts f
 watchdog runs while a key is configured: it retries installation until the grant lands, notices
 revocation, revives a tap the system disabled on timeout or user input, and clears a stuck hold.
 
-**A disabled tap escalates to a rebuild**, in this watchdog and in `DoubleTapMonitor`'s. `CGEvent.tapEnable`
+**A disabled tap escalates to a rebuild**, in this watchdog and in `ModifierTapMonitor`'s. `CGEvent.tapEnable`
 is not a guaranteed revival: a port the window server has stopped honouring stays disabled however
 often it is asked, so a tap still disabled on the tick after an enable attempt is torn down and a
 fresh one created on the next tick. Retrying the enable alone is what let a dead double-tap survive

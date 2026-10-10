@@ -916,7 +916,7 @@ appearance toggle to check both.
 real dev-channel defaults. Leave these alone and say so in one line above the preview: a bound
 `ShortcutRecorder` (writes a hotkey to defaults), the recorder callout's held-modifier and conflict
 states (`ShortcutCaptureSession` owns them), a checked `UninstallList` (`UninstallSession` owns the
-plan), the quicklink argument summary, and the compact palette bar — `paletteIsCollapsed` derives
+plan), and the compact palette bar — `paletteIsCollapsed` derives
 from `settings.compactMode`, whose setter persists. `RootPaletteView`'s preview is the exception
 that pays for itself: it calls `appIndex.refresh()` in a `.task`, which is a real scan and the only
 way to see the floating bars over actual rows.

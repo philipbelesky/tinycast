@@ -673,7 +673,7 @@ when they arrive — they are the same once-per-keystroke optimisation this dive
 
 ## 18 — Event-tap watchdogs rebuild, not retry
 
-**Touches:** `HotKeys/Service/DoubleTapMonitor.swift` and `HotKeys/Service/HyperKeyTap.swift` — one
+**Touches:** `HotKeys/Service/ModifierTapMonitor.swift` (upstream's rename of `DoubleTapMonitor.swift`) and `HotKeys/Service/HyperKeyTap.swift` — one
 `reviveAttempted` flag and one branch in each `healthCheck()` — plus the lifecycle section of
 `docs/features/hotkeys.md`.
 
