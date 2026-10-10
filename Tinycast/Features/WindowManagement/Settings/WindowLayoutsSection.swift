@@ -2,6 +2,7 @@ import SwiftUI
 
 /// The layout library, inside the Window Management pane: layouts belong to window management.
 struct WindowLayoutsSection: View {
+    let onEdit: (WindowLayout?) -> Void
     let onDelete: (WindowLayout) -> Void
 
     @Environment(WindowLayoutStore.self) private var store
@@ -17,7 +18,6 @@ struct WindowLayoutsSection: View {
         return Section {
             Toggle(isOn: $settings.windowLayoutsShowInLauncher) {
                 SettingsRowTitle(.windowManagementLayouts, "Show layouts in launcher")
-                Text("Find your layouts in launcher search, beside the window commands.")
             }
 
             if store.layouts.count > Self.filterThreshold {
@@ -29,12 +29,16 @@ struct WindowLayoutsSection: View {
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(results) { layout in
-                    WindowLayoutSettingsRow(layout: layout, onDelete: { onDelete(layout) })
+                    WindowLayoutSettingsRow(
+                        layout: layout,
+                        showsInLauncher: settings.windowLayoutsShowInLauncher,
+                        onEdit: { onEdit(layout) },
+                        onDelete: { onDelete(layout) })
                 }
             }
 
             Button {
-                core.windowLayoutCoordinator.editWindowLayout(nil)
+                onEdit(nil)
             } label: {
                 SettingsRowTitle(.windowManagementLayouts, "New Layout")
             }
@@ -45,8 +49,6 @@ struct WindowLayoutsSection: View {
             }
         } header: {
             SettingsSectionHeader(.windowManagementLayouts)
-        } footer: {
-            Text("A layout puts named apps at fixed sizes on chosen displays, in one pass.")
         }
     }
 
@@ -57,23 +59,30 @@ struct WindowLayoutsSection: View {
 
     private var emptyMessage: String {
         store.layouts.isEmpty
-            ? "Save an arrangement once, then put every window back with one shortcut."
+            ? "Save an arrangement, then restore it with one shortcut."
             : "No layout matches “\(query)”."
     }
 }
 
-/// One layout's shortcut, launcher checkbox and actions, shaped like the window-command row.
+/// One layout's alias, shortcut, launcher checkbox and actions, shaped like the window-command row.
 private struct WindowLayoutSettingsRow: View {
     let layout: WindowLayout
+    let showsInLauncher: Bool
+    let onEdit: () -> Void
     let onDelete: () -> Void
 
     @Environment(AppCore.self) private var core
     @Environment(VisibilityStore.self) private var visibility
 
     var body: some View {
+        let entry = AppEntry(layout)
+        let isVisible = visibility.isItemVisible(entry)
         SettingsRow(title: layout.name, subtitle: layout.summary) {
             SymbolImage(name: layout.symbol, size: 13)
         } trailing: {
+            AliasField(entry: entry)
+                .settingsEnabled(showsInLauncher && isVisible)
+
             ShortcutRecorder(action: .windowLayout(id: layout.id))
 
             Button {
@@ -85,9 +94,7 @@ private struct WindowLayoutSettingsRow: View {
             .help("Run this layout")
             .accessibilityLabel("Run \(layout.name)")
 
-            Button {
-                core.windowLayoutCoordinator.editWindowLayout(layout)
-            } label: {
+            Button(action: onEdit) {
                 Image(systemName: "pencil")
             }
             .buttonStyle(.plain)
@@ -111,17 +118,13 @@ private struct WindowLayoutSettingsRow: View {
             .help("Delete")
             .accessibilityLabel("Delete \(layout.name)")
 
-            Toggle("", isOn: visibilityBinding)
-                .labelsHidden()
-                .toggleStyle(.checkbox)
-                .help("Show in launcher")
-                .accessibilityLabel("Show \(layout.name) in launcher")
+            Toggle(
+                "", isOn: Binding(get: { isVisible }, set: { visibility.setItemVisible($0, for: entry) })
+            )
+            .labelsHidden()
+            .toggleStyle(.checkbox)
+            .launcherVisibilityHelp()
+            .accessibilityLabel("Show \(layout.name) in launcher")
         }
-    }
-
-    private var visibilityBinding: Binding<Bool> {
-        Binding(
-            get: { visibility.isItemVisible(AppEntry(layout)) },
-            set: { visibility.setItemVisible($0, for: AppEntry(layout)) })
     }
 }

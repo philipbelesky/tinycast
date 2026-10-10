@@ -68,11 +68,12 @@ final class LauncherCoordinator {
         let isTransientLinearIssue =
             app.kind == .linearTarget
             && LinearTarget.id(fromEntryID: app.id).map(core.linear.isIssueTarget(id:)) == true
-        // A category listing is no search: learning it would rank the row under "s".
-        if let searchQuery, AppEntry.Kind.named(by: searchQuery) == nil,
-            !CommandCatalog.isQueryDriven(app), !isTransientLinearIssue
-        {
-            ranking.record(itemKey: app.preferenceKey, query: searchQuery)
+        // A category word is no search for the row: learning it would rank the row under "s".
+        if !CommandCatalog.isQueryDriven(app), !isTransientLinearIssue {
+            let term = searchQuery.flatMap {
+                AppEntry.Kind.matching(by: LauncherOrder.CategoryQuery($0)).contains(app.kind) ? nil : $0
+            }
+            ranking.visit(itemKey: app.preferenceKey, query: term)
         }
         // Commands dispatch before the palette hides: mode-switching commands keep it open.
         if app.kind == .command {
@@ -97,7 +98,7 @@ final class LauncherCoordinator {
         }
         if app.kind == .customCommand {
             guard let id = CustomCommand.id(fromEntryID: app.id) else { return }
-            customCommandCoordinator.runCustomCommand(id: id)
+            customCommandCoordinator.runCustomCommand(id: id, values: arguments)
             return
         }
         if app.kind == .systemAction {
@@ -106,8 +107,18 @@ final class LauncherCoordinator {
             return
         }
         if app.kind == .windowCommand {
-            guard let command = WindowCommandCatalog.command(forEntryID: app.id) else { return }
-            windowCommandCoordinator.runWindowCommand(id: command.id)
+            if let command = WindowCommandCatalog.command(forEntryID: app.id) {
+                windowCommandCoordinator.runWindowCommand(id: command.id)
+                return
+            }
+            guard let id = CustomWindowSize.id(fromEntryID: app.id) else { return }
+            windowCommandCoordinator.runCustomWindowSize(id: id)
+            return
+        }
+        if app.kind == .windowRoom {
+            // The coordinator hides the palette itself: entering must not restore focus first.
+            guard let id = Room.id(fromEntryID: app.id) else { return }
+            core.roomCoordinator.enterRoom(id: id)
             return
         }
         if app.kind == .linearTarget {
@@ -179,6 +190,11 @@ final class LauncherCoordinator {
             quicklinkCoordinator.openQuicklink(id: id, values: arguments)
             return
         }
+        if app.kind == .appleShortcut {
+            guard let id = AppleShortcut.id(fromEntryID: app.id) else { return }
+            core.appleShortcutCoordinator.run(id: id)
+            return
+        }
         let previous = windowController.previousTarget
         paletteCoordinator.hidePalette(restoreFocus: false)
         switch app.kind {
@@ -188,11 +204,11 @@ final class LauncherCoordinator {
             guard let bundleID = app.bundleID else { return }
             AppLauncher.openSettingsPane(bundleID: bundleID)
         case .snippet:
-            let snippetID = String(app.id.dropFirst("snippet:".count))
+            guard let snippetID = StoredSnippet.id(fromEntryID: app.id) else { return }
             snippetCoordinator.expandSnippet(id: snippetID, target: previous)
         case .command, .quickAction, .customCommand, .systemAction, .windowCommand, .windowLayout,
-            .quicklink, .webSearch, .herdrTarget, .vsCodeProject, .zedProject, .linearTarget, .scope,
-            .extensionCommand, .meeting:
+            .windowRoom, .quicklink, .appleShortcut, .webSearch, .herdrTarget, .vsCodeProject,
+            .zedProject, .linearTarget, .scope, .extensionCommand, .meeting:
             break  // handled above
         }
     }
@@ -200,8 +216,11 @@ final class LauncherCoordinator {
     /// The one funnel a built-in command runs through, from a palette row or its global shortcut.
     func runCommand(_ id: CommandID) {
         switch id {
+        case .quickAI:
+            core.quickAICoordinator.show()
         case .aiChat:
-            core.aiChatCoordinator.showChat()
+            dismissPalette()
+            core.aiChatCoordinator.toggleWindow()
         case .fixGrammar:
             core.quickActionCoordinator.run(.fixGrammar)
         case .rewrite:
@@ -214,6 +233,8 @@ final class LauncherCoordinator {
             paletteCoordinator.togglePalette(mode: .calculatorHistory)
         case .clipboardHistory:
             paletteCoordinator.togglePalette(mode: .clipboard)
+        case .pasteSequentially:
+            core.clipboardCoordinator.pasteNextInSequence()
         case .searchEmoji:
             paletteCoordinator.togglePalette(mode: .emoji)
         case .searchFiles:
@@ -225,6 +246,8 @@ final class LauncherCoordinator {
         case .openCamera:
             dismissPalette()
             Task { await core.cameraCoordinator.show() }
+        case .define:
+            core.dictionaryCoordinator.show()
         case .openInBrowser, .runShellCommand:
             break  // Query-driven: each runs where the typed text is, never through this funnel.
         case .joinNextMeeting:
@@ -251,7 +274,6 @@ final class LauncherCoordinator {
         case .searchSnippets:
             snippetCoordinator.showSnippets()
         case .createSnippet:
-            dismissPalette()
             snippetCoordinator.editSnippet(nil)
         case .createWindowLayout:
             dismissPalette()
@@ -259,9 +281,16 @@ final class LauncherCoordinator {
         case .captureWindowLayout:
             dismissPalette()
             windowLayoutCoordinator.captureWindowLayout()
+        case .switchRoom:
+            core.roomCoordinator.showRooms()
+        case .createRoom:
+            core.roomCoordinator.createRoom()
         case .createQuicklink:
-            dismissPalette()
             quicklinkCoordinator.editQuicklink(nil)
+        case .createCustomCommand:
+            customCommandCoordinator.editCustomCommand(nil)
+        case .searchCustomCommands:
+            customCommandCoordinator.showCustomCommands()
         case .importQuicklinks:
             dismissPalette()
             Task { await quicklinkCoordinator.importQuicklinks() }
@@ -319,11 +348,11 @@ final class LauncherCoordinator {
     }
 
     /// Quits the app behind an entry; a no-op (palette stays put) when it isn't running.
-    func quit(_ app: AppEntry) {
+    func quit(_ app: AppEntry, force: Bool = false) {
         guard app.kind == .application, let bundleID = app.bundleID else { return }
         // Nothing here takes focus, so hand it back unless that app is on its way out.
         let quittingPreviousApp = windowController.previousApp?.bundleIdentifier == bundleID
-        guard AppLauncher.quit(bundleID: bundleID) else { return }
+        guard AppLauncher.quit(bundleID: bundleID, force: force) else { return }
         paletteCoordinator.hidePalette(restoreFocus: !quittingPreviousApp)
     }
 }

@@ -3,26 +3,34 @@ import SwiftUI
 struct WindowManagementSettingsView: View {
     @Environment(AppSettings.self) private var settings
     @Environment(AppCore.self) private var core
+    @State private var editor: WindowLayoutEditRequest?
     @State private var pendingDeletion: WindowLayout?
+    @State private var customSizeEdit: CustomWindowSizeEditRequest?
+    @State private var chosenPreset: WindowShortcutPreset?
 
     var body: some View {
         @Bindable var settings = settings
-        @Bindable var core = core
         return Form {
             FeatureSwitchSection(
                 anchor: .windowManagementWindowManagement,
                 enableTitle: "Enable window management",
-                enableSubtitle:
-                    "Moves the window you were last in, using the Accessibility permission Tinycast already uses to paste.",
-                launcherSubtitle: "Find the window commands in launcher search.",
+                enableSubtitle: "Moves the last window you used. Needs Accessibility.",
                 isEnabled: $settings.windowManagementEnabled,
-                showsInLauncher: $settings.windowManagementShowInLauncher)
+                showsInLauncher: $settings.windowManagementShowInLauncher,
+                showsIcon: true,
+                showsHeader: false)
 
             Group {
                 options
-                WindowLayoutsSection(onDelete: { pendingDeletion = $0 })
+                WindowLayoutsSection(
+                    onEdit: { editor = WindowLayoutEditRequest(layout: $0) },
+                    onDelete: { pendingDeletion = $0 })
+                RoomsSection()
                 FeatureCommandsSection(
                     owner: .windowManagement, anchor: .windowManagementLayoutCommands)
+                CustomWindowSizesSection(onEdit: {
+                    customSizeEdit = CustomWindowSizeEditRequest(size: $0)
+                })
                 commands
             }
             .settingsEnabled(settings.windowManagementEnabled)
@@ -34,9 +42,16 @@ struct WindowManagementSettingsView: View {
         }
         .formStyle(.grouped)
         .settingsScrollTarget(.windowManagement)
-        // Presented from the pane, so the two launcher commands can open it too.
-        .sheet(item: $core.pendingWindowLayoutEdit) { request in
-            WindowLayoutEditorSheet(request: request)
+        .settingsEditorPanel(item: $editor) { request in
+            WindowLayoutEditorPanel(request: request)
+        }
+        .onChange(of: core.pendingWindowLayoutEdit?.id, initial: true) { _, _ in
+            guard let request = core.pendingWindowLayoutEdit else { return }
+            editor = request
+            core.pendingWindowLayoutEdit = nil
+        }
+        .settingsEditorPanel(item: $customSizeEdit) { request in
+            CustomWindowSizeEditorPanel(request: request)
         }
         .alert(item: $pendingDeletion) { layout in
             Alert(
@@ -66,12 +81,39 @@ struct WindowManagementSettingsView: View {
                     Text("\(settings.windowGap) pt")
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
-                    Stepper("Gap between windows", value: $settings.windowGap, in: 0...64, step: 2)
-                        .labelsHidden()
+                    Stepper(
+                        "Gap between windows", value: $settings.windowGap,
+                        in: WindowPlacementEngine.gapRange, step: 2
+                    )
+                    .labelsHidden()
                 }
             } label: {
                 SettingsRowTitle(.windowManagementOptions, "Gap between windows")
-                Text("Points left between tiled windows and around the screen edge.")
+                Text("Between tiled windows and screen edges.")
+            }
+
+            LabeledContent {
+                HStack(spacing: Theme.Spacing.sm) {
+                    Picker("Shortcut preset", selection: $chosenPreset) {
+                        Text("Choose…").tag(WindowShortcutPreset?.none)
+                        ForEach(WindowShortcutPreset.allCases) { preset in
+                            Text(preset.title).tag(Optional(preset))
+                        }
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                    Button("Apply") {
+                        guard let chosenPreset else { return }
+                        Task { await core.windowShortcutPresetCoordinator.apply(chosenPreset) }
+                    }
+                    // Live bindings decide, so one edit to an applied preset re-enables it.
+                    .disabled(
+                        chosenPreset == nil
+                            || chosenPreset == core.windowShortcutPresetCoordinator.matchingPreset)
+                }
+            } label: {
+                SettingsRowTitle(.windowManagementOptions, "Shortcut preset")
+                Text("Fills in another app's shortcuts. Others stay as they are.")
             }
         } header: {
             SettingsSectionHeader(.windowManagementOptions)
@@ -83,7 +125,8 @@ struct WindowManagementSettingsView: View {
         ForEach(WindowCommandCatalog.grouped(), id: \.group) { section in
             Section {
                 ForEach(section.commands) { command in
-                    WindowCommandSettingsRow(command: command)
+                    WindowCommandSettingsRow(
+                        command: command, showsInLauncher: settings.windowManagementShowInLauncher)
                 }
             } header: {
                 Text(section.group.title)
@@ -92,36 +135,31 @@ struct WindowManagementSettingsView: View {
     }
 }
 
-/// One command's shortcut recorder and visibility checkbox, shaped like the shortcuts row.
+/// One command's alias, shortcut recorder and visibility checkbox, shaped like the shortcuts row.
 private struct WindowCommandSettingsRow: View {
     let command: WindowCommand
+    let showsInLauncher: Bool
     @Environment(VisibilityStore.self) private var visibility
 
     var body: some View {
+        let entry = AppEntry(command)
+        let isVisible = visibility.isItemVisible(entry)
         SettingsRow(title: command.name) {
             Image(systemName: command.sfSymbol)
         } trailing: {
+            // The ranker never sees a hidden entry, so typing here would match nothing.
+            AliasField(entry: entry)
+                .settingsEnabled(showsInLauncher && isVisible)
+
             ShortcutRecorder(action: .windowCommand(id: command.id))
 
-            Toggle("", isOn: visibilityBinding)
-                .labelsHidden()
-                .toggleStyle(.checkbox)
-                .help("Show in launcher")
-                .accessibilityLabel("Show \(command.name) in launcher")
+            Toggle(
+                "", isOn: Binding(get: { isVisible }, set: { visibility.setItemVisible($0, for: entry) })
+            )
+            .labelsHidden()
+            .toggleStyle(.checkbox)
+            .launcherVisibilityHelp()
+            .accessibilityLabel("Show \(command.name) in launcher")
         }
-    }
-
-    /// `VisibilityStore` keys on the entry, so this builds the same entry `AppIndex` publishes.
-    private var entry: AppEntry {
-        AppEntry(
-            id: command.entryID, name: command.name,
-            url: URL(string: "tinycast://window-command/" + command.id.rawValue)!, bundleID: nil,
-            kind: .windowCommand)
-    }
-
-    private var visibilityBinding: Binding<Bool> {
-        Binding(
-            get: { visibility.isItemVisible(entry) },
-            set: { visibility.setItemVisible($0, for: entry) })
     }
 }

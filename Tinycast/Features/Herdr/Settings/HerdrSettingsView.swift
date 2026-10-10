@@ -14,7 +14,6 @@ struct HerdrSettingsView: View {
                 enableSubtitle:
                     "Lists the tabs of the running herdr session, read over its local socket. "
                     + "↵ focuses one and brings its terminal forward.",
-                launcherSubtitle: "Find herdr tabs in launcher search.",
                 isEnabled: $settings.herdrEnabled,
                 showsInLauncher: $settings.herdrShowInLauncher)
 

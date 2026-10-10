@@ -17,7 +17,7 @@ struct DisabledApplicationsList: View {
         Button("Add Application…") { picking = true }
             .popover(isPresented: $picking, arrowEdge: .bottom) {
                 AppPickerPopover(excluded: Set(bundleIDs)) { bundleID in
-                    if let bundleID { bundleIDs.append(bundleID) }
+                    bundleIDs.append(bundleID)
                     picking = false
                 }
             }
@@ -65,7 +65,7 @@ private struct DisabledAppRow: View {
             } icon: {
                 Image(nsImage: icon)
                     .resizable()
-                    .frame(width: 18, height: 18)
+                    .frame(width: SettingsListMetrics.iconSize, height: SettingsListMetrics.iconSize)
             }
         }
     }

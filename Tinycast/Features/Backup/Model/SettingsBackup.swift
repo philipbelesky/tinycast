@@ -8,10 +8,13 @@ struct SettingsBackup: Codable {
     var customCommands: [CustomCommand]?
     var quicklinks: [Quicklink]?
     var windowLayouts: [WindowLayout]?
+    var windowRooms: [Room]?
+    var customWindowSizes: [CustomWindowSize]?
     var favoriteApps: [String]?
     var hiddenLauncherItems: [String]?
     var hiddenLauncherKinds: [String]?
     var launcherAliases: [String: String]?
+    var pinnedEmoji: [String]?
 
     /// Enums store by raw value, so an unknown one is ignored rather than failing.
     struct SettingsData: Codable {
@@ -26,15 +29,19 @@ struct SettingsBackup: Codable {
         var hyperKeyIncludesShift: Bool?
         var hyperKeyQuickPress: String?
         var emojiSkinTone: String?
+        var emojiGridColumns: Int?
         var showInMenuBar: Bool?
+        var automaticallyCheckForUpdates: Bool?
         var popToRootSeconds: Int?
         var escapeKeyBehavior: String?
         var appearance: String?
+        var calcNumberStyle: String?
         var interfaceSize: String?
-        var paletteTransparency: Int?
         var compactMode: Bool?
         var showFavoritesInCompactMode: Bool?
         var searchScopes: [String]?
+        var launcherShowsSuggestions: Bool?
+        var rootSearchSensitivity: String?
         var openOnCursorScreen: Bool?
         // Safe to carry: it grants no permission class, just repositions the window.
         var paletteDraggable: Bool?
@@ -42,6 +49,8 @@ struct SettingsBackup: Codable {
         var fileSearchScopes: [String]?
         var fileSearchIgnorePatterns: [String]?
         var notesEnabled: Bool?
+        var notesRendersMarkdown: Bool?
+        var notesShowsFormattingBar: Bool?
         // `snippetsEnabled` is absent: an import must not enable keystroke listening.
         var customCommandsEnabled: Bool?
         var customCommandsShowInLauncher: Bool?
@@ -55,6 +64,7 @@ struct SettingsBackup: Codable {
         var windowGap: Int?
         var windowCycle: String?
         var windowLayoutsShowInLauncher: Bool?
+        var windowRoomsShowInLauncher: Bool?
         // Carried, unlike `snippetsEnabled`: opening a link grants no permission class of its own.
         var quicklinksEnabled: Bool?
         var quicklinksShowInLauncher: Bool?
@@ -62,6 +72,8 @@ struct SettingsBackup: Codable {
         var quicklinkOpensNewWindow: Bool?
         var quicklinkSelectionFallback: String?
         var quicklinkConfirmsBeforeDelete: Bool?
+        // Carried like quicklinks: running a shortcut the user built grants no permission class.
+        var appleShortcutsEnabled: Bool?
         // Carried like the quicklink flags: opening a search grants no permission class.
         var webSearchEnabled: Bool?
         var webSearchShowInLauncher: Bool?
@@ -86,13 +98,15 @@ struct SettingsBackup: Codable {
         var calendarShowInLauncher: Bool?
         var calendarLauncherLimit: Int?
         // Carried: it narrows what is read rather than widening what may be reached.
-        var calendarIncludesTomorrow: Bool?
+        var calendarSpan: Int?
         var joinWindowMinutes: Int?
         // `autoJoinMeetings` and `cameraPreview` are absent: an import must arm neither.
         var autoJoinConfirms: Bool?
+        var autoJoinNamedProvidersOnly: Bool?
         var menuBarEvents: Int?
         var calendarMenuBarDisplay: Int?
         var menuBarLinkedEventsOnly: Bool?
+        var calendarMenuBarHidesWhenEmpty: Bool?
         var hideCurrentEvent: Int?
         // Safe to carry: it silences a prompt rather than granting anything.
         var supportReminders: Bool?
@@ -114,6 +128,8 @@ struct SettingsBackup: Codable {
         var windowCommands: [String: HotKeyBinding]?
         var quicklinks: [String: HotKeyBinding]?
         var windowLayouts: [String: HotKeyBinding]?
+        var windowRooms: [String: HotKeyBinding]?
+        var customWindowSizes: [String: HotKeyBinding]?
     }
 
     /// A tally of what an import touched, for user-facing confirmation.
@@ -123,9 +139,12 @@ struct SettingsBackup: Codable {
         var favorites = 0
         var hiddenItems = 0
         var aliases = 0
+        var pinnedEmoji = 0
         var customCommands = 0
         var quicklinks = 0
         var windowLayouts = 0
+        var windowRooms = 0
+        var customWindowSizes = 0
     }
 }
 

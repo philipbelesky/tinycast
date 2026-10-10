@@ -39,7 +39,8 @@ typealias MenuPanelClipPath =
 /// A menu supplied by a palette screen, including its rendering and row activation.
 @MainActor struct PaletteMenuContent {
     let rowCount: Int
-    let isLoading: (Int) -> Bool
+    let preferredSelection: Int?
+    let isSelectable: (Int) -> Bool
     let clipPath: MenuPanelClipPath
     let motion: MenuPanelMotion
     /// Built on demand: `moveMenu` resolves the open menu on every arrow key.
@@ -48,35 +49,40 @@ typealias MenuPanelClipPath =
     let activate: (Int) -> Void
 
     init(
-        rowCount: Int, view: @escaping (MenuPanelCorner) -> AnyView,
+        rowCount: Int, preferredSelection: Int? = nil,
+        view: @escaping (MenuPanelCorner) -> AnyView,
         activate: @escaping (Int) -> Void,
-        isLoading: @escaping (Int) -> Bool = { _ in false },
+        isSelectable: @escaping (Int) -> Bool = { _ in true },
         clipPath: @escaping MenuPanelClipPath,
         motion: MenuPanelMotion
     ) {
         self.rowCount = rowCount
+        self.preferredSelection = preferredSelection
         self.view = view
         self.activate = activate
-        self.isLoading = isLoading
+        self.isSelectable = isSelectable
         self.clipPath = clipPath
         self.motion = motion
     }
 
     init(
         popover: PopoverMenuContent, selection: Binding<Int>, width: CGFloat? = nil,
-        onActivate: @escaping (Int) -> Void
+        visibleRows: CGFloat? = nil,
+        search: PopoverMenu.Search, onActivate: @escaping (Int) -> Void,
+        preferredSelection: Int? = nil, extraRowsHeight: CGFloat = 0
     ) {
         self.init(
-            rowCount: popover.items.count,
+            rowCount: popover.items.count, preferredSelection: preferredSelection,
             view: { corner in
                 AnyView(
                     PopoverMenu(
                         header: popover.header, items: popover.items, selection: selection,
-                        width: width, onActivate: onActivate,
-                        attachment: corner.popoverAttachment))
+                        width: width, visibleRows: visibleRows, onActivate: onActivate,
+                        attachment: corner.popoverAttachment, search: search,
+                        extraRowsHeight: extraRowsHeight))
             },
             activate: { popover.items[$0].action() },
-            isLoading: { popover.items[$0].isLoading },
+            isSelectable: { popover.items[$0].isSelectable },
             clipPath: { bounds, metrics, corner in
                 PopoverMenu.SurfaceShape(
                     attachment: corner.popoverAttachment, radius: metrics.radius.menuPanel,
@@ -92,7 +98,7 @@ private extension MenuPanelCorner {
         switch self {
         case .bottomLeading: .bottomLeading
         case .bottomTrailing: .bottomTrailing
-        case .belowHeaderTrailing: .none
+        case .belowHeaderTrailing, .belowControl: .none
         }
     }
 }
@@ -107,24 +113,32 @@ private extension MenuPanelCorner {
     var hidesSearchField: Bool { get }
     /// True when the footer and ⌘K still act with no rows — a form's action belongs to the screen.
     var actsWithoutRows: Bool { get }
+    /// Where an open, a new query or a new filter puts the highlight; past row 0 it is centred.
+    var landingSelection: Int { get }
 
     /// False when the selection can't be acted on, which hides the footer pill and swallows ⌘K.
     func hasPrimaryAction(at selection: Int) -> Bool
+    func isPrimaryActionEnabled(at selection: Int) -> Bool
     /// False when ⌘K would open on nothing, which hides the Actions half of the footer group.
     func hasActions(at selection: Int) -> Bool
     /// True while the selected row edits with ↑/↓ itself, which leaves those keys to it.
     func ownsVerticalKeys(at selection: Int) -> Bool
     /// Where ⇥ goes inside the screen, or nil to leave the key to the palette's own ring.
     func tabTarget(from selection: Int, backwards: Bool) -> Int?
+    /// True when the screen acted on ⇥ itself, which it then owns ahead of `tabTarget`.
+    func tab(at selection: Int, backwards: Bool) -> Bool
     /// The ⌘K rows as the palette's own menu; nil when there are none.
     func actions(at selection: Int) -> PopoverMenuContent?
     /// Defaults to wrapping `actions(at:)`, so a screen implements one or the other.
     func menuContent(
-        at selection: Int, menuSelection: Binding<Int>, onActivate: @escaping (Int) -> Void
+        at selection: Int, searchQuery: ActionMenuSearchQuery, menuSelection: Binding<Int>,
+        onActivate: @escaping (Int) -> Void
     ) -> PaletteMenuContent?
     func activate(at selection: Int)
     /// ⌘↵. False when the selection has no secondary action, leaving the key unhandled.
     func secondary(at selection: Int) -> Bool
+    /// ⌃⌘↵. False when the selection has no third action, leaving the chord to `secondary`.
+    func tertiary(at selection: Int) -> Bool
     /// ⌥↵. False on every screen with nothing to paste, which is most of them.
     func pasteKeepingWindowOpen(at selection: Int) -> Bool
     /// False when the screen has no answer to the chord, leaving the key unhandled.
@@ -141,19 +155,28 @@ private extension MenuPanelCorner {
 
 extension PaletteScreen {
     func hasPrimaryAction(at selection: Int) -> Bool { true }
+    func isPrimaryActionEnabled(at selection: Int) -> Bool { true }
     func hasActions(at selection: Int) -> Bool { true }
     var hidesSearchField: Bool { false }
     var actsWithoutRows: Bool { false }
+    var landingSelection: Int { 0 }
     func ownsVerticalKeys(at selection: Int) -> Bool { false }
     func tabTarget(from selection: Int, backwards: Bool) -> Int? { nil }
+    func tab(at selection: Int, backwards: Bool) -> Bool { false }
     func actions(at selection: Int) -> PopoverMenuContent? { nil }
     func menuContent(
-        at selection: Int, menuSelection: Binding<Int>, onActivate: @escaping (Int) -> Void
+        at selection: Int, searchQuery: ActionMenuSearchQuery, menuSelection: Binding<Int>,
+        onActivate: @escaping (Int) -> Void
     ) -> PaletteMenuContent? {
         guard let content = actions(at: selection) else { return nil }
+        let filtered = content.matching(searchQuery)
         return PaletteMenuContent(
-            popover: content, selection: menuSelection, onActivate: onActivate)
+            popover: filtered.content, selection: menuSelection,
+            search: PopoverMenu.Search(
+                placeholder: "Search for actions…", placement: .bottom),
+            onActivate: onActivate, preferredSelection: filtered.bestMatch)
     }
+    func tertiary(at selection: Int) -> Bool { false }
     func pasteKeepingWindowOpen(at selection: Int) -> Bool { false }
     func perform(_ shortcut: PaletteShortcut, at selection: Int) -> Bool { false }
     func move(_ delta: Int, axis: PaletteAxis, from selection: Int) -> Int? { nil }
@@ -162,6 +185,41 @@ extension PaletteScreen {
     )
         -> PaletteHeaderAccessory?
     { nil }
+}
+
+extension PopoverMenuContent {
+    /// Preserve section boundaries even when the row that originally carried one is filtered out.
+    func matching(
+        _ query: ActionMenuSearchQuery
+    ) -> (
+        content: PopoverMenuContent, bestMatch: Int?
+    ) {
+        guard !query.isEmpty else { return (self, nil) }
+        var pendingSection = false
+        var pendingTitle: String?
+        var matches: [PopoverMenuItem] = []
+        var bestMatch: (index: Int, score: Int)?
+
+        for original in items {
+            if original.startsSection {
+                pendingSection = true
+                pendingTitle = nil
+            }
+            if let sectionTitle = original.sectionTitle { pendingTitle = sectionTitle }
+            guard let score = query.score(original.title) else { continue }
+
+            var item = original
+            item.startsSection = pendingSection && !matches.isEmpty
+            item.sectionTitle = pendingTitle
+            pendingSection = false
+            pendingTitle = nil
+            matches.append(item)
+            if item.isSelectable, score > (bestMatch?.score ?? .min) {
+                bestMatch = (matches.count - 1, score)
+            }
+        }
+        return (PopoverMenuContent(header: header, items: matches), bestMatch?.index)
+    }
 }
 
 /// Controls beside the search field, in terms the palette can act on without knowing what they are.

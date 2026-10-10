@@ -15,7 +15,7 @@ final class DialogPanel: NSPanel {
     /// Arrows are a control's keys, not the panel's; a text field needs them for its caret.
     var handlesArrowKeys = false
 
-    init(content: NSView) {
+    init(content: NSView, cornerRadius: CGFloat) {
         super.init(
             contentRect: NSRect(origin: .zero, size: content.frame.size),
             styleMask: [.borderless, .fullSizeContentView, .nonactivatingPanel],
@@ -23,8 +23,7 @@ final class DialogPanel: NSPanel {
             defer: false
         )
         isFloatingPanel = true
-        // Above the palette, so a confirmation is never buried under its trigger.
-        level = .modalPanel
+        level = .dialog
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         isMovableByWindowBackground = false
         titleVisibility = .hidden
@@ -35,6 +34,10 @@ final class DialogPanel: NSPanel {
         // Suppresses AppKit's own window animation; `fadeIn`/`fadeOut` replace it.
         animationBehavior = .none
         isReleasedWhenClosed = false
+        content.wantsLayer = true
+        content.layer?.cornerRadius = cornerRadius
+        content.layer?.cornerCurve = .continuous
+        content.layer?.masksToBounds = true
         contentView = content
     }
 
@@ -48,10 +51,10 @@ final class DialogPanel: NSPanel {
             onKey(.cancel)
         case kVK_Return, kVK_ANSI_KeypadEnter:
             onKey(.confirm)
-        case kVK_LeftArrow,
+        case kVK_LeftArrow where handlesArrowKeys,
             kVK_DownArrow where handlesArrowKeys:
             onKey(.decrement)
-        case kVK_RightArrow,
+        case kVK_RightArrow where handlesArrowKeys,
             kVK_UpArrow where handlesArrowKeys:
             onKey(.increment)
         default:
@@ -61,4 +64,16 @@ final class DialogPanel: NSPanel {
 
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
+
+    func focusFirstTextField() {
+        // SwiftUI builds its text fields on first layout, which may not have run by turning key.
+        contentView?.layoutSubtreeIfNeeded()
+        guard let field = contentView.flatMap(Self.firstTextField(in:)) else { return }
+        makeFirstResponder(field)
+    }
+
+    private static func firstTextField(in view: NSView) -> NSTextField? {
+        if let field = view as? NSTextField, field.isEditable { return field }
+        return view.subviews.lazy.compactMap(firstTextField(in:)).first
+    }
 }

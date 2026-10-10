@@ -1,23 +1,33 @@
-// Drives the "Import your setup" block. The steps mirror the real import flow
+// Drives the "Moving over" block. The steps mirror the real import flow
 // (Settings → Backup → Raycast Export), and `transfers` matches the app's
 // `RaycastImportOptions` exactly — don't add anything the importer can't carry.
 
 export const migration = {
-  title: "Bring your setup with you.",
+  title: "Bring your Raycast setup.",
   intro:
-    "Tinycast reads a Raycast export directly. Point it at your .rayconfig file, type the passphrase, and your shortcuts come with you.",
+    "Tinycast reads Raycast's .rayconfig export. Choose the file, enter its passphrase, and your shortcuts, favorites and snippets come with it.",
+  // Stated up front rather than in the docs alone: a 1.x file is the one thing
+  // that will not work, and finding that out mid-import is the bad outcome.
+  requirement: {
+    title: "Raycast v2.0 and newer only",
+    body: "Tinycast reads .rayconfig files from Raycast v2.0 and later. Support for Raycast v1.x files was removed in Tinycast v0.10.5.",
+  },
   steps: [
     {
-      title: "Export what you have",
-      body: "In Raycast, export your settings and data. Note the passphrase you set.",
+      title: "Export from Raycast",
+      body: "Export your settings and data, and keep the passphrase you set.",
     },
     {
       title: "Open Settings → Backup",
-      body: "Choose the file and type the passphrase. A wrong one is reported as exactly that.",
+      body: "Choose the file and enter the passphrase. If the passphrase is wrong, Tinycast says so.",
     },
     {
-      title: "Pick what to bring",
-      body: "Keep everything, or only the parts you want. That's the whole setup.",
+      title: "Choose what to import",
+      body: "Import everything, or only the parts you want.",
+    },
+    {
+      title: "Quit and reopen Tinycast",
+      body: "Quit from the menu bar icon, because closing Settings isn't enough. Everything is in place after the restart.",
     },
   ],
   // Must match RaycastImportOptions in Features/Backup/Model/RaycastImport.swift.

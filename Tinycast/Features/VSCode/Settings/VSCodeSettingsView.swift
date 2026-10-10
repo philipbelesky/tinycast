@@ -14,7 +14,6 @@ struct VSCodeSettingsView: View {
                 enableSubtitle:
                     "Lists the folders and workspaces VS Code has opened, read from its own storage "
                     + "on disk. ↵ opens one in VS Code.",
-                launcherSubtitle: "Find projects in launcher search.",
                 isEnabled: $settings.vsCodeEnabled,
                 showsInLauncher: $settings.vsCodeShowInLauncher)
 

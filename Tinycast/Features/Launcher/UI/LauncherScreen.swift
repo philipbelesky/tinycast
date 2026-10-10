@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The root search: favorites first, then one section per entry kind, led by the calculator card.
+/// The root search: favorites, meetings, suggestions, then one section per kind, led by any card.
 struct LauncherScreen: PaletteScreen {
     let appIndex: AppIndex
     let favorites: FavoritesStore
@@ -31,12 +31,15 @@ struct LauncherScreen: PaletteScreen {
     private let taskCapture: TaskCapturePreview?
     /// The colour the query itself spells, if it spells one; nil for every other query.
     private let color: ColorValue?
-    /// Sections stand in for the ranked Results list, which a typed query collapses to.
-    private let showSections: Bool
     /// Only the empty query pins favorites — a category shows its sections without one of its own.
     private let pinsFavorites: Bool
     /// How many of `results` are pinned favorites; zero unless the section shows.
     private let favoriteCount: Int
+    /// How many follow the favorites as Meetings; zero unless the field is empty.
+    private let meetingCount: Int
+    /// How many follow the meetings as Suggestions; zero unless the field is empty.
+    private let suggestionCount: Int
+    private let matchCount: Int
     /// The `Use "…" with` section, below every result; empty unless something is typed.
     private let fallbacks: [(fallback: Fallback, entry: AppEntry)]
     /// Resolved in `init`: the palette indexes this several times per event, so it can't recompute.
@@ -84,34 +87,44 @@ struct LauncherScreen: PaletteScreen {
             ? AppIndex.linearEntries(for: core.linear.issueTargets(for: vm.query)).filter(visibility.isVisible) : []
         let lookup = LinearIssueLookup.parse(vm.query)
         let leadsWithIssues = isLinearScope || lookup?.isExactIssueLookup == true
-        var results =
-            !ownsQuery
-            ? appIndex.orderedResults(
-                query: vm.query, visibility: visibility, favorites: favorites,
-                scope: vm.scope, kinds: kinds, additionalEntries: leadsWithIssues ? [] : issues)
-            : []
-        if leadsWithIssues {
+        // Listed even when hidden from search: the shortcut that opened it still has to be answered.
+        let pinned = vm.argumentEntryID.flatMap(core.customCommands.command(entryID:))
+            .map(AppEntry.init).flatMap { $0.name == vm.query ? $0 : nil }
+        let ordered =
+            pinned.map { AppIndex.Results(entries: [$0], matchCount: 1) }
+            ?? (ownsQuery
+                ? AppIndex.Results()
+                : appIndex.orderedResults(
+                    query: vm.query, visibility: visibility, favorites: favorites, hotKeys: core.hotKeys,
+                    scope: vm.scope, kinds: kinds, additionalEntries: leadsWithIssues ? [] : issues))
+        var results = ordered.entries
+        var matchCount = ordered.matchCount
+        if pinned == nil, leadsWithIssues {
             let issueIDs = Set(issues.map(\.id))
+            let ranked = results.prefix(matchCount).filter { !issueIDs.contains($0.id) }
             results = issues + results.filter { !issueIDs.contains($0.id) }
+            matchCount = issues.count + ranked.count
         }
         // A typed web address leads, unless a scope has already said what the query may match.
-        if vm.scope == nil, let browser = CommandCatalog.openInBrowser(for: vm.query),
+        if pinned == nil, vm.scope == nil, let browser = CommandCatalog.openInBrowser(for: vm.query),
             visibility.isVisible(browser)
         {
             results.insert(browser, at: 0)
+            matchCount += 1
         }
-        // A resolved PHI key must beat the calculator's golden-ratio constant subtraction.
+        // No card over a pinned row, and a resolved PHI key must beat the golden-ratio constant.
         let calc =
-            !ownsQuery && !isLinearScope && !(leadsWithIssues && !issues.isEmpty)
-            ? CalcMemo.evaluate(vm.query, rates: currencyRates.source) : nil
-        // Scoped for the same reason: the section widens a query a scope has just narrowed.
+            pinned == nil && !ownsQuery && !isLinearScope && !(leadsWithIssues && !issues.isEmpty)
+            ? CalcMemo.evaluate(vm.query, rates: currencyRates.rates, format: core.calcNumberFormat) : nil
+        // After the calculator: `#FF5733` is never arithmetic, so the two can't both answer.
+        let color =
+            calc == nil && pinned == nil && !ownsQuery && !isLinearScope ? ColorValue.parse(vm.query) : nil
+        // Scoped, because the section would widen a query a scope has just narrowed.
         let fallbacks = vm.scope == nil ? core.fallbackCoordinator.entries(for: vm.query) : []
-        let color = !ownsQuery && !isLinearScope && calc == nil
-            ? ColorValue.parse(vm.query) : nil
         let entries = results.map(Row.entry) + fallbacks.map { Row.fallback($0.fallback, $0.entry) }
         let pinsFavorites =
             !ownsQuery && vm.scope == nil
-            && vm.query.trimmingCharacters(in: .whitespaces).isEmpty
+            && vm.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         // At most one of them leads, so the flat index keeps a single-row offset.
         let meeting = pinsFavorites ? meeting : nil
         self.meeting = meeting
@@ -125,11 +138,11 @@ struct LauncherScreen: PaletteScreen {
         self.suggestions = suggestions
         self.fallbacks = fallbacks
         self.color = color
-        self.showSections =
-            !ownsQuery && !isLinearScope
-            && (pinsFavorites || AppEntry.Kind.named(by: vm.query) != nil)
         self.pinsFavorites = pinsFavorites
-        self.favoriteCount = pinsFavorites ? results.prefix(while: favorites.isFavorite).count : 0
+        self.favoriteCount = pinsFavorites ? ordered.favoriteCount : 0
+        self.meetingCount = pinsFavorites ? ordered.meetingCount : 0
+        self.suggestionCount = pinsFavorites ? ordered.suggestionCount : 0
+        self.matchCount = matchCount
         if let capture {
             let completions = core.taskCaptureCoordinator.completions(
                 query: vm.query, destination: capture.destination)
@@ -216,6 +229,12 @@ struct LauncherScreen: PaletteScreen {
                 placement: .afterQuery, onOpenOptions: openArgumentOptions,
                 onSubmit: { activate(at: selection) })
         }
+        if entry.kind == .customCommand {
+            return CustomCommandArgumentsAccessory.make(
+                command: core.customCommands.command(entryID: entry.id), vm: vm,
+                metrics: core.settings.interfaceSize.metrics, focus: focus,
+                onSubmit: { activate(at: selection) })
+        }
         return ExtensionArgumentsAccessory.make(
             entry: entry, coordinator: core.extensionCoordinator,
             values: { name in headerFieldBinding(entry: entry, name: name) },
@@ -233,6 +252,10 @@ struct LauncherScreen: PaletteScreen {
         if entry.kind == .quicklink {
             guard let quicklink = quicklink(for: entry) else { return [:] }
             return QuicklinkArgumentsAccessory.values(for: quicklink, core: core, vm: vm)
+        }
+        if entry.kind == .customCommand {
+            guard let command = core.customCommands.command(entryID: entry.id) else { return [:] }
+            return CustomCommandArgumentsAccessory.values(for: command, vm: vm)
         }
         var values: [String: String] = [:]
         for argument in core.extensionCoordinator.commandArguments(for: entry) ?? [] {
@@ -332,8 +355,24 @@ struct LauncherScreen: PaletteScreen {
         }
     }
 
-    /// ⌘↵ — only an entry backed by a file on disk has somewhere to be revealed.
+    /// The card's meeting or a meeting row's; both answer the meeting menu's chords.
+    private func meeting(at selection: Int) -> MeetingEvent? {
+        switch row(at: selection) {
+        case .meeting(let meeting): return meeting
+        case .entry(let app) where app.kind == .meeting:
+            return core.calendarCoordinator.meeting(entryID: app.id)
+        default: return nil
+        }
+    }
+
+    /// ⌘↵ — a meeting copies its link, an answer becomes the query, an entry on disk is revealed.
     func secondary(at selection: Int) -> Bool {
+        if let meeting = meeting(at: selection) {
+            return MeetingActionsMenu.secondary(meeting: meeting, core: core)
+        }
+        if case .calc(let result) = row(at: selection) {
+            return core.calculatorCoordinator.putAnswerInSearchBar(result)
+        }
         guard let app = entry(at: selection), app.canRevealInFinder else { return false }
         core.launcherCoordinator.showInFinder(app)
         return true
@@ -351,17 +390,37 @@ struct LauncherScreen: PaletteScreen {
         switch shortcut {
         case .toggleFavorite: return toggleFavorite(at: selection)
         case .hideFromSearch: return hideFromSearch(at: selection)
-        case .quit: return quit(at: selection)
+        case .quit, .forceQuit: return quit(at: selection, force: shortcut == .forceQuit)
         case .restart: return restart(at: selection)
+        case .edit: return editItem(at: selection)
+        case .copyPath: return copyQuicklink(at: selection)
         case .favoriteSlot(let index): return launchFavorite(at: index)
+        case .copyCalculation: return copyCalculation(at: selection)
+        case .openInApp, .showDetails:
+            guard let meeting = meeting(at: selection) else { return false }
+            return MeetingActionsMenu.perform(shortcut, meeting: meeting, core: core)
         default: return false
         }
     }
 
-    /// ⌃⇧Q — the screen owns the chord, but only a running application has anything to quit.
-    private func quit(at selection: Int) -> Bool {
+    private func copyQuicklink(at selection: Int) -> Bool {
+        guard let app = entry(at: selection), app.kind == .quicklink,
+            let quicklink = quicklink(for: app)
+        else { return false }
+        core.quicklinkCoordinator.copyQuicklink(id: quicklink.id)
+        return true
+    }
+
+    private func copyCalculation(at selection: Int) -> Bool {
+        guard case .calc(let result) = row(at: selection), result.isActionable else { return false }
+        core.calculatorCoordinator.copyCalculationWithExpression(result)
+        return true
+    }
+
+    /// ⌃⇧Q or ⌃⌥⇧Q — the screen owns the chord, but only a running app has anything to quit.
+    private func quit(at selection: Int, force: Bool) -> Bool {
         guard let app = runningApplication(at: selection) else { return false }
-        core.launcherCoordinator.quit(app)
+        core.launcherCoordinator.quit(app, force: force)
         return true
     }
 
@@ -369,6 +428,25 @@ struct LauncherScreen: PaletteScreen {
     private func restart(at selection: Int) -> Bool {
         guard let app = runningApplication(at: selection) else { return false }
         core.launcherCoordinator.restart(app)
+        return true
+    }
+
+    private func editItem(at selection: Int) -> Bool {
+        guard let entry = entry(at: selection) else { return false }
+        switch entry.kind {
+        case .quicklink:
+            guard let quicklink = quicklink(for: entry) else { return false }
+            core.quicklinkCoordinator.editQuicklink(quicklink)
+        case .snippet:
+            guard let id = StoredSnippet.id(fromEntryID: entry.id),
+                let record = core.snippetsStore.record(id: id)
+            else { return false }
+            core.snippetCoordinator.editSnippet(record)
+        case .customCommand:
+            guard let command = core.customCommands.command(entryID: entry.id) else { return false }
+            core.customCommandCoordinator.editCustomCommand(command)
+        default: return false
+        }
         return true
     }
 
@@ -428,29 +506,39 @@ struct LauncherScreen: PaletteScreen {
 
     /// ⇧⌘H — the row leaves the list for good, so the highlight takes the place it vacated.
     private func hideFromSearch(at selection: Int) -> Bool {
-        guard let app = entry(at: selection), app.canHideFromSearch,
-            !CommandCatalog.isQueryDriven(app), let index = results.firstIndex(of: app)
+        guard let app = entry(at: selection), !CommandCatalog.isQueryDriven(app),
+            let index = results.firstIndex(of: app)
         else { return false }
-        visibility.setItemVisible(false, for: app)
-        select(row: min(index, max(reorderedResults().count - 1, 0)))
+        // Each editor's Show in root search toggle is the undo, so neither hide is one-way.
+        if let id = Quicklink.id(fromEntryID: app.id) {
+            core.quicklinkCoordinator.setQuicklinkShowsInRootSearch(false, id: id)
+        } else if let id = CustomCommand.id(fromEntryID: app.id) {
+            core.customCommandCoordinator.setCustomCommandShowsInRootSearch(false, id: id)
+        } else if app.canHideFromSearch {
+            visibility.setItemVisible(false, for: app)
+        } else {
+            return false
+        }
+        select(row: min(index, max(reorderedResults().entries.count - 1, 0)))
         return true
     }
 
     /// The list reorders under an action; keep the highlight and the scroll on the row that moved.
     private func follow(_ app: AppEntry) {
-        guard let index = reorderedResults().firstIndex(of: app) else { return }
+        guard let index = reorderedResults().entries.firstIndex(of: app) else { return }
         select(row: index)
     }
 
     /// Highlight a row of the Favorites section, clamped into what the section now holds.
     private func selectFavorite(at index: Int) {
-        let count = reorderedResults().prefix(while: favorites.isFavorite).count
+        let count = reorderedResults().favoriteCount
         select(row: min(max(index, 0), max(count - 1, 0)))
     }
 
     /// Re-read the order the change just invalidated; this warms the key the next render reads.
-    private func reorderedResults() -> [AppEntry] {
-        appIndex.orderedResults(query: vm.query, visibility: visibility, favorites: favorites)
+    private func reorderedResults() -> AppIndex.Results {
+        appIndex.orderedResults(
+            query: vm.query, visibility: visibility, favorites: favorites, hotKeys: core.hotKeys)
     }
 
     private func select(row index: Int) {
@@ -483,7 +571,9 @@ struct LauncherScreen: PaletteScreen {
                 results: results,
                 selectedRowID: row(at: selection)?.id,
                 favoriteCount: favoriteCount,
-                showSections: showSections,
+                meetingCount: meetingCount,
+                suggestionCount: suggestionCount,
+                matchCount: matchCount,
                 scroll: scroll,
                 card: leadCard,
                 cardSelected: isCardSelected(selection),
@@ -519,11 +609,15 @@ struct LauncherScreen: PaletteScreen {
                     vm.selection = index
                     activate(at: index)
                 },
-                onActivate: { core.launcherCoordinator.launch($0, searchQuery: vm.query) },
+                onActivate: {
+                    core.launcherCoordinator.launch(
+                        $0, searchQuery: vm.query, arguments: argumentValues(for: $0))
+                },
                 onActions: { app in
                     if let index = rows.firstIndex(of: .entry(app)) { vm.selection = index }
                     openActions()
                 },
+                onDropped: { core.paletteCoordinator.dragLanded() },
                 fallbacks: fallbackSection
             )
         }

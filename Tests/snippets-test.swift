@@ -2,6 +2,7 @@
 
 import AppKit
 import Foundation
+import SwiftUI
 
 @main
 @MainActor
@@ -13,6 +14,7 @@ struct SnippetsTests {
         // The in-process delivery tier drives a real text view, which needs AppKit awake.
         _ = NSApplication.shared
         testIdentityAndRevision()
+        testEditorSession()
         testRaycastImport()
         try testMarkdownCodec()
         try testRepositoryStorage()
@@ -40,11 +42,73 @@ struct SnippetsTests {
         check("stored identity is the standardized source path", first.id == "/tmp/one.md")
         check("identical snippets at different paths keep distinct identities", first.id != second.id)
         check(
+            "a launcher entry id resolves back to its snippet",
+            StoredSnippet.id(fromEntryID: first.entryID) == first.id)
+        check(
+            "another kind's entry id resolves to no snippet",
+            StoredSnippet.id(fromEntryID: "quicklink:" + first.id) == nil)
+        check(
             "source revision is deterministic",
             SnippetSourceRevision(content: "same") == SnippetSourceRevision(content: "same"))
         check(
             "source revision changes with source content",
             SnippetSourceRevision(content: "same") != SnippetSourceRevision(content: "same\n"))
+    }
+
+    private static func testEditorSession() {
+        let editor = SnippetEditorSession(record: nil)
+        check(
+            "new editor has no file and cannot save without a name", editor.record == nil && !editor.canSave)
+        check(
+            "new editor preserves the existing option defaults", editor.isEnabled && !editor.showsConfirmation
+        )
+        editor.name = "  Example \n"
+        editor.keyword = "  !example  "
+        editor.text = "  First\nSecond\n"
+        check("named draft can be saved", editor.canSave)
+        check(
+            "editor trims metadata without changing template whitespace",
+            editor.snippet == Snippet(name: "Example", text: editor.text, keyword: "!example"))
+        editor.keyword = " \n"
+        check("blank editor keyword is normalized to nil", editor.snippet.keyword == nil)
+        editor.isSaving = true
+        check("a pending save cannot be submitted twice", !editor.canSave)
+        editor.isSaving = false
+        editor.name = " \n"
+        check("whitespace-only name cannot be saved", !editor.canSave)
+
+        let original = record(
+            "/tmp/editor.md",
+            Snippet(
+                name: "Original", text: "Hello", keyword: "!hello", isEnabled: false,
+                showsConfirmation: true))
+        let editing = SnippetEditorSession(record: original)
+        check("editing keeps the loaded record and source revision", editing.record == original)
+        check("editing starts with every original option", editing.snippet == original.snippet)
+        editing.name = "Changed"
+        check("draft changes do not modify the loaded record", editing.record?.snippet.name == "Original")
+        let end = editing.text.index(editing.text.startIndex, offsetBy: 2)
+        editing.selection = TextSelection(range: editing.text.startIndex..<end)
+        editing.focusedField = .keyword
+        editing.insert("{date}")
+        check("placeholder replaces the selected text", editing.text == "{date}llo")
+        check("placeholder returns focus to the template", editing.focusedField == .template)
+        editing.insert("{time}")
+        check("successive placeholders stay at the caret", editing.text == "{date}{time}llo")
+        editing.selection = nil
+        editing.insert("{cursor}")
+        check("placeholder without a selection appends", editing.text == "{date}{time}llo{cursor}")
+        editing.text = "Avant 👋 après"
+        let cursor = editing.text.index(editing.text.startIndex, offsetBy: 7)
+        editing.selection = TextSelection(range: cursor..<cursor)
+        editing.insert("\n")
+        check("Return inserts a line break at the Unicode caret", editing.text == "Avant 👋\n après")
+        editing.advanceFocus(backwards: false)
+        check("Tab advances to the name", editing.focusedField == .name)
+        editing.advanceFocus(backwards: true)
+        check("Shift-Tab returns to the template", editing.focusedField == .template)
+        editing.advanceFocus(backwards: true)
+        check("form focus wraps through the existing options", editing.focusedField == .confirmation)
     }
 
     private static func testRaycastImport() {
@@ -223,6 +287,19 @@ struct SnippetsTests {
         let secondLoad = try stable.load()
         check("a repeated load of an empty library stays empty", secondLoad.records.isEmpty)
 
+        let chosenFolder = root.appendingPathComponent("dotfiles/snippets", isDirectory: true)
+        let chosen = SnippetRepository(
+            bundleIdentifier: "com.tinycast.app", applicationSupportRoot: channelRoot,
+            snippetsDirectory: chosenFolder)
+        let signOff = try chosen.create(Snippet(name: "Sign-off", text: "Thanks"))
+        let stableAfter = try stable.load()
+        let chosenAfter = try chosen.load()
+        check(
+            "a chosen folder holds the library instead of the channel's",
+            signOff.fileURL.deletingLastPathComponent().standardizedFileURL.path
+                == chosenFolder.standardizedFileURL.path
+                && stableAfter.records.isEmpty && chosenAfter.records.count == 1)
+
         let corruptRoot = root.appendingPathComponent("partial-load", isDirectory: true)
         let corruptRepository = SnippetRepository(
             bundleIdentifier: "com.example.partial",
@@ -243,6 +320,9 @@ struct SnippetsTests {
             "malformed files are returned as per-file issues",
             partial.issues.count == 1
                 && partial.issues[0].fileURL.standardizedFileURL.path == invalidURL.standardizedFileURL.path)
+        check(
+            "a malformed file still counts as present on disk",
+            partial.fileIDs == [validURL.standardizedFileURL.path, invalidURL.standardizedFileURL.path])
 
         let directoryEntryURL = corruptRepository.snippetsDirectory.appendingPathComponent(
             "folder.md",
@@ -1344,15 +1424,20 @@ struct SnippetsTests {
                 in: "{argument name=\"Repo\"}/{argument name=\"Branch\"}?q={argument name=\"Repo\"}"
             ).map(\.name) == ["Repo", "Branch"])
         check(
-            "an argument that answers itself is never asked for",
+            "an argument with a default is still offered, but optional",
             SnippetTemplateEngine.declaredArguments(
-                in: "{argument name=\"Tone\" default=\"happy\"}"
-            ).isEmpty)
+                in: "{argument name=\"Tone\" default=\"happy\"}")
+                == [.init(name: "Tone", options: [], isOptional: true)])
+        check(
+            "an occurrence without a default leaves the argument owed",
+            SnippetTemplateEngine.declaredArguments(
+                in: "{argument name=\"Tone\" default=\"happy\"}/{argument name=\"Tone\"}")
+                == [.init(name: "Tone", options: [], isOptional: false)])
         check(
             "options travel with a declared argument as they do with a missing one",
             SnippetTemplateEngine.declaredArguments(
                 in: "{argument name=\"Tone\" options=\"happy, sad\"}")
-                == [.init(name: "Tone", options: ["happy", "sad"])])
+                == [.init(name: "Tone", options: ["happy", "sad"], isOptional: false)])
         check(
             "a template that reads only the clipboard declares no arguments",
             SnippetTemplateEngine.declaredArguments(in: "https://x.dev/?q={clipboard}").isEmpty)

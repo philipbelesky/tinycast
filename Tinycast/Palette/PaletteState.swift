@@ -11,10 +11,11 @@ struct PaletteFrame: Equatable {
 @MainActor
 @Observable
 final class PaletteState {
-    var mode: PaletteMode = .launcher
+    var mode: PaletteMode = .launcher { didSet { restoredSelection = nil } }
     /// The screens below `mode`, innermost last: a summon starts a new one, navigating pushes on.
     private(set) var backStack: [PaletteFrame] = []
-    var query: String = ""
+    var query: String = "" { didSet { restoredSelection = nil } }
+    @ObservationIgnored private(set) var restoredSelection: Int?
     /// The committed scope keyword, if any. Not a mode: same screen, same selection model.
     var scope: ScopeDefinition?
     var selection: Int = 0
@@ -24,22 +25,32 @@ final class PaletteState {
     var clipboardFilter: ClipboardFilter = .all
     /// The file search screen's type filter, reset on each summon like the clipboard's.
     var fileSearchFilter: FileSearchFilter = .all
+    /// The emoji picker's visible category, reset with the rest of a freshly opened screen.
+    var emojiCategoryFilter: EmojiCategoryFilter = .all
+    /// Nil means the configured default; zoom only overrides it for this picker session.
+    var emojiGridColumnsOverride: EmojiGridColumns?
     /// Whether file search draws its Quick Look overlay; it follows whatever row is selected.
     var fileSearchQuickLook = false
     /// Ordering out leaves the SwiftUI tree mounted, so a media preview needs this to stop playing.
     private(set) var isVisible = false
     /// Changes every time the palette is shown so the search field can re-focus.
     var focusToken = UUID()
-    /// Bumped when a screen opens fresh, so lists snap to the top even when nothing else changed.
+    /// Bumped when a screen opens fresh, so its list lands again even when nothing else changed.
     var resetToken = UUID()
     /// Bumped when an action reorders the list, so the highlight scrolls back into view.
     var followToken = UUID()
+    /// Bumped when an action rewrites the query, so the field lands with the caret after it.
+    private(set) var queryRewriteToken = UUID()
     /// AppKit binds ⌘. to `cancelOperation:`, so the field editor eats it before `onKeyPress`.
     private(set) var pinChordToken = UUID()
     /// Bumped when AppKit resolves ⌘1…⌘0 to a slot index from the physical number row.
     private(set) var favoriteSlotToken = UUID()
     /// The last slot index from `noteFavoriteSlot`, consumed by the SwiftUI layer.
     private(set) var favoriteSlotIndex: Int?
+    /// Bumped for ⌘0 / ⌘+ / ⌘-, which the panel claims before the field editor can.
+    private(set) var emojiGridZoomToken = UUID()
+    /// The last zoom from `noteEmojiGridZoom`, consumed by the SwiftUI layer.
+    private(set) var emojiGridZoom: EmojiGridZoom?
     /// Set by the compact bar's overflow to expand without a query; cleared by `prepare`.
     var forceExpanded = false
     /// The paste target, mirrored on every show; `prepare` resets the screen, not this.
@@ -48,6 +59,8 @@ final class PaletteState {
     var commandArguments: [String: String] = [:]
     /// Set when the palette opens to fill one row's fields; the header focuses the first empty one.
     var pendingArgumentEntryID: String?
+    /// The row a shortcut opened root search onto, listed alone while the query is its name.
+    var argumentEntryID: String?
     /// True once ⌘ has been *held*, which numbers the favorite rows. The panel is the only writer.
     private(set) var commandHeld = false
     /// A chord is a tap, so the numbering waits out the tap before it claims the trailing labels.
@@ -66,10 +79,13 @@ final class PaletteState {
     @ObservationIgnored private var hoverAnchor: CGPoint = .zero
     /// A containment test, because hit-testing a rebuilding hierarchy misses the field.
     @ObservationIgnored var searchFieldFrame: CGRect = .zero
-    /// True while a footer menu is open. See docs/features/palette.md#menu-open-input-freeze.
+    /// True while a palette menu is open. See docs/features/palette.md#menu-open-input-freeze.
     @ObservationIgnored var menuOpen = false { didSet { onMenuOpenChanged?(menuOpen) } }
+    var menuQuery = ""
     /// Fired when `menuOpen` flips, so the panel can hide the caret without a focus swap.
     @ObservationIgnored var onMenuOpenChanged: ((Bool) -> Void)?
+    /// A fresh presentation resets a long popover to the row it opens with.
+    private(set) var menuPresentationToken = UUID()
 
     func noteVisible(_ visible: Bool) {
         isVisible = visible
@@ -93,17 +109,20 @@ final class PaletteState {
 
     /// Open `mode` over the current screen, which a back step returns to.
     func push(mode: PaletteMode) {
-        backStack.append(PaletteFrame(mode: self.mode, query: query, selection: selection))
+        if !self.mode.isNativeEditor {
+            backStack.append(PaletteFrame(mode: self.mode, query: query, selection: selection))
+        }
         replace(mode: mode)
     }
 
     /// Restore the screen underneath, false when this one is the root.
-    func pop() -> Bool {
+    func pop(preservingSelection: Bool = false) -> Bool {
         guard let frame = backStack.popLast() else { return false }
         openScreen(frame.mode)
         query = frame.query
         selection = frame.selection
-        // Not `resetToken`: snapping to the top would throw away the selection restored here.
+        restoredSelection = preservingSelection ? frame.selection : nil
+        // Not `resetToken`: landing the list again would throw away the selection restored here.
         followToken = UUID()
         return true
     }
@@ -136,12 +155,16 @@ final class PaletteState {
         isControlListOpen = false
         commandArguments = [:]
         pendingArgumentEntryID = nil
+        argumentEntryID = nil
         clipboardFilter = .all
         fileSearchFilter = .all
+        emojiCategoryFilter = .all
+        emojiGridColumnsOverride = nil
         fileSearchQuickLook = false
         forceExpanded = false
         dropHoverHighlight()
         menuOpen = false
+        menuQuery = ""
         focusToken = UUID()
     }
 
@@ -157,9 +180,23 @@ final class PaletteState {
         pinChordToken = UUID()
     }
 
+    func noteMenuPresentation() {
+        menuPresentationToken = UUID()
+    }
+
+    func rewriteQuery(_ text: String) {
+        query = text
+        queryRewriteToken = UUID()
+    }
+
     func noteFavoriteSlot(_ index: Int) {
         favoriteSlotIndex = index
         favoriteSlotToken = UUID()
+    }
+
+    func noteEmojiGridZoom(_ zoom: EmojiGridZoom) {
+        emojiGridZoom = zoom
+        emojiGridZoomToken = UUID()
     }
 
     func noteCommandHeld(_ held: Bool) {

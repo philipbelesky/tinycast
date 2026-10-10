@@ -2,114 +2,73 @@
 // bar, section titles, placeholders), and every row names Tinycast's own
 // things or generic apps, so nothing here pretends to be someone's data.
 
-export type DemoRowIcon = "ghost" | "github" | "link" | "text" | "image";
+export type DemoRowIcon =
+  "ghost" | "hammer" | "shield" | "gem" | "orbit" | "audio";
 
 export type DemoRow = {
   title: string;
   kind: string;
   icon: DemoRowIcon;
-  /** CSS background for the icon tile. */
+  /** CSS background for the app icon. */
   tint: string;
+  /** The row's bound hotkey, drawn as keycaps beside its title. */
+  hotkey?: string[];
 };
 
-type SceneBase = {
-  id: string;
-  chip: string;
-  placeholder: string;
-  /** Screens other than the root search show a back chevron instead of the magnifier. */
-  isSubscreen: boolean;
-  query: string;
-  section: string;
-  action: string;
+export type DemoSection = {
+  title: string;
+  rows: DemoRow[];
 };
 
-export type DemoScene =
-  | (SceneBase & { body: "rows"; rows: DemoRow[] })
-  | (SceneBase & { body: "calculator"; from: string; to: string })
-  | (SceneBase & { body: "emoji"; emoji: string[] });
+export const demoQuery = "o";
+export const demoAction = "Open Application";
 
-export const demoScenes: DemoScene[] = [
+export const demoSections: DemoSection[] = [
   {
-    id: "apps",
-    chip: "Open an app",
-    placeholder: "Search for apps and commands…",
-    isSubscreen: false,
-    query: "gh",
-    section: "Applications",
-    action: "Open Application",
-    body: "rows",
+    title: "Favorites",
     rows: [
       {
         title: "Ghostty",
         kind: "Application",
         icon: "ghost",
         tint: "linear-gradient(160deg, #3d5afe, #0d1b6e)",
+        hotkey: ["⌥", "⌘", "T"],
       },
       {
-        title: "GitHub Desktop",
+        title: "Xcode",
         kind: "Application",
-        icon: "github",
+        icon: "hammer",
+        tint: "linear-gradient(160deg, #5ab8ff, #1466d8)",
+      },
+    ],
+  },
+  {
+    title: "Applications",
+    rows: [
+      {
+        title: "Brave Browser",
+        kind: "Application",
+        icon: "shield",
+        tint: "linear-gradient(160deg, #ff7a3d, #e0381c)",
+      },
+      {
+        title: "Obsidian",
+        kind: "Application",
+        icon: "gem",
         tint: "linear-gradient(160deg, #a875ff, #5b12bd)",
       },
       {
-        title: "Search GitHub",
-        kind: "Quicklink",
-        icon: "link",
-        tint: "linear-gradient(160deg, #47bfff, #1769aa)",
+        title: "Spotify",
+        kind: "Application",
+        icon: "audio",
+        tint: "linear-gradient(160deg, #2fe06f, #14833c)",
+      },
+      {
+        title: "OrbStack",
+        kind: "Application",
+        icon: "orbit",
+        tint: "linear-gradient(160deg, #4c4f9e, #16173a)",
       },
     ],
-  },
-  {
-    id: "calculator",
-    chip: "Do the math",
-    placeholder: "Search for apps and commands…",
-    isSubscreen: false,
-    query: "560 km to mi",
-    section: "Calculator",
-    action: "Copy Answer",
-    body: "calculator",
-    from: "560 km",
-    to: "347.9678677 mi",
-  },
-  {
-    id: "clipboard",
-    chip: "Paste from history",
-    placeholder: "Type to filter entries…",
-    isSubscreen: true,
-    query: "tiny",
-    section: "Today",
-    action: "Paste",
-    body: "rows",
-    rows: [
-      {
-        title: "github.com/abue-ammar/tinycast",
-        kind: "Link",
-        icon: "link",
-        tint: "rgb(255 255 255 / 0.1)",
-      },
-      {
-        title: "brew install --cask tinycast",
-        kind: "Text",
-        icon: "text",
-        tint: "rgb(255 255 255 / 0.1)",
-      },
-      {
-        title: "tinycast-launcher.png",
-        kind: "Image",
-        icon: "image",
-        tint: "linear-gradient(135deg, #863bff, #47bfff)",
-      },
-    ],
-  },
-  {
-    id: "emoji",
-    chip: "Find an emoji",
-    placeholder: "Search emoji and symbols…",
-    isSubscreen: true,
-    query: "party",
-    section: "Emoji",
-    action: "Paste",
-    body: "emoji",
-    emoji: ["🎉", "🥳", "🎊", "🪅", "🎈", "🍾", "🪩", "🎂"],
   },
 ];

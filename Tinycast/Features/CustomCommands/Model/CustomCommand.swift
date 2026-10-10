@@ -11,14 +11,21 @@ struct CustomCommandArgument: Codable, Hashable, Sendable {
         self.isOptional = isOptional
     }
 
+    /// Raycast's own cap, and what keeps the inline fields beside the search field on screen.
+    static let limit = 3
+
+    /// The inline field holding `$n`, keyed by position since two arguments may share a name.
+    static func fieldID(at index: Int) -> String { "$\(index + 1)" }
+
     /// A blank name is dropped rather than rejected, so an import can't lose the whole command.
     static func sanitized(_ arguments: [CustomCommandArgument]) -> [CustomCommandArgument] {
-        arguments.compactMap { argument in
+        let cleaned = arguments.compactMap { argument -> CustomCommandArgument? in
             var cleaned = argument
             cleaned.name = argument.name.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !cleaned.name.isEmpty, !cleaned.name.contains("\0") else { return nil }
             return cleaned
         }
+        return Array(cleaned.prefix(limit))
     }
 }
 
@@ -32,11 +39,12 @@ struct CustomCommand: Codable, Hashable, Identifiable, Sendable {
     var command: String
     /// Off keeps the command and everything attached to it, but nothing may offer or run it.
     var isEnabled: Bool
+    var showsInRootSearch: Bool
     /// Sources the shell config so aliases resolve; opt-in, a heavy one costing more.
     var loadsShellEnvironment: Bool
     var requiresConfirmation: Bool
     var showsConfirmation: Bool
-    /// Prompted for in order before the run; empty for the commands that take no input.
+    /// Filled in the launcher row's inline fields; empty for the commands that take no input.
     var arguments: [CustomCommandArgument]
     /// Captures what the command prints and opens the output window once it exits.
     var showsOutput: Bool
@@ -47,14 +55,16 @@ struct CustomCommand: Codable, Hashable, Identifiable, Sendable {
 
     init(
         id: UUID = UUID(), name: String, command: String, isEnabled: Bool = true,
-        loadsShellEnvironment: Bool = false, requiresConfirmation: Bool = false,
-        showsConfirmation: Bool = false, arguments: [CustomCommandArgument] = [],
+        showsInRootSearch: Bool = true, loadsShellEnvironment: Bool = false,
+        requiresConfirmation: Bool = false, showsConfirmation: Bool = false,
+        arguments: [CustomCommandArgument] = [],
         showsOutput: Bool = false, workingDirectory: String? = nil, iconSymbol: String? = nil
     ) {
         self.id = id
         self.name = name
         self.command = command
         self.isEnabled = isEnabled
+        self.showsInRootSearch = showsInRootSearch
         self.loadsShellEnvironment = loadsShellEnvironment
         self.requiresConfirmation = requiresConfirmation
         self.showsConfirmation = showsConfirmation
@@ -69,6 +79,15 @@ struct CustomCommand: Codable, Hashable, Identifiable, Sendable {
 
     var entryID: String { Self.entryIDPrefix + id.uuidString.lowercased() }
 
+    /// The values in `$n` order, keyed by `fieldID(at:)`; nil while a required one is empty.
+    func positionalValues(from values: [String: String]) -> [String]? {
+        let positional = arguments.indices.map {
+            values[CustomCommandArgument.fieldID(at: $0)] ?? ""
+        }
+        let complete = zip(arguments, positional).allSatisfy { $0.isOptional || !$1.isEmpty }
+        return complete ? positional : nil
+    }
+
     static func id(fromEntryID entryID: String) -> UUID? {
         guard entryID.hasPrefix(entryIDPrefix) else { return nil }
         return UUID(uuidString: String(entryID.dropFirst(entryIDPrefix.count)))
@@ -76,8 +95,9 @@ struct CustomCommand: Codable, Hashable, Identifiable, Sendable {
 
     // Hand-written, so an added field keeps stored commands and older backups readable.
     private enum CodingKeys: String, CodingKey {
-        case id, name, command, isEnabled, loadsShellEnvironment, requiresConfirmation
-        case showsConfirmation, arguments, showsOutput, workingDirectory, iconSymbol
+        case id, name, command, isEnabled, showsInRootSearch, loadsShellEnvironment
+        case requiresConfirmation, showsConfirmation, arguments, showsOutput, workingDirectory
+        case iconSymbol
     }
 
     init(from decoder: Decoder) throws {
@@ -86,6 +106,8 @@ struct CustomCommand: Codable, Hashable, Identifiable, Sendable {
         name = try container.decode(String.self, forKey: .name)
         command = try container.decode(String.self, forKey: .command)
         isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
+        showsInRootSearch =
+            try container.decodeIfPresent(Bool.self, forKey: .showsInRootSearch) ?? true
         loadsShellEnvironment =
             try container.decodeIfPresent(Bool.self, forKey: .loadsShellEnvironment) ?? false
         requiresConfirmation =
@@ -150,6 +172,13 @@ final class CustomCommandStore {
         CustomCommand.id(fromEntryID: entryID).flatMap(command)
     }
 
+    func matching(_ query: String) -> [CustomCommand] {
+        let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        return commands.filter {
+            $0.isEnabled && (query.isEmpty || $0.name.localizedCaseInsensitiveContains(query))
+        }
+    }
+
     // Takes a whole draft, so adding an option doesn't churn every call site.
     @discardableResult
     func add(_ draft: CustomCommand) throws -> CustomCommand {
@@ -185,6 +214,15 @@ final class CustomCommandStore {
         else { return }
         var updated = commands
         updated[index].isEnabled = enabled
+        commit(updated)
+    }
+
+    func setShowsInRootSearch(_ shows: Bool, id: UUID) {
+        guard let index = commands.firstIndex(where: { $0.id == id }),
+            commands[index].showsInRootSearch != shows
+        else { return }
+        var updated = commands
+        updated[index].showsInRootSearch = shows
         commit(updated)
     }
 

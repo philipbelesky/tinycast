@@ -25,9 +25,7 @@
         /// For a leaf control with no list to fill a panel; glass still needs a real backdrop.
         func previewOnPanel() -> some View {
             padding(Theme.Spacing.xxl)
-                .background(Theme.Colors.panelScrim)
-                .background(VisualEffectView())
-                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.dialog, style: .continuous))
+                .frosted(in: RoundedRectangle(cornerRadius: Theme.Radius.dialog, style: .continuous))
                 .previewOnDesktop()
         }
 
@@ -36,9 +34,7 @@
             width: CGFloat = Theme.Size.panelWidth, height: CGFloat = Theme.Size.panelHeight
         ) -> some View {
             frame(width: width, height: height)
-                .background(Theme.Colors.panelScrim)
-                .background(VisualEffectView())
-                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous))
+                .frosted(in: RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous))
                 .previewOnDesktop()
         }
 
@@ -58,7 +54,6 @@
                 .environment(core.emojiIndex)
                 .environment(core.frequentEmoji)
                 .environment(core.quicklinks)
-                .environment(core.customCommandArguments)
                 .environment(core.uninstall)
         }
     }

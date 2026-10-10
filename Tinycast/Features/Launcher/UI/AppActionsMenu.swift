@@ -18,18 +18,7 @@ enum AppActionsMenu {
         favorites: FavoriteActions, onResetRanking: @escaping () -> Void,
         onHideFromSearch: @escaping () -> Void
     ) -> PopoverMenuContent {
-        var items: [PopoverMenuItem] = [
-            PopoverMenuItem(
-                title: app.kind.descriptor.openVerb, systemImage: "list.bullet.rectangle",
-                shortcut: "↵"
-            ) { core.launcherCoordinator.launch(app, searchQuery: searchQuery) }
-        ]
-        if app.canRevealInFinder {
-            items.append(
-                PopoverMenuItem(title: "Show in Finder", systemImage: "folder", shortcut: "⌘↵") {
-                    core.launcherCoordinator.showInFinder(app)
-                })
-        }
+        var items = leadingItems(app: app, searchQuery: searchQuery, core: core)
         // A query-driven row lives only for its query, so no preference could outlive it.
         let isPersistent = !CommandCatalog.isQueryDriven(app)
         if isPersistent {
@@ -61,11 +50,13 @@ enum AppActionsMenu {
                     onResetRanking()
                 })
         }
-        if isPersistent, app.canHideFromSearch {
+        // These carry their own Show in root search switch rather than a pane checkbox.
+        let hidesFromRoot = app.kind == .quicklink || app.kind == .customCommand
+        if isPersistent, app.canHideFromSearch || hidesFromRoot {
+            let title = hidesFromRoot ? "Hide from Root Search" : "Hide from Search"
             items.append(
                 PopoverMenuItem(
-                    title: "Hide from Search", systemImage: "eye.slash", shortcut: "⇧⌘H",
-                    action: onHideFromSearch))
+                    title: title, systemImage: "eye.slash", shortcut: "⇧⌘H", action: onHideFromSearch))
         }
         if running, app.kind == .application {
             items.append(
@@ -77,10 +68,15 @@ enum AppActionsMenu {
                 })
             items.append(
                 PopoverMenuItem(
-                    title: "Quit Application", systemImage: "power", shortcut: "⌃⇧Q",
-                    isDestructive: true
+                    title: "Quit Application", systemImage: "power", shortcut: "⌃⇧Q"
                 ) {
                     core.launcherCoordinator.quit(app)
+                })
+            items.append(
+                PopoverMenuItem(
+                    title: "Force Quit Application", systemImage: "xmark.circle", shortcut: "⌃⌥⇧Q"
+                ) {
+                    core.launcherCoordinator.quit(app, force: true)
                 })
         }
         if app.kind == .application {
@@ -90,6 +86,21 @@ enum AppActionsMenu {
                     isDestructive: true
                 ) {
                     core.uninstallCoordinator.beginUninstall(app)
+                })
+        }
+        if app.kind == .quicklink, let quicklink = core.quicklinks.quicklink(entryID: app.id) {
+            items.append(
+                PopoverMenuItem(
+                    title: "Copy Link", systemImage: "doc.on.clipboard", startsSection: true,
+                    shortcut: "⌃⌘C"
+                ) {
+                    core.quicklinkCoordinator.copyQuicklink(id: quicklink.id)
+                })
+            items.append(
+                PopoverMenuItem(
+                    title: "Edit Quicklink", systemImage: "pencil", shortcut: "⌘E"
+                ) {
+                    core.quicklinkCoordinator.editQuicklink(quicklink)
                 })
         }
         if app.kind == .extensionCommand {
@@ -121,5 +132,47 @@ enum AppActionsMenu {
                 })
         }
         return PopoverMenuContent(header: app.name, items: items)
+    }
+
+    /// A meeting row leads with the same actions as the meeting's card.
+    private static func leadingItems(
+        app: AppEntry, searchQuery: String, core: AppCore
+    ) -> [PopoverMenuItem] {
+        if app.kind == .meeting, let meeting = core.calendarCoordinator.meeting(entryID: app.id) {
+            return MeetingActionsMenu.content(meeting: meeting, core: core).items
+        }
+        if app.kind == .customCommand, let command = core.customCommands.command(entryID: app.id) {
+            return CustomCommandActionsMenu.leadingItems(
+                command: command, coordinator: core.customCommandCoordinator
+            ) {
+                core.launcherCoordinator.launch(app, searchQuery: searchQuery)
+            }
+        }
+        let primarySymbol =
+            switch app.kind {
+            case .application, .command, .extensionCommand: "list.dash.header.rectangle"
+            default: "list.bullet.rectangle"
+            }
+        var items = [
+            PopoverMenuItem(
+                title: app.kind.descriptor.openVerb, systemImage: primarySymbol,
+                shortcut: "↵"
+            ) { core.launcherCoordinator.launch(app, searchQuery: searchQuery) }
+        ]
+        if app.kind == .snippet, let id = StoredSnippet.id(fromEntryID: app.id),
+            let record = core.snippetsStore.record(id: id)
+        {
+            items.append(
+                PopoverMenuItem(title: "Edit Snippet", systemImage: "pencil", shortcut: "⌘E") {
+                    core.snippetCoordinator.editSnippet(record)
+                })
+        }
+        if app.canRevealInFinder {
+            items.append(
+                PopoverMenuItem(title: "Show in Finder", systemImage: "folder", shortcut: "⌘↵") {
+                    core.launcherCoordinator.showInFinder(app)
+                })
+        }
+        return items
     }
 }

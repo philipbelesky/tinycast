@@ -4,18 +4,20 @@ import Foundation
 enum Fallback: Hashable, Sendable {
     /// The shipped destinations, in the order a fresh install offers them.
     enum Builtin: String, CaseIterable, Sendable {
-        case aiChat
+        case quickAI
         case searchFiles
         case googleSearch
         case runShellCommand
+        case define
 
         /// The row's stable entry id, shared with the command or search engine it runs.
         var entryID: String {
             switch self {
-            case .aiChat: return CommandID.aiChat.rawValue
+            case .quickAI: return CommandID.quickAI.rawValue
             case .searchFiles: return CommandID.searchFiles.rawValue
             case .googleSearch: return "web-search:google"
             case .runShellCommand: return CommandID.runShellCommand.rawValue
+            case .define: return CommandID.define.rawValue
             }
         }
     }
@@ -44,10 +46,11 @@ enum Fallback: Hashable, Sendable {
     /// The footer pill's verb: what ↵ does, in the destination's own words.
     var openVerb: String {
         switch self {
-        case .builtin(.aiChat): return "Ask AI Chat"
+        case .builtin(.quickAI): return "Ask Quick AI"
         case .builtin(.searchFiles): return "Search Files"
         case .builtin(.googleSearch): return "Search Google"
         case .builtin(.runShellCommand): return "Run Shell Command"
+        case .builtin(.define): return "Define Word"
         case .quicklink: return "Open Quicklink"
         }
     }

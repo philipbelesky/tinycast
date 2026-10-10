@@ -7,7 +7,9 @@ struct LauncherList: View {
     /// The flat row id the screen has selected, not an entry id: a fallback can repeat a result.
     let selectedRowID: String?
     let favoriteCount: Int
-    let showSections: Bool
+    let meetingCount: Int
+    let suggestionCount: Int
+    let matchCount: Int
     /// Changes only when the list should scroll, so mouse selection never yanks it.
     let scroll: ScrollIntent
     /// The card at flat index 0, when one leads. At most one ever does.
@@ -26,6 +28,7 @@ struct LauncherList: View {
     var onActivateCompletion: (TaskCaptureCompletion) -> Void = { _ in }
     let onActivate: (AppEntry) -> Void
     let onActions: (AppEntry) -> Void
+    let onDropped: () -> Void
     /// The `Use "…" with` section, always last; nil when nothing is typed.
     var fallbacks: FallbackSection?
     @Environment(RunningAppsMonitor.self) private var runningApps
@@ -117,19 +120,17 @@ struct LauncherList: View {
         // A web scope owns the query outright, so nothing else can be on screen to index into.
         if let webSearch {
             return [.header(webSearch.sectionTitle), .webSearch(webSearch)]
-                + suggestions.map(Row.suggestion)
+                + self.suggestions.map(Row.suggestion)
         }
-        var cardRows: [Row] = []
-        if let card { cardRows = [.header(card.sectionTitle), .card(card)] }
-        if case .taskCapture = card { return cardRows + completions.map(Row.completion) }
-        guard showSections else {
-            guard !results.isEmpty else { return cardRows + fallbackRows }
-            return cardRows + [.header("Results")] + results.map { .app($0, slot: nil) }
-                + fallbackRows
-        }
-        var rows: [Row] = cardRows
+        var rows: [Row] = []
+        if let card { rows = [.header(card.sectionTitle), .card(card)] }
+        if case .taskCapture = card { return rows + completions.map(Row.completion) }
         let favorites = results.prefix(favoriteCount)
-        let rest = results.dropFirst(favoriteCount)
+        let meetings = results.dropFirst(favoriteCount).prefix(meetingCount)
+        let suggestions = results.dropFirst(favoriteCount + meetingCount).prefix(suggestionCount)
+        let pinnedCount = favoriteCount + meetingCount + suggestionCount
+        let matches = results.dropFirst(pinnedCount).prefix(matchCount)
+        let rest = results.dropFirst(pinnedCount + matchCount)
         var grouped: [AppEntry.Kind: [AppEntry]] = [:]
         for app in rest { grouped[app.kind, default: []].append(app) }
         if !favorites.isEmpty {
@@ -139,12 +140,24 @@ struct LauncherList: View {
                     .app($1, slot: FavoriteSlots.digit(at: $0))
                 })
         }
+        if !meetings.isEmpty {
+            rows.append(.header(AppEntry.Kind.meeting.descriptor.sectionTitle))
+            rows.append(contentsOf: meetings.map { .app($0, slot: nil) })
+        }
+        if !suggestions.isEmpty {
+            rows.append(.header("Suggestions"))
+            rows.append(contentsOf: suggestions.map { .app($0, slot: nil) })
+        }
+        if !matches.isEmpty {
+            rows.append(.header("Results"))
+            rows.append(contentsOf: matches.map { .app($0, slot: nil) })
+        }
         // Publication order, so rows match the flat index.
         let kinds: [AppEntry.Kind] = [
-            .scope, .meeting,
-            .application, .systemSettings, .extensionCommand, .quicklink, .vsCodeProject, .zedProject,
-            .herdrTarget, .linearTarget, .webSearch, .snippet,
-            .systemAction, .windowLayout, .windowCommand, .customCommand, .quickAction, .command
+            .scope, .meeting, .application, .systemSettings, .extensionCommand, .quicklink,
+            .appleShortcut, .vsCodeProject, .zedProject, .herdrTarget, .linearTarget, .webSearch,
+            .snippet, .systemAction, .windowLayout, .windowRoom, .windowCommand, .customCommand,
+            .quickAction, .command
         ]
         for kind in kinds {
             guard let group = grouped[kind], !group.isEmpty else { continue }
@@ -212,7 +225,7 @@ struct LauncherList: View {
                                         slot: slot
                                     )
                                     .contentShape(Rectangle())
-                                    .onTapGesture { onActivate(app) }
+                                    .onRowTap(drag: drag(for: app)) { onActivate(app) }
                                     .onRightClick { onActions(app) }
                                     .selectionFrame(app.id == selectedRowID)
                                 case .fallback(let app, let index):
@@ -241,6 +254,14 @@ struct LauncherList: View {
                 }
             }
         }
+    }
+
+    /// Cache-only icon: the row holds its own smaller bitmap, and a decode would stall the drag.
+    private func drag(for app: AppEntry) -> RowDrag? {
+        guard app.canDragOut else { return nil }
+        return RowDrag(
+            item: { .file(app.url, image: IconCache.cached(app.iconSource, fileURL: app.url)) },
+            dropped: onDropped)
     }
 }
 
@@ -364,8 +385,8 @@ private struct AppRow: View {
 
     var body: some View {
         HStack(spacing: metrics.spacing.lg) {
-            AppIconView(app: app, source: app.categoryIconSource, pointSize: metrics.size.rowIcon)
-                .frame(width: metrics.size.rowIcon, height: metrics.size.rowIcon)
+            AppIconView(app: app, source: app.categoryIconSource, pointSize: metrics.size.resultRowIcon)
+                .frame(width: metrics.size.resultRowIcon, height: metrics.size.resultRowIcon)
                 .overlay(alignment: .bottom) {
                     if running {
                         Circle()
@@ -374,6 +395,11 @@ private struct AppRow: View {
                             .offset(y: 3)
                     }
                 }
+            if app.kind == .meeting {
+                MeetingEntryContent(entryID: app.id) { meeting, _ in
+                    CalendarBar(color: meeting.calendarColor)
+                }
+            }
             Text(app.name)
                 .font(metrics.typography.rowTitle)
                 .lineLimit(1)
@@ -412,6 +438,8 @@ private struct AppRow: View {
                     KeyCapChip(text: "⌘", style: .outline)
                     KeyCapChip(text: String(slot), style: .outline)
                 }
+            } else if app.kind == .meeting {
+                MeetingEntryContent(entryID: app.id) { MeetingTiming(meeting: $0, now: $1) }
             } else {
                 Text(app.kindLabel)
                     .font(metrics.typography.rowTrailing)
@@ -435,10 +463,13 @@ private struct AppRow: View {
             results: PreviewData.launcherResults,
             selectedRowID: PreviewData.notes.id,
             favoriteCount: PreviewData.launcherFavoriteCount,
-            showSections: true,
+            meetingCount: 0,
+            suggestionCount: 0,
+            matchCount: 0,
             scroll: ScrollIntent(kind: .top),
             onActivate: { _ in },
-            onActions: { _ in }
+            onActions: { _ in },
+            onDropped: {}
         )
         .previewInPalette()
     }
@@ -448,12 +479,15 @@ private struct AppRow: View {
             results: PreviewData.launcherResults,
             selectedRowID: nil,
             favoriteCount: 0,
-            showSections: false,
+            meetingCount: 0,
+            suggestionCount: 0,
+            matchCount: PreviewData.launcherResults.count,
             scroll: ScrollIntent(kind: .top),
             card: .calc(PreviewData.calcArithmetic),
             cardSelected: true,
             onActivate: { _ in },
-            onActions: { _ in }
+            onActions: { _ in },
+            onDropped: {}
         )
         .previewInPalette()
     }
@@ -464,14 +498,17 @@ private struct AppRow: View {
             results: [],
             selectedRowID: "web-search:google",
             favoriteCount: 0,
-            showSections: false,
+            meetingCount: 0,
+            suggestionCount: 0,
+            matchCount: 0,
             scroll: ScrollIntent(kind: .top),
             webSearch: LauncherList.WebSearchPrompt(
                 id: "web-search:google", title: "Search Google for “liquid glass”",
                 symbol: "magnifyingglass", sectionTitle: "Google"),
             suggestions: ["liquid glass swiftui", "liquid glass macos 26", "liquid glass tahoe"],
             onActivate: { _ in },
-            onActions: { _ in }
+            onActions: { _ in },
+            onDropped: {}
         )
         .previewInPalette()
     }
@@ -481,10 +518,13 @@ private struct AppRow: View {
             results: [],
             selectedRowID: nil,
             favoriteCount: 0,
-            showSections: true,
+            meetingCount: 0,
+            suggestionCount: 0,
+            matchCount: 0,
             scroll: ScrollIntent(kind: .top),
             onActivate: { _ in },
-            onActions: { _ in }
+            onActions: { _ in },
+            onDropped: {}
         )
         .previewInPalette()
     }

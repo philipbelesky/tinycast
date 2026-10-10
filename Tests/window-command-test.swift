@@ -60,6 +60,33 @@ struct WindowCommandTests {
             restore: restore, lastTile: lastTile, allScreens: allScreens)?.frame
     }
 
+    /// Presses `command` like `WindowMover`: each press starts from where the last one landed.
+    static func presses(
+        _ command: WindowCommand.ID, _ count: Int, from window: CGRect,
+        on list: [WindowPlacementEngine.Screen]
+    ) -> [WindowPlacementEngine.Placement] {
+        let clock = Date(timeIntervalSince1970: 1_000_000)
+        var memory = WindowActionMemory<Int>()
+        var current = window
+        var landed: [WindowPlacementEngine.Placement] = []
+        for _ in 0..<count {
+            let host = WindowPlacementEngine.screen(containing: current, in: list)!
+            let decision = memory.decide(
+                key: 1, command: command, currentFrame: current, currentScreenID: host.id,
+                cycleLength: length(command, .displays, list), now: clock)
+            let placement = WindowPlacementEngine.placement(
+                for: WindowPlacementEngine.Input(
+                    command: command, windowFrame: current, screens: list, step: decision.step,
+                    cycle: .displays, originScreenID: decision.originScreenID))!
+            memory.commit(
+                key: 1, command: command, decision: decision, appliedFrame: placement.frame,
+                screenID: placement.screenID, now: clock)
+            current = placement.frame
+            landed.append(placement)
+        }
+        return landed
+    }
+
     static func length(
         _ command: WindowCommand.ID, _ cycle: WindowCycle,
         _ list: [WindowPlacementEngine.Screen] = [mainScreen]
@@ -118,8 +145,8 @@ struct WindowCommandTests {
 
         let cycling = Set(commands.filter(\.cyclesOnRepeat).map(\.id))
         expect(
-            cycling == [.leftHalf, .rightHalf, .topHalf, .bottomHalf],
-            "only the four halves cycle on repeat")
+            cycling == [.leftHalf, .rightHalf, .topHalf, .bottomHalf, .centerHalf],
+            "only the five halves cycle on repeat")
         let moveOnly = Set(commands.filter { !$0.resizes }.map(\.id))
         expect(
             moveOnly == [.moveLeft, .moveRight, .moveUp, .moveDown],
@@ -250,7 +277,7 @@ struct WindowCommandTests {
             frame(.firstTwoThirds)!.union(frame(.lastThird)!) == mainScreen.visibleFrame,
             "first two thirds and last third partition the screen")
 
-        // Size cycling: halves only, ½ → ⅓ → ⅔, wrapping.
+        // Size cycling: the five halves only, ½ → ⅓ → ⅔, wrapping.
         expectRect(
             frame(.leftHalf, step: 1, cycle: .sizes)!, frame(.firstThird)!,
             "left half step 1 is a third")
@@ -280,6 +307,18 @@ struct WindowCommandTests {
             frame(.bottomHalf, step: 2, cycle: .sizes)!,
             CGRect(x: 0, y: 300, width: 1440, height: 600),
             "bottom half step 2 is vertical two thirds")
+        expectRect(
+            frame(.centerHalf, step: 1, cycle: .sizes)!, frame(.centerThird)!,
+            "center half step 1 is the center third")
+        expectRect(
+            frame(.centerHalf, step: 2, cycle: .sizes)!, frame(.centerTwoThirds)!,
+            "center half step 2 is the center two thirds")
+        expectRect(
+            frame(.centerHalf, step: 3, cycle: .sizes)!, frame(.centerHalf)!,
+            "center half step 3 wraps to the half")
+        expectRect(
+            frame(.centerHalf, gap: 10, step: 1, cycle: .sizes)!,
+            frame(.centerThird, gap: 10)!, "center half step 1 shares the center third's gaps")
 
         // A step handed to a command that doesn't cycle must be ignored outright.
         for step in 0...5 {
@@ -683,6 +722,8 @@ struct WindowCommandTests {
         expect(length(.leftHalf, .sizes, both) == 3, "the size cycle is three steps")
         expect(length(.leftHalf, .displays, both) == 4, "two displays give four slots")
         expect(length(.maximize, .displays, both) == 1, "a non-cycling command never cycles")
+        expect(length(.centerHalf, .sizes, both) == 3, "center half cycles sizes")
+        expect(length(.centerHalf, .displays, both) == 1, "center half has no strip slot to walk")
         expect(
             length(.leftHalf, .displays) == 1,
             "one display makes the display leg a no-op")
@@ -730,13 +771,37 @@ struct WindowCommandTests {
                 "the size cycle ignores the other display at step \(step)")
         }
 
-        // One full lap visits every slot exactly once, from either starting display.
-        for start in [onLeft, CGRect(x: 1540, y: 100, width: 600, height: 400)] {
+        // Center Half hugs no edge, so the display cycle leaves it centred on its own display.
+        for step in 0..<4 {
+            expectRect(
+                frame(.centerHalf, window: onLeft, step: step, cycle: .displays, allScreens: both)!,
+                frame(.centerHalf, on: left)!, "center half ignores the display cycle at step \(step)")
+        }
+
+        // Real presses: from the second one on, the window sits on a display it was just moved to.
+        let onRight = CGRect(x: 1540, y: 100, width: 600, height: 400)
+        let walked = presses(.leftHalf, 5, from: onRight, on: both).map(\.frame)
+        let walk: [CGRect] = [
+            frame(.leftHalf, on: right)!, frame(.rightHalf, on: left)!,
+            frame(.leftHalf, on: left)!, frame(.rightHalf, on: right)!,
+            frame(.leftHalf, on: right)!
+        ]
+        for (press, want) in walk.enumerated() {
+            expectRect(walked[press], want, "left half from the right display, press \(press + 1)")
+        }
+
+        // An origin that is no longer plugged in falls back to the window's own display.
+        expectRect(
+            WindowPlacementEngine.placement(
+                for: WindowPlacementEngine.Input(
+                    command: .leftHalf, windowFrame: onLeft, screens: both, step: 1,
+                    cycle: .displays, originScreenID: 99))!.frame,
+            expected[1], "an unplugged origin counts from the host")
+
+        // One full lap of real presses visits every slot exactly once, from either starting display.
+        for start in [onLeft, onRight] {
             for command in [WindowCommand.ID.leftHalf, .rightHalf] {
-                let lap = (0..<length(command, .displays, both)).map {
-                    placement(
-                        command, window: start, step: $0, cycle: .displays, allScreens: both)!
-                }
+                let lap = presses(command, length(command, .displays, both), from: start, on: both)
                 expect(
                     Set(lap.map(\.frame)).count == lap.count,
                     "\(command.rawValue) visits four distinct slots")
@@ -803,6 +868,7 @@ struct WindowCommandTests {
         expect(decision.step == 0, "a first press starts at step 0")
         expect(!decision.canRestore, "a never-seen window has nothing to restore to")
         expectRect(decision.restoreFrame, original, "the first press captures the original frame")
+        expect(decision.originScreenID == 1, "a first press starts its chain on its own display")
         memory.commit(
             key: 1, command: .leftHalf, decision: decision, appliedFrame: half, screenID: 1,
             now: clock)
@@ -831,10 +897,25 @@ struct WindowCommandTests {
             key: 1, command: .leftHalf, currentFrame: memory.record(for: 1)!.appliedFrame,
             currentScreenID: 2, cycleLength: 3, now: clock)
         expect(decision.step == 0, "a different display restarts the cycle")
+        expect(decision.originScreenID == 2, "a restarted chain starts on the current display")
         decision = memory.decide(
             key: 99, command: .leftHalf, currentFrame: original, currentScreenID: 1,
             cycleLength: 3, now: clock)
         expect(decision.step == 0 && !decision.canRestore, "another window has its own chain")
+
+        // A chain the display cycle carried elsewhere keeps counting from where it started.
+        var crossing = WindowActionMemory<Int>()
+        let crossingSeed = crossing.decide(
+            key: 1, command: .leftHalf, currentFrame: original, currentScreenID: 1,
+            cycleLength: 4, now: clock)
+        crossing.commit(
+            key: 1, command: .leftHalf, decision: crossingSeed, appliedFrame: half, screenID: 2,
+            now: clock)
+        decision = crossing.decide(
+            key: 1, command: .leftHalf, currentFrame: half, currentScreenID: 2, cycleLength: 4,
+            now: clock)
+        expect(decision.step == 1, "a press on the display the chain landed on continues it")
+        expect(decision.originScreenID == 1, "a continued chain keeps its origin display")
 
         // A user drag resets the cycle and re-anchors the restore point.
         var dragged = WindowActionMemory<Int>()
@@ -946,6 +1027,9 @@ struct WindowCommandTests {
         // Fullscreen breaks the cycle chain but keeps the restore point.
         run.forgetCycle(key: 1)
         expect(run.record(for: 1)?.step == 0, "forgetCycle resets the step")
+        expect(
+            run.record(for: 1)?.originScreenID == run.record(for: 1)?.screenID,
+            "forgetCycle restarts the chain on the window's current display")
         expectRect(
             run.record(for: 1)!.restoreFrame, original, "forgetCycle keeps the restore point")
 

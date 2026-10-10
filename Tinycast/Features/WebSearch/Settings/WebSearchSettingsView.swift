@@ -16,7 +16,6 @@ struct WebSearchSettingsView: View {
                 enableSubtitle:
                     "Type an engine's keyword, a space, then your query. The search opens in your "
                     + "default browser; Tinycast never sends it anywhere itself.",
-                launcherSubtitle: "Find the engines in launcher search.",
                 isEnabled: $settings.webSearchEnabled,
                 showsInLauncher: $settings.webSearchShowInLauncher)
 

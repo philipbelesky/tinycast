@@ -66,8 +66,7 @@ Three things a release must keep true, or the updater skips it:
 - **It carries a `.zip` asset this Mac can run.** A DMG-only release is not installable and is not
   offered, and an Intel build is offered nothing rather than a thin arm64 zip.
 - **The tag parses as `vMAJOR.MINOR.PATCH` or `vMAJOR.MINOR.PATCH-beta.N`,** and agrees with the
-  `prerelease` flag. `v0.9.7-sequoia` deliberately parses as neither, which is what keeps beta
-  installs off the macOS 15 build.
+  `prerelease` flag. A tag of any other shape is treated as mis-published and skipped.
 - **It is not a draft.**
 
 **Both casks declare `auto_updates true`.** That is Homebrew's flag for an app that manages its own
@@ -76,27 +75,12 @@ brew never reports Tinycast outdated, never re-downloads it, and never rolls a s
 Removing that line would reintroduce exactly those three problems. See
 [features/updates.md](features/updates.md).
 
-## Continuous integration
+## Pull request review
 
-`.github/workflows/ci.yml` runs on every PR, on a `macos-26` runner with Xcode 26 (the same selection
-step as the release workflow). One job, a merge gate; a new push cancels the in-flight run for the
-same ref. Two steps, both of which shell out to a script rather than naming rules or harnesses in the
-workflow, so neither can drift:
-
-- **the harnesses** — `./Scripts/run-tests.sh`.
-- **lint** — `./Scripts/lint.sh`, with `SWIFTLINT_REPORTER=github-actions-logging` so every violation
-  is annotated **inline on the PR diff** instead of being buried in the log. It runs under
-  `if: always()`, so a failing harness still surfaces the lint annotations in the same run. Warnings
-  annotate only; **lint errors fail the job**, exactly as a local run does.
-
-It does **not** run on pushes to `main`. `pull_request` builds the merge result, so re-running after a
-merge would re-test content CI has already seen. A direct push to `main` therefore gets no run at all —
-use **Actions → CI → Run workflow** if one ever needs checking.
-
-There is **no `xcodebuild` step**: a Debug build costs minutes on every run and the release workflow
-builds before it ships anyway, so CI keeps to the checks that finish in about a minute. The
-consequence is that a change compiling nowhere still turns the PR green — **build locally before you
-open one**. See [testing.md](testing.md#definition-of-done).
+There is no CI workflow. CodeRabbit reviews every PR against `.coderabbit.yaml`: it runs SwiftLint
+with `.swiftlint.yml`, annotates the diff and applies the pre-merge checks. It is a reviewer, not a
+gate — it neither runs the harnesses nor builds the app, so the whole bar in
+[testing.md](testing.md#definition-of-done) is run locally before a PR is opened.
 
 ## Releasing
 
@@ -111,16 +95,22 @@ needed. Run it from the **Actions** tab (`Release` → **Run workflow**) and pic
 
 It builds on a `macos-26` runner with Xcode 26 and publishes a GitHub Release tagged
 `v<full-version>` with a versioned DMG and zip asset, marked prerelease for beta. On success it also
-bumps the matching cask in the tap and announces the release on Discord.
+bumps the matching cask in the tap and announces the release on Discord. A stable run also
+dispatches the Website workflow, because the site reads the latest version and the
+[changelog](https://tinycast.dev/changelog/) from GitHub at build time.
 
 A stable run then fans out to a second job, `universal`, which rebuilds the same commit with
 `ARCHS="arm64 x86_64"` and attaches `Tinycast-Universal-<version>.dmg` / `.zip` to the release the
 first job created, then bumps `tinycast-universal`. macOS 26 is the last release that boots on Intel,
 and those Macs need both slices. Both jobs pin `ARCHS` explicitly and assert the slices on *every*
-shipping binary — the app and the bundled `ClipboardTextHelper`: trusting `ARCHS_STANDARD` is what
+shipping binary — the app, `ClipboardTextHelper` and `Tinycast Dictation`: trusting `ARCHS_STANDARD` is what
 shipped a thin arm64 build to Intel users once already, and it also keeps the Apple silicon download
 from silently gaining a slice it never needs. A thin helper inside a universal app is the quiet form
-of the same bug: the app boots on Intel and only clipboard OCR stops working.
+of the same bug: the app boots on Intel and only clipboard OCR or dictation stops working.
+
+Channel builds override `TINYCAST_BUNDLE_IDENTIFIER`, not the target-wide `PRODUCT_BUNDLE_IDENTIFIER`.
+The Dictation helper derives its own identifier with a `.dictation` suffix; signature verification
+checks that its bundle and signing identifiers agree and remain distinct from the main app.
 
 ### Release notes
 
@@ -158,21 +148,6 @@ read/write** on the tap repo. Without the secret the step logs a warning and ski
 publishes. The `sed` is anchored to `^  version` / `^  sha256`, so a cask's two-space indent on those
 lines is load-bearing.
 
-The three macOS 26 / macOS 15 casks all install `Tinycast.app` under `com.tinycast.app`, so they
-`conflicts_with` one another and Homebrew routes each Mac by `depends_on`: `tinycast` requires
-`arch: :arm64`, `tinycast-universal` takes the Intel Macs, and `tinycast-sequoia` covers macOS 15.
-
-## Website
-
-`.github/workflows/website.yml` builds `website/` (Next.js static export + Tailwind, with Fumadocs for
-the docs section) and deploys it to GitHub Pages at `https://abue-ammar.github.io/tinycast/` on every
-push to `main` that touches `website/`. Enable it once via
-**Settings → Pages → Source = GitHub Actions**.
-
-```sh
-cd website && npm install && npm run dev     # local preview
-```
-
-The workflow uploads `website/out` — a Next.js export lands there, not in `dist/`. `public/.nojekyll`
-must stay: GitHub Pages runs Jekyll, which ignores `_`-prefixed directories, so without it every
-asset under `_next/` 404s. See [website/README.md](../website/README.md).
+Both stable casks install `Tinycast.app` under `com.tinycast.app`, so they `conflicts_with` one
+another and Homebrew routes each Mac by `depends_on`: `tinycast` requires `arch: :arm64`, and
+`tinycast-universal` takes the Intel Macs.

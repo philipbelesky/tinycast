@@ -14,7 +14,6 @@ struct ZedSettingsView: View {
                 enableSubtitle:
                     "Lists the workspaces Zed has opened, read from its own storage on disk. "
                     + "↵ opens one in Zed.",
-                launcherSubtitle: "Find projects in launcher search.",
                 isEnabled: $settings.zedEnabled,
                 showsInLauncher: $settings.zedShowInLauncher)
 

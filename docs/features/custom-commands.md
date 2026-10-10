@@ -1,7 +1,7 @@
 # Custom commands
 
-Custom commands let users add a searchable name and a shell command in **Settings → Custom
-Commands**. They appear in the launcher's Custom Commands section, share the normal fuzzy ranking,
+Custom commands let users add a searchable name and a shell command with **Create Custom Command**
+in the launcher, and browse their library with **Search Custom Commands**. They appear in the launcher's Custom Commands section, share the normal fuzzy ranking,
 and run from Return, a favorite slot, or an optional global shortcut. A command may declare
 [arguments](#arguments) it is asked for first, and may [show what it printed](#show-output) when it
 finishes.
@@ -14,9 +14,8 @@ without re-registering. "Show in launcher" only hides the section; shortcuts kee
 
 ## Invariants
 
-- **`Model/CustomCommand.swift`, `Service/ShellCommandRunner.swift` and
-  `Service/CustomCommandArgumentSession.swift` stay free of AppKit and SwiftUI** (Foundation plus Darwin
-  for `mkstemp`) so `custom-command-test` can compile them standalone. That is why the confirmation gate
+- **`Model/CustomCommand.swift` and `Service/ShellCommandRunner.swift` stay free of AppKit and
+  SwiftUI** (Foundation plus Darwin for `mkstemp`) so `custom-command-test` can compile them standalone. That is why the confirmation gate
   lives in `CustomCommandCoordinator` and not in the runner.
 - A command that runs arbitrary shell is a security surface: the confirmation step cannot be bypassed, and
   an import of executable commands warns before it applies.
@@ -36,11 +35,12 @@ bundle-scoped `UserDefaults`. Each command has a stable UUID. Its launcher entry
 `hotkey.customCommand.<uuid>` plus the `boundCustomCommandIDs` index.
 
 Editing preserves the UUID and therefore its alias, favorite, visibility, and hotkey references. The row's
-**Enabled** checkbox is the only writer of `isEnabled`, so the editor sheet carries the flag through a
+**Enabled** checkbox is the only writer of `isEnabled`, so the editor carries its current value through a
 save rather than offering a second control for it. Deleting
-goes through `AppCore`, which unregisters the hotkey and clears those references before removing the
+goes through `CustomCommandCoordinator`, which unregisters the hotkey and clears those references before removing the
 command. Native settings backups include both commands and bindings; import warns before accepting
 executable content.
+Deletion from Settings or the command browser confirms through Tinycast's dialog before removing the command.
 
 ## Launcher integration
 
@@ -51,12 +51,42 @@ to the flat palette selection while allowing edits to invalidate fuzzy results w
 
 The command text is deliberately not searchable. Only the user-facing name enters fuzzy matching.
 
+**Search Custom Commands** lists enabled commands on the left and previews their literal script on
+the right, including commands hidden from root search. The rows use the same styled icon tiles as the
+launcher. Below the script, Information shows Run In, output mode, declared positional arguments,
+required confirmation and an assigned shortcut when present. The browser filters names, never script content.
+Its header collects the same positional arguments as root search; Return uses the existing run funnel
+and confirmation gates. Run and Edit share their action definitions with the launcher home.
+⌘E edits, ⌘N creates, and the final destructive action deletes with ⌃X. An empty library or filter
+still offers Create. Escape returns to the previous search; editing returns to the browser's query
+and selection. Alias and hotkey assignment remain in Settings.
+
+`showsInRootSearch == false` keeps a command out of that slice — and with it its alias — while its
+shortcut still runs it. The editor's **Show in root search** toggle writes it, and so does the
+launcher row's **Hide from Root Search** (⇧⌘H); the row marks a hidden command with `eye.slash`.
+
+### Launcher editor
+
+**Create Custom Command**, a command row's **Edit Custom Command** action, and the Settings **Add** and
+**Edit** buttons open the same `CustomCommandEditorView` in the launcher. There is no second editor
+in Settings; its rows still manage aliases, hotkeys, enabling and deletion.
+
+`CustomCommandEditorSession` holds a draft of the existing options: name, icon, shell command,
+working directory, root-search visibility, up to three arguments and the four execution checkboxes. The script keeps a
+monospaced native textarea without smart substitutions; its content grows with the page rather than
+scrolling internally. Tab walks the form, so ⌥Tab types a tab character.
+Argument rows keep their identities when one is removed, and Tab skips Add at the three-argument cap.
+⌘↵ validates and saves through the existing store; Escape discards the draft and restores the previous
+search and selection. Opening or saving is gated by the feature switch, just like running a command.
+If the item is deleted from Settings during editing, Save reports that failure and keeps the draft.
+
 ## Execution contract
 
 `ShellCommandRunner` executes asynchronously with:
 
 - `/bin/zsh -lc <command>`, or `/bin/zsh -ilc <command>` when the command's **Load shell
-  environment** flag is on
+  environment** flag is on — unless the text starts with `#!`, which picks
+  [another interpreter](#another-interpreter)
 - `tinycast` as `$0`, then the collected argument values as `$1`, `$2`, …
 - the command's own **Run In** folder, or the home directory when it names none
 - standard input reading EOF immediately
@@ -66,7 +96,7 @@ The command text is deliberately not searchable. Only the user-facing name enter
 
 **Show output** takes a different route entirely — see [Show output](#show-output). Nothing else does.
 
-No Terminal window or pseudo-terminal is created. `waitUntilExit` blocks for the whole life of the
+No Terminal window or pseudo-terminal is created. The exit wait blocks for the whole life of the
 command, so it runs on a private concurrent `DispatchQueue` rather than a cooperative-pool thread a
 long `brew upgrade` would hold for minutes. The streaming path blocks the same queue on `read`.
 
@@ -96,19 +126,56 @@ quitting.
 Because standard error surfaces only on a non-zero exit and only its last 8 KiB, rc-file startup noise
 is dropped while the actual error survives.
 
+### Another interpreter
+
+A command whose text starts with `#!` is not zsh text. The runner writes it to a `0700` file in the
+per-user temporary folder and runs
+
+```
+/bin/zsh -lc 'exec "$0" "$@"' <file> <value1> <value2> …
+```
+
+so the kernel reads the `#!` line and starts what it names: `#!/opt/homebrew/bin/bash -l`,
+`#!/usr/bin/env python3`, `#!/usr/bin/osascript`. This, not reading the login shell, is how someone
+on another shell gets it. The same text means different things to different shells —
+`a=(x y); echo "${a[1]}"` prints `x` in zsh and `y` in bash — so the text has to say which one it is
+written for, and a backup carries that with the command. Text without `#!` runs exactly as before.
+
+The zsh hop keeps one path for both run modes and for Stop's whole-session signal, and hands the
+interpreter the login `PATH`, so `#!/usr/bin/env node` finds a Homebrew `node`. **Load shell
+environment** still sources `~/.zshrc` before the `exec`: its exported variables reach the script,
+its aliases and functions do not. Another shell's startup files are its `#!` line's business —
+`bash -l` reads `.bash_profile`.
+
+Values arrive as the script's own arguments — `$1` in bash, `$argv[1]` in fish, `sys.argv[1]` in
+Python — so the [never-spliced invariant](#invariants) holds. A missing interpreter fails with 127
+and `bad interpreter: <path>`. The file is removed when the command exits; one still running when
+Tinycast quits leaves its file behind in the temporary folder.
+
 ### Arguments
 
-A command may declare an ordered list of arguments, each a name and an optional/required flag. Running
-one opens `PaletteMode.customCommandArguments`, the last screen of its kind: the palette's own search
-field _is_ the input, one argument at a time, with the field's placeholder naming
-the pending one and the body listing every argument, its `$n` slot, and what has been answered. ↵
-advances, a bare backspace steps back and refills the field, and Escape abandons the run. `↵` is held
-while a required argument is empty, which also hides the footer pill.
+A command may declare **up to three** arguments, each a name and an optional/required flag — Raycast's
+own cap, and what keeps the fields on screen. `CustomCommandArgument.sanitized` enforces it on every
+path in, so a stored or imported command carrying more keeps its first three and drops the rest, the
+way Raycast ignores an `argument4`. The editor's **Add** stops at three.
 
-Because the form is a palette mode rather than a header accessory, **every entry point gets it** —
-launcher row, favorite slot and global hotkey alike — through the one `runCustomCommand(id:)` funnel.
-That is the whole reason it is not an inline strip beside the search field the way an extension
-command's arguments are: a hotkey has no selected row to hang one off.
+They are filled **inline beside the search field** when the command's row is selected in root search,
+as a quicklink's are (see [palette.md](palette.md#inline-row-arguments)).
+`CustomCommandArgumentsAccessory` builds the strip; Tab walks into it, and ↵ with a required field
+still empty focuses that field instead of running — Raycast's rule. An optional field left empty is
+never marked as owed.
+
+**The fields are keyed by position, not name** — `CustomCommandArgument.fieldID(at:)`, `$1` to `$3` —
+because two arguments may share a name, and keying by name would give them one value and one focus.
+`CustomCommand.positionalValues(from:)` turns the fields back into `$n` order, or nil while a required
+one is empty.
+
+`runCustomCommand(id:values:)` is still the one funnel for every entry point. A launcher row hands it
+the typed values; a **global hotkey or favorite slot** hands it none. Either way, a required value still
+missing opens root search onto that command alone — the query seeded with its name, its row the only
+one listed, its first empty field focused — through `PaletteCoordinator.showArguments(of:values:)`.
+That is what Raycast does for a hotkey. The row is listed even when the command is hidden from the
+launcher, since its shortcut still has to be answered; typing anything else returns to a normal search.
 
 Values reach zsh as **positional parameters**, never as text substituted into the command:
 
@@ -118,8 +185,6 @@ Values reach zsh as **positional parameters**, never as text substituted into th
 
 so the script reads them as `$1`, `$2`, and a value containing `; rm -rf ~` is a string, not a second
 command. An optional argument submitted empty still occupies its slot, so `$2` never becomes `$3`.
-`CustomCommandArgumentSession` owns the pending run; it holds values positionally for the same reason,
-which is why two arguments may share a name without colliding.
 
 ### Show output
 
@@ -176,6 +241,7 @@ the success pill is skipped for the same reason.
   reaches the log. The guard is the documented `[[ -n $TINYCAST ]] && return`.
 - **Stop is the one exception** to "Tinycast never kills a running command". Only the button does it;
   a second command superseding the window never touches the first.
+- Escape closes the window without stopping its command.
 
 #### The ad-hoc run
 
@@ -202,8 +268,8 @@ same way.
 A command may carry its own SF Symbol; without one it draws `CustomCommand.sfSymbol`, the shared
 terminal glyph. `CustomCommand.symbol` is the one place that fallback lives, and every surface reads
 it — the launcher row, the Settings list, the confirmation and failure dialogs, and the output
-window's header. The picker is `DesignSystem/SymbolPicker`, shared with the quicklink editor, which
-supplies its own symbol list: what reads as a quicklink is not what reads as a script.
+window's header. The editor supplies its existing symbol list to the palette's searchable input menu;
+the choices stay local to Custom Commands rather than being shared with another feature.
 
 ### Needs confirmation
 
@@ -242,7 +308,8 @@ Foundation-only harness. Verify by hand:
 3. Pressing the command's hotkey while its dialog is up does not stack a second dialog.
 4. A gated command triggered by hotkey with no palette open still confirms.
 5. An rc-file-only alias with the flag off shows the 127 hint, and **Open Settings…** opens the pane.
-6. A command with arguments triggered by hotkey opens the argument form, not the command.
+6. A command with arguments triggered by hotkey opens root search on that row alone, first required
+   field focused — including a command hidden from the launcher.
 7. A gated command with arguments asks for every value first, and confirms only once.
 8. Running a second output-showing command reuses the one window and does **not** kill the first.
 9. A long command's output appears while it runs, not at the end; scrolling up stops the follow.
@@ -255,7 +322,16 @@ Foundation-only harness. Verify by hand:
     nothing. A folder holding no script commands says so instead of reporting zero.
 14. Re-importing the same folder says nothing was left to import, rather than reporting zero.
 15. An imported command with arguments asks for them and the script receives them — the `"$@"`
-    forwarding has no harness coverage of the palette form that fills it.
+    forwarding has no harness coverage of the inline fields that fill it.
+16. Two arguments sharing a name are separate fields; ↵ with a required one empty focuses it.
+17. Create and Edit in the launcher or Settings open the same form with all existing options. Escape
+    discards changes and returns to the previous search; saving preserves aliases and hotkeys.
+18. Add three arguments, remove the middle one, then Tab and Shift-Tab through the remaining controls.
+    The names and Optional flags stay on their original rows; the folder chooser's Cancel keeps the draft.
+19. Search Custom Commands shows root-hidden commands but not disabled ones. Filtering selects the same
+    command as the script preview and actions; Run collects arguments and respects confirmation.
+20. From the browser, ⌘E opens the existing editor and Escape restores the query and row. ⌘N works
+    with no matches; ⌃X opens the deletion confirmation, and Cancel leaves the command intact.
 
 ## Importing Raycast scripts
 

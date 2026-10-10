@@ -3,14 +3,14 @@ import SwiftUI
 /// Both flavours in one pane: the built-ins, then the user's own shell commands.
 struct CommandsSettingsView: View {
     @Environment(CustomCommandStore.self) private var store
-    @Environment(AppCore.self) private var core
+    @Environment(CustomCommandCoordinator.self) private var coordinator
     @Environment(AppSettings.self) private var settings
-    @State private var editor: EditorTarget?
-    @State private var pendingDeletion: CustomCommand?
 
     var body: some View {
         @Bindable var settings = settings
         return Form {
+            LauncherCategorySwitchSection(kind: .command, anchor: .commandsCommands)
+
             LauncherItemsSection(
                 kind: .command,
                 anchor: .commandsCommands,
@@ -20,14 +20,17 @@ struct CommandsSettingsView: View {
                 anchor: .commandsCustomCommands,
                 enableTitle: "Enable custom commands",
                 enableSubtitle:
-                    "Commands run with your user account in /bin/zsh, so use full executable paths.",
-                launcherSubtitle: "Find your commands in launcher search.",
+                    "Run as you in /bin/zsh, or the interpreter a #! line names. "
+                    + "Use full executable paths.",
                 isEnabled: $settings.customCommandsEnabled,
                 showsInLauncher: $settings.customCommandsShowInLauncher)
 
             Section {
+                ForEach(CommandCatalog.entries(ownedBy: .commands)) { entry in
+                    FeatureCommandRow(entry: entry)
+                }
                 if store.commands.isEmpty {
-                    Text("Add one to make it searchable from the launcher.")
+                    Text("No custom commands yet.")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(sortedCommands) { command in
@@ -37,30 +40,27 @@ struct CommandsSettingsView: View {
                             isEnabled: Binding(
                                 get: { command.isEnabled },
                                 set: {
-                                    core.customCommandCoordinator.setCustomCommandEnabled(
+                                    coordinator.setCustomCommandEnabled(
                                         $0, id: command.id)
                                 }),
-                            onEdit: { editor = EditorTarget(command: command) },
-                            onDelete: { pendingDeletion = command })
+                            onEdit: { coordinator.editCustomCommand(command) },
+                            onDelete: { Task { await coordinator.deleteCustomCommand(id: command.id) } })
                     }
                 }
                 Button {
-                    editor = EditorTarget(command: nil)
+                    coordinator.editCustomCommand(nil)
                 } label: {
                     SettingsRowTitle(.commandsCustomCommands, "Add Custom Command")
                 }
                 Button {
-                    Task { await core.customCommandCoordinator.importScriptDirectory() }
+                    Task { await coordinator.importScriptDirectory() }
                 } label: {
                     SettingsRowTitle(.commandsCustomCommands, "Import Raycast Scripts")
                 }
             } footer: {
-                Text(
-                    "Name it, then add an alias or a shortcut if you want one. Importing reads a folder of "
-                        + "Raycast script commands, one command per script."
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                Text("Import reads a folder of Raycast script commands.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             .settingsEnabled(settings.customCommandsEnabled)
 
@@ -72,18 +72,6 @@ struct CommandsSettingsView: View {
         .formStyle(.grouped)
         .settingsScrollTarget(.commands)
         .releasesFocusOnOutsideClick()
-        .sheet(item: $editor) { target in
-            CustomCommandEditorSheet(command: target.command)
-        }
-        .alert(item: $pendingDeletion) { command in
-            Alert(
-                title: Text("Delete “\(command.name)”?"),
-                message: Text("Its global shortcut and launcher references will also be removed."),
-                primaryButton: .destructive(Text("Delete")) {
-                    core.customCommandCoordinator.deleteCustomCommand(id: command.id)
-                },
-                secondaryButton: .cancel())
-        }
     }
 
     private var sortedCommands: [CustomCommand] {
@@ -91,11 +79,6 @@ struct CommandsSettingsView: View {
             $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
         }
     }
-}
-
-private struct EditorTarget: Identifiable {
-    let id = UUID()
-    let command: CustomCommand?
 }
 
 private struct CustomCommandSettingsRow: View {
@@ -109,9 +92,15 @@ private struct CustomCommandSettingsRow: View {
         SettingsRow(title: command.name, subtitle: command.command) {
             Image(systemName: command.symbol)
         } trailing: {
+            if !command.showsInRootSearch {
+                Image(systemName: "eye.slash")
+                    .foregroundStyle(.secondary)
+                    .help("Hidden from root search")
+            }
+
             // An alias only reaches the ranker through the launcher slice, so it dims with it.
             AliasField(key: command.entryID, name: command.name)
-                .settingsEnabled(command.isEnabled && showsInLauncher)
+                .settingsEnabled(command.isEnabled && showsInLauncher && command.showsInRootSearch)
 
             // A disabled command's shortcut fires into the funnel's refusal, so it dims too.
             ShortcutRecorder(action: .customCommand(id: command.id))
@@ -121,7 +110,7 @@ private struct CustomCommandSettingsRow: View {
                 Image(systemName: "pencil")
             }
             .buttonStyle(.plain)
-            .help("Edit Command")
+            .help("Edit Custom Command")
             .accessibilityLabel("Edit \(command.name)")
 
             Button(action: onDelete) {
@@ -129,7 +118,7 @@ private struct CustomCommandSettingsRow: View {
                     .foregroundStyle(.red)
             }
             .buttonStyle(.plain)
-            .help("Delete Command")
+            .help("Delete Custom Command")
             .accessibilityLabel("Delete \(command.name)")
 
             Toggle("", isOn: $isEnabled)

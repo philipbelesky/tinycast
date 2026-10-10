@@ -1,5 +1,5 @@
 #!/bin/bash
-# Format the whole project with swift-format. `--check` reports instead of writing, for CI.
+# Format the whole project with swift-format. `--check` reports instead of writing.
 # Careful: this restructures code, it does not merely lay it out.
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
@@ -16,7 +16,9 @@ FORMAT=$(xcrun --find swift-format 2>/dev/null)
 # Built with a read loop rather than `mapfile`, which is bash 4 — macOS ships bash 3.2.
 files=()
 while IFS= read -r f; do files+=("$f"); done < <(
-    find Tinycast Tests -name '*.swift' ! -name '*.generated.swift' | sort
+    find Tinycast Tests -name '*.swift' ! -name '*.generated.swift' \
+        ! -path 'Tinycast/DesignSystem/Scrolling/EdgeDissolve.swift' \
+        ! -path 'Tinycast/DesignSystem/Scrolling/ThinScrollbar.swift' | sort
 )
 
 if [ "${1:-}" = "--check" ]; then

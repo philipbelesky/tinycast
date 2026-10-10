@@ -1,11 +1,19 @@
 // Single source of truth for links, install commands, and metadata used across
 // the site. Update these in one place rather than hunting through components.
 
+// The page title and meta description, shared by the layout and /llms.txt. Google truncates a
+// description near 160 characters, so `summary` is written to land under it rather than be cut.
+export const pageTitle = "Tinycast: a free, native launcher for macOS";
+export const summary =
+  "A free, open source macOS launcher with app search, clipboard history, snippets, custom commands, window management, your own AI keys and Raycast extensions.";
+
 export const site = {
   name: "Tinycast",
-  tagline: "The essentials, without the bloat.",
   repo: "https://github.com/abue-ammar/tinycast",
-  url: "https://abue-ammar.github.io/tinycast",
+  url: "https://tinycast.dev",
+  // The R2 bucket behind cdn.tinycast.dev. Anything over Workers' 25 MiB
+  // per-asset cap lives here instead of `public/` — see website/README.md.
+  cdn: "https://cdn.tinycast.dev",
   // Shown only until the build-time release lookup resolves, and if it fails.
   fallbackVersion: "v0.9.7",
   platform: "macOS 26+",
@@ -14,15 +22,15 @@ export const site = {
   community: {
     discord: "https://discord.gg/v2Eeb4QQy3",
   },
-  support:
-    "https://buy.polar.sh/polar_cl_NDVFC20DKQpLcNawsh97QzbARBXD3WNn8v35R0mbJmT",
+  support: "/support",
 } as const;
 
 // The hero, in as few words as possible — headline plus one punchy line.
 export const hero = {
-  // One entry per line: the break falls between the two sentences at every width.
-  headlineLines: ["Everything on your Mac.", "One keystroke away."],
-  sub: "A tiny, native launcher. No Electron. No account. No telemetry. No bullshit.",
+  // One entry per line: the break falls between the two sentences at every
+  // width. The last line ends bare, because the hero draws a caret after it.
+  headlineLines: ["Everything on your Mac.", "One keystroke away"],
+  sub: "A small, native launcher for your apps, clipboard, snippets and windows. Free and open source, with no account and no telemetry.",
   // The mono line under the buttons. Each fact is stated in the docs.
   facts: ["Under 100 MB of memory", "Zero dependencies", "Free & open source"],
 } as const;
@@ -31,48 +39,33 @@ export const nav = [
   { label: "Features", href: "/#features" },
   { label: "Privacy", href: "/#privacy" },
   { label: "Docs", href: "/docs" },
+  { label: "Changelog", href: "/changelog" },
 ] as const;
 
-// Homebrew install channels. Each is a separate app that runs side by side,
-// with its own settings, permissions and login item. Descriptions follow
-// docs/install.md.
+// The hero's two lines. Every other channel lives in docs/install.md, which is
+// where both install CTAs point.
 export const brewTrustCommand = "brew trust --tap abue-ammar/tinycast";
+export const brewInstallCommand =
+  "brew install --cask abue-ammar/tinycast/tinycast";
 
-export const channels = [
-  {
-    id: "stable",
-    label: "Stable",
-    cask: "tinycast",
-    description:
-      "Recommended. The smaller build, for Apple silicon on macOS 26.",
-  },
-  {
-    id: "universal",
-    label: "Intel",
-    cask: "tinycast-universal",
-    description:
-      "The universal build, for Intel Macs on macOS 26. Runs on Apple silicon too.",
-  },
-  {
-    id: "beta",
-    label: "Beta",
-    cask: "tinycast@beta",
-    description:
-      "Installs Tinycast Beta, with its own settings, right beside stable.",
-  },
-  {
-    id: "sequoia",
-    label: "Sequoia",
-    cask: "tinycast-sequoia",
-    description: "For macOS 15 Sequoia. New features reach macOS 26 first.",
-  },
+// The logo wall under the hero, in render order. The track starts at the first
+// entry with the left edge under the mask, so the two least-known names lead
+// and the ones worth reading land mid-viewport on load.
+export const companies = [
+  "voidzero",
+  "bytedance",
+  "apple",
+  "google",
+  "microsoft",
+  "openai",
+  "anthropic",
+  "stripe",
+  "cloudflare",
+  "github",
+  "samsung",
+  "alibaba",
+  "oracle",
+  "redhat",
 ] as const;
 
-export function brewInstallCommand(cask: string): string {
-  return `brew install --cask abue-ammar/tinycast/${cask}`;
-}
-
-// Only for a direct DMG download. Homebrew clears quarantine on every install
-// and update, so the Homebrew path needs no manual step at all.
-export const quarantineCommand =
-  'xattr -dr com.apple.quarantine "/Applications/Tinycast.app"';
+export type Company = (typeof companies)[number];

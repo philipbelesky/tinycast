@@ -6,13 +6,18 @@ final class FallbackCoordinator {
     private let store: FallbackStore
     private let quicklinks: QuicklinkStore
     private let settings: AppSettings
+    private let visibility: VisibilityStore
     /// The destinations a fallback hands its query to; nothing here is this type's own state.
     private unowned let core: AppCore
 
-    init(store: FallbackStore, quicklinks: QuicklinkStore, settings: AppSettings, core: AppCore) {
+    init(
+        store: FallbackStore, quicklinks: QuicklinkStore, settings: AppSettings,
+        visibility: VisibilityStore, core: AppCore
+    ) {
         self.store = store
         self.quicklinks = quicklinks
         self.settings = settings
+        self.visibility = visibility
         self.core = core
     }
 
@@ -30,10 +35,11 @@ final class FallbackCoordinator {
     /// Nil for a quicklink deleted since the order was stored.
     func entry(for fallback: Fallback) -> AppEntry? {
         switch fallback {
-        case .builtin(.aiChat): return CommandCatalog.makeEntry(.aiChat)
+        case .builtin(.quickAI): return CommandCatalog.makeEntry(.quickAI)
         case .builtin(.searchFiles): return CommandCatalog.makeEntry(.searchFiles)
         case .builtin(.googleSearch): return AppEntry(.google)
         case .builtin(.runShellCommand): return CommandCatalog.makeEntry(.runShellCommand)
+        case .builtin(.define): return CommandCatalog.makeEntry(.define)
         case .quicklink(let id): return quicklinks.quicklink(id: id).map(AppEntry.init)
         }
     }
@@ -41,11 +47,12 @@ final class FallbackCoordinator {
     /// The one funnel; each destination takes the query as the input it was already asking for.
     func run(_ fallback: Fallback, query: String) {
         switch fallback {
-        case .builtin(.aiChat): core.aiChatCoordinator.ask(query)
+        case .builtin(.quickAI): core.quickAICoordinator.ask(query)
         case .builtin(.searchFiles): core.fileSearchCoordinator.show(query: query)
         case .builtin(.googleSearch):
             core.webSearchCoordinator.search(engine: .google, query: query)
         case .builtin(.runShellCommand): core.customCommandCoordinator.runShellCommand(query)
+        case .builtin(.define): core.dictionaryCoordinator.show(term: query)
         case .quicklink(let id): core.quicklinkCoordinator.openQuicklink(id: id, filling: query)
         }
     }
@@ -69,11 +76,13 @@ final class FallbackCoordinator {
 
     private func isAvailable(_ builtin: Fallback.Builtin) -> Bool {
         switch builtin {
-        case .aiChat: return settings.aiEnabled
+        case .quickAI: return settings.aiEnabled
         case .searchFiles: return settings.fileSearchEnabled
         case .googleSearch: return settings.webSearchEnabled
         // Its own capability: this shell is not the custom-command library's switch to hold.
         case .runShellCommand: return true
+        // Settings › Commands is Define's only switch, so hiding the command there hides this too.
+        case .define: return visibility.isVisible(CommandCatalog.makeEntry(.define))
         }
     }
 }

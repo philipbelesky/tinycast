@@ -1,27 +1,23 @@
 import SwiftUI
 
-/// Stock `.sidebar` styling throughout: headers, capsule and tint are all system-supplied.
 struct SettingsSidebarView: View {
     @Environment(SettingsNavigationState.self) private var navigation
+    @Environment(\.appearsActive) private var appearsActive
     @State private var query = ""
     @State private var highlighted: SettingsSearchEntry.ID?
-    @FocusState private var searchFocused: Bool
+    @State private var searching = false
 
     private var results: [SettingsSearchEntry] { SettingsSearchCatalog.results(for: query) }
 
     var body: some View {
         VStack(spacing: 0) {
-            SettingsSearchField(query: $query, focused: $searchFocused)
-                .padding(.horizontal, Theme.Spacing.lg)
-                .padding(.bottom, Theme.Spacing.md)
             if query.isEmpty {
                 browse
             } else {
                 found
             }
         }
-        // The field sits under the toolbar's material, so it needs its own clearance from the top.
-        .padding(.top, Theme.Spacing.md)
+        .searchable(text: $query, isPresented: $searching, placement: .sidebar, prompt: "Search")
         .onExitCommand { query = "" }
         .background(focusShortcut)
     }
@@ -31,12 +27,20 @@ struct SettingsSidebarView: View {
             ForEach(SettingsSection.allCases) { section in
                 Section(section.title) {
                     ForEach(section.tabs) { tab in
-                        SettingsSidebarTabRow(tab: tab).tag(tab)
+                        SettingsSidebarTabRow(
+                            tab: tab,
+                            tint: appearsActive
+                                ? (navigation.tab == tab ? Color.primary : Color.accentColor)
+                                : Color.secondary
+                        )
+                        .tag(tab)
                     }
                 }
             }
         }
         .listStyle(.sidebar)
+        // Pin the style before mounting; the implicit sidebar style paints icons a frame late.
+        .labelStyle(.titleAndIcon)
     }
 
     @ViewBuilder private var found: some View {
@@ -64,7 +68,7 @@ struct SettingsSidebarView: View {
 
     /// ⌘F with no menu item to hang it on; zero-sized so it only ever contributes the shortcut.
     private var focusShortcut: some View {
-        Button("Search Settings") { searchFocused = true }
+        Button("Search Settings") { searching = true }
             .keyboardShortcut("f", modifiers: .command)
             .buttonStyle(.plain)
             .frame(width: 0, height: 0)
@@ -84,6 +88,7 @@ struct SettingsSidebarView: View {
 /// Marks a feature pane as off without hiding the place where it can be turned back on.
 private struct SettingsSidebarTabRow: View {
     let tab: SettingsTab
+    let tint: Color
     @Environment(AppSettings.self) private var settings
     @Environment(AppCore.self) private var core
 
@@ -108,6 +113,8 @@ private struct SettingsSidebarTabRow: View {
         case .extensions: !settings.extensionsEnabled
         case .commands: !settings.customCommandsEnabled
         case .quicklinks: !settings.quicklinksEnabled
+        case .appleShortcuts: !settings.appleShortcutsEnabled
+        case .dictation: !settings.dictationEnabled
         case .general, .applications, .systemSettings, .systemActions, .fallbacks, .emoji,
             .permissions, .backup, .miscellaneous, .about:
             false
@@ -116,7 +123,11 @@ private struct SettingsSidebarTabRow: View {
 
     var body: some View {
         HStack(spacing: Theme.Spacing.sm) {
-            Label(tab.title, systemImage: tab.systemImage)
+            Label {
+                Text(tab.title)
+            } icon: {
+                SettingsTabIcon(systemImage: tab.systemImage, tint: tint)
+            }
             Spacer(minLength: Theme.Spacing.sm)
             if isDisabled {
                 Text("Off")
@@ -141,7 +152,18 @@ private struct SettingsSearchResultRow: View {
                     .truncationMode(.middle)
             }
         } icon: {
-            Image(systemName: entry.tab.systemImage)
+            SettingsTabIcon(systemImage: entry.tab.systemImage, tint: .accentColor)
+        }
+        // Centred, not first-baseline: the tile sits against a two-line title and breadcrumb.
+        .labelStyle(CenteredLabelStyle())
+    }
+}
+
+private struct CenteredLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(alignment: .center) {
+            configuration.icon
+            configuration.title
         }
     }
 }
