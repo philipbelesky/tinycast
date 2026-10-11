@@ -10,7 +10,7 @@ DERIVED="build/DerivedData"
 # The shared personal-Xcode signing helper loads each identity from 1Password into a temporary
 # keychain, so every Mac builds with the same certificates and none has to keep them in its login
 # keychain. This fork is not stamped from that template, so it names the canonical copy directly.
-XCODE_SIGN="${XCODE_SIGN:-$HOME/.settings/agents/template-xcode-personal/scripts/xcode-sign}"
+XCODE_SIGN="${XCODE_SIGN:-$HOME/.settings/templates/template-xcode-personal/scripts/xcode-sign}"
 
 if [ ! -x "$XCODE_SIGN" ]; then
     echo "✗ Signing helper not found at $XCODE_SIGN — check out ~/.settings or set XCODE_SIGN." >&2
