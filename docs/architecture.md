@@ -237,6 +237,7 @@ Tinycast/
     Quicklinks/ Snippets/ Uninstall/ SystemActions/ CustomCommands/ HotKeys/ Backup/ Sync/
     WindowManagement/ Onboarding/ Updates/ Support/ AI/ Settings/ WebSearch/ Herdr/ VSCode/ Zed/ Linear/
     TaskCapture/
+    Music/          shared player automation, listening history and the gadget listener
     Extensions/
         Model/      pure — the harness inputs
         Service/    effects — stores, monitors, runners, AppKit glue

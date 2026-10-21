@@ -10,6 +10,7 @@ enum CommandID: String, CaseIterable, Sendable {
     case translate = "command:translate"
     case summarize = "command:summarize"
     case calculatorHistory = "command:calculator-history"
+    case showMusic = "command:show-music"
     case clipboardHistory = "command:clipboard-history"
     case pasteSequentially = "command:paste-sequentially"
     case searchEmoji = "command:search-emoji"
@@ -58,6 +59,7 @@ enum CommandID: String, CaseIterable, Sendable {
         case .translate: return BuiltInQuickAction.translate.title
         case .summarize: return BuiltInQuickAction.summarize.title
         case .calculatorHistory: return "Calculator History"
+        case .showMusic: return "Music Controls"
         case .clipboardHistory: return "Clipboard History"
         case .pasteSequentially: return "Paste Sequentially"
         case .searchEmoji: return "Search Emoji & Symbols"
@@ -108,6 +110,7 @@ enum CommandID: String, CaseIterable, Sendable {
         case .translate: return BuiltInQuickAction.translate.symbol
         case .summarize: return BuiltInQuickAction.summarize.symbol
         case .calculatorHistory: return "plus.forwardslash.minus"
+        case .showMusic: return "music.note"
         case .clipboardHistory: return "doc.on.clipboard"
         case .pasteSequentially: return "list.bullet.clipboard"
         case .searchEmoji: return "face.smiling"

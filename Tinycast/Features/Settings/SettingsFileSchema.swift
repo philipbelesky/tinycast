@@ -4,20 +4,20 @@ import Foundation
 @MainActor
 enum SettingsFileSchema {
     static func bindings(
-        settings: AppSettings, ai: AISettingsStore, quickActions: QuickActionSettingsStore,
+        settings: AppSettings, ai: AISettingsStore, quickActions: QuickActionSettingsStore, music: MusicStore,
         shortcuts: HotKeySettingsFile, launcher: LauncherSettingsFile,
         windowManagement: WindowManagementSettingsFile
     ) -> [SettingsFileBinding] {
         SettingsFileKey.allCases.map { key in
             binding(
-                for: key, settings: settings, ai: ai, quickActions: quickActions,
+                for: key, settings: settings, ai: ai, quickActions: quickActions, music: music,
                 shortcuts: shortcuts, launcher: launcher, windowManagement: windowManagement)
         }
     }
 
     private static func binding(
         for key: SettingsFileKey, settings: AppSettings, ai: AISettingsStore,
-        quickActions: QuickActionSettingsStore, shortcuts: HotKeySettingsFile,
+        quickActions: QuickActionSettingsStore, music: MusicStore, shortcuts: HotKeySettingsFile,
         launcher: LauncherSettingsFile, windowManagement: WindowManagementSettingsFile
     ) -> SettingsFileBinding {
         func bind<Root: AnyObject, Value: SettingsFileValue>(
@@ -28,6 +28,8 @@ enum SettingsFileSchema {
         }
 
         switch key {
+        case .musicPlayer: return bind(music, \.selectedPlayer)
+        case .musicCommands: return launcher.commandsBinding(for: key, owner: .music)
         case .launcherShortcut:
             return shortcuts.binding(for: key, action: .togglePalette, name: "App Launcher")
         case .showInMenuBar: return bind(settings, \.showInMenuBar)
@@ -173,6 +175,7 @@ extension DictationMode: SettingsFileRawValue {}
 extension DictationDestination: SettingsFileRawValue {}
 extension DictationIdleRelease: SettingsFileRawValue {}
 extension JoinWindow: SettingsFileRawValue {}
+extension MusicPlayer: SettingsFileRawValue {}
 
 extension ClipboardRetention: SettingsFileToken {
     var settingsToken: SettingsFileJSON {

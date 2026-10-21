@@ -50,6 +50,9 @@ final class AppCore {
     let searchSuggestions = SearchSuggestionStore()
     let regionNumberFormat = RegionNumberFormatMonitor()
     let calendarStore = CalendarStore()
+    let music = MusicStore()
+    @ObservationIgnored private(set) lazy var musicService = MusicPlaybackService(store: music)
+    @ObservationIgnored private(set) lazy var musicCoordinator = MusicCoordinator(service: musicService, core: self)
     let meetingClock = MeetingClock()
     let updateChecker = UpdateCheckStore()
     let supportReminders: SupportReminderStore
@@ -314,6 +317,7 @@ final class AppCore {
             }
 
             appIndex.start(settings: settings)
+            musicService.start()
             clipboardCoordinator.applyEnabled()
             extensions.start(appIndex: appIndex, coordinator: extensionCoordinator)
             extensionCoordinator.applyEnabled()
@@ -514,6 +518,7 @@ final class AppCore {
     func handleReopen() {
         if settingsCoordinator.focusExisting() { return }
         if aiChatCoordinator.focusExisting() { return }
+        if musicCoordinator.focusExisting() { return }
         if onboardingCoordinator.focusExisting() { return }
         if updateCoordinator.focusExisting() { return }
         if supportCoordinator.focusExisting() { return }
@@ -606,6 +611,7 @@ final class AppCore {
     }
 
     func prepareForTermination() {
+        musicService.stop()
         if settings.dictationEnabled { dictationCoordinator.prepareForTermination() }
         settingsFile?.flush()
         clipboardTextIndexer?.stop()
@@ -929,7 +935,7 @@ final class AppCore {
         let file = SettingsFileRepository(
             fileURL: AppPaths.settingsFile(),
             bindings: SettingsFileSchema.bindings(
-                settings: settings, ai: aiSettings, quickActions: quickActionSettings,
+                settings: settings, ai: aiSettings, quickActions: quickActionSettings, music: music,
                 shortcuts: shortcuts, launcher: launcher,
                 windowManagement: WindowManagementSettingsFile(
                     sizes: customWindowSizes, layouts: windowLayouts, rooms: rooms, aliases: aliases,

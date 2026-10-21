@@ -109,6 +109,8 @@ enum SettingsFileKey: String, CaseIterable, Sendable {
     case hideCurrentEvent = "calendar.hideCurrentEventAfterMinutes"
     case calendarCommands = "calendar.commands"
     case extensionsShowInLauncher = "extensions.showInLauncher"
+    case musicPlayer = "music.player"
+    case musicCommands = "music.commands"
 
     /// The top-level object the key sits in.
     var section: String { String(rawValue.prefix { $0 != "." }) }

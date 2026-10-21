@@ -231,6 +231,9 @@ final class LauncherCoordinator {
             core.quickActionCoordinator.run(.summarize)
         case .calculatorHistory:
             paletteCoordinator.togglePalette(mode: .calculatorHistory)
+        case .showMusic:
+            dismissPalette()
+            core.musicCoordinator.show()
         case .clipboardHistory:
             paletteCoordinator.togglePalette(mode: .clipboard)
         case .pasteSequentially:

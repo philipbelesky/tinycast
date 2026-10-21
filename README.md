@@ -64,6 +64,7 @@ Tinycast is **free, and it stays that way**. If you enjoy it, consider buying a 
   files, and more.
 - **Calendar and meetings** — your next meeting on the empty palette and in the menu bar, one key to
   join it, or let it join itself.
+- **Music controls** — control Apple Music or TVTunes, keep local listening history and pair the album-remote gadget. See [Music](docs/features/music.md).
 - **Notes** — an unlimited collection of plain Markdown files in one floating editor, searchable from
   the palette and rendered as you write.
 - **Emoji picker** — a searchable emoji grid, one keystroke away.

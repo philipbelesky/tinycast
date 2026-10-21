@@ -102,6 +102,7 @@ private struct SettingsSidebarTabRow: View {
         case .vsCode: !settings.vsCodeEnabled
         case .zed: !settings.zedEnabled
         case .linear: !core.linear.isEnabled
+        case .music: core.music.monitored.isEmpty && !core.music.remoteEnabled
         case .taskCapture:
             !(settings.taskCaptureOmniFocusEnabled || settings.taskCaptureTextFlowEnabled)
         case .notes: !settings.notesEnabled

@@ -20,6 +20,7 @@ final class AppWindowController: NSObject, NSWindowDelegate {
     private let activation: ActivationPolicy
     private let closesOnEscape: Bool
     private var window: NSWindow?
+    var isKeyWindow: Bool { window?.isKeyWindow == true }
     /// Rebuilt with the window, so a chrome's state never outlives the window it decorated.
     private var chrome: WindowChrome?
 

@@ -21,6 +21,8 @@ what you touched.
 
 ## The harnesses
 
+Music has four harnesses: `music-test` for pure history/protocol behavior, `music-service-test` for the injected playback boundary and persistence, `music-confirmation-test` for delayed player updates, and `music-remote-test` for a real loopback WebSocket listener. These do not grant Automation permissions or play personal music. Live Music-window, player and physical-gadget checks are documented in [music.md](features/music.md).
+
 ```sh
 ./Scripts/run-tests.sh              # all of them
 ./Scripts/run-tests.sh calc-test    # just one, while iterating

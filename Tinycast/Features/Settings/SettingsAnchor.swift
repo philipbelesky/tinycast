@@ -97,6 +97,10 @@ extension SettingsAnchor {
     static let calendarJoining = Self(tab: .calendar, title: "Joining")
     static let calendarMenuBar = Self(tab: .calendar, title: "Menu Bar")
     static let calendarCalendars = Self(tab: .calendar, title: "Calendars")
+    static let musicPlayers = Self(tab: .music, title: "Players")
+    static let musicHistory = Self(tab: .music, title: "Listening History")
+    static let musicGadget = Self(tab: .music, title: "Gadget")
+    static let musicCommands = Self(tab: .music, title: "Commands")
 
     static let extensionsExtensions = Self(tab: .extensions, title: "Extensions")
     static let extensionsCompatibility = Self(tab: .extensions, title: "Compatibility")

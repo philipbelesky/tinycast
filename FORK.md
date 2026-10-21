@@ -774,6 +774,14 @@ This is the largest launcher-list change since divergence 4: the capture scope o
 
 **On merge:** re-apply the `ScopeTarget` case and follow the compiler through `LauncherScreen`'s row and action switches and `LauncherList`'s lead-card and row enums; those are the only upstream files with more than a line of new logic. If upstream grows a generic "lead card" protocol, move the capture card onto it and delete the enum cases.
 
+## 25 — Shared music controls and gadget service
+
+**Touches:** additive `Features/Music/` models, native player automation, local history, a structured WebSocket listener, its coordinator/window and Settings pane; `AppCore` lifecycle, the Music Controls launcher/menu command, settings search and the `music.player`/`music.commands` file bindings. `Tinycast.xcodeproj` is regenerated from the unchanged XcodeGen source tree.
+
+This fork controls Apple Music and TVTunes through one app-owned service, with the existing Hermes Gadget protocol as another client. No external Python companion or additional daemon is needed. Per-Mac monitoring, local listening history and gadget access are opt-in capabilities; pairing stays in Keychain. The installed channel listens on 8796 and Debug on 8797. Details and acceptance boundaries live in [music.md](docs/features/music.md).
+
+**On merge:** retain the small AppCore, launcher, menu and Settings registration changes; the feature folder is self-contained. Keep capability grants out of settings imports and sync, and preserve the gadget's command-result semantics if either player adapter changes.
+
 ## Merging upstream
 
 ```sh

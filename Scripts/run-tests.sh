@@ -92,6 +92,16 @@ run() {
 }
 
 L=Tinycast/Features/Launcher/Model
+run music-test             Tinycast/Features/Music/Model/*.swift
+run music-service-test     Tinycast/Features/Music/Model/*.swift \
+                           Tinycast/Features/Music/Service/*.swift \
+                           Tinycast/Platform/AppPaths.swift Tinycast/Platform/KeychainSecretStore.swift
+run music-remote-test      Tinycast/Features/Music/Model/*.swift \
+                           Tinycast/Features/Music/Service/MusicRemoteServer.swift
+run music-confirmation-test Tinycast/Features/Music/Model/*.swift \
+                           Tinycast/Features/Music/Service/MusicAlbumConfirmation.swift \
+                           Tinycast/Features/Music/Service/MusicAutomationRunner.swift \
+                           Tinycast/Features/Music/Service/MusicAppleEvents.swift
 run slow -O fuzz-test      $L/SearchRelevance.swift $L/ScriptRomanization.swift \
                            $L/LauncherMatch.swift $L/EntryNaming.swift $L/LauncherOrder.swift \
                            $L/LauncherRankingStore.swift $L/LauncherSuggestions.swift

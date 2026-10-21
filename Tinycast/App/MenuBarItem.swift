@@ -24,6 +24,7 @@ struct MenuBarMenu: View {
             }
         }
         Divider()
+        Button("Music Controls…") { AppCore.shared.musicCoordinator.show() }
         Button("Check for Updates...") { AppCore.shared.updateCoordinator.checkForUpdates() }
         Button("Support \(appName)...") { AppCore.shared.supportCoordinator.showSupport() }
         Button("Settings...") { AppCore.shared.settingsCoordinator.showSettings() }

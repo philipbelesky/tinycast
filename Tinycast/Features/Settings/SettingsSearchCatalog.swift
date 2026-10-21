@@ -111,7 +111,16 @@ enum SettingsSearchCatalog {
         general + applications + systemSettings + systemActions + commands + quicklinks
         + appleShortcuts + fallbacks + clipboard + snippets + fileSearch + windowManagement
         + navigation + notes + calendar + emoji + ai + quickActions + dictation + extensions + permissions
-        + backup + about + webSearch + herdr + vsCode + zed + linear + taskCapture + miscellaneous
+        + backup + about + webSearch + herdr + vsCode + zed + linear + taskCapture + miscellaneous + music
+
+    private static let music: [SettingsSearchEntry] = [
+        .init(pane: .music, keywords: ["playback", "Apple Music", "TVTunes", "album", "listening"]),
+        .init(group: .musicPlayers, "Players", keywords: ["automation", "connect", "controls"]),
+        .init(.musicHistory, "Save listening history", keywords: ["tracks", "recent", "privacy"]),
+        .init(.musicGadget, "Allow gadget connections", keywords: ["remote", "pairing", "device"]),
+        .init(.musicGadget, "Gadget player", keywords: ["Apple Music", "TVTunes", "source"]),
+        .init(group: .musicCommands, "Commands", keywords: ["hotkey", "shortcut", "alias"])
+    ]
 
     private static let general: [SettingsSearchEntry] = [
         .init(pane: .general, keywords: ["preferences", "settings"]),

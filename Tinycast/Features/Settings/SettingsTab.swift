@@ -1,7 +1,7 @@
 enum SettingsTab: CaseIterable, Identifiable {
     case general, applications, systemSettings, systemActions, commands, quicklinks, appleShortcuts,
         fallbacks, clipboard, snippets, fileSearch, webSearch, herdr, vsCode, zed, linear, taskCapture,
-        windowManagement, navigation, notes, calendar, emoji, dictation, ai, quickActions, extensions,
+        windowManagement, navigation, notes, calendar, music, emoji, dictation, ai, quickActions, extensions,
         permissions, backup, miscellaneous, about
     /// The case, never an index: a selectable `List` flattens section and row IDs together.
     var id: Self { self }
@@ -33,6 +33,7 @@ enum SettingsTab: CaseIterable, Identifiable {
         case .clipboard: return "Clipboard"
         case .emoji: return "Emoji & Symbols"
         case .calendar: return "Calendar"
+        case .music: return "Music"
         case .extensions: return "Extensions"
         case .permissions: return "Permissions"
         case .backup: return "Backup"
@@ -68,6 +69,7 @@ enum SettingsTab: CaseIterable, Identifiable {
         case .clipboard: return "doc.on.clipboard"
         case .emoji: return "face.smiling"
         case .calendar: return "calendar"
+        case .music: return "music.note"
         case .extensions: return "puzzlepiece.extension"
         case .permissions: return "lock.shield"
         case .backup: return "arrow.up.arrow.down.circle"
@@ -104,7 +106,7 @@ enum SettingsSection: CaseIterable, Identifiable {
             // Everyday tools first; AI and extensions are opt-in extras.
             return [
                 .clipboard, .snippets, .fileSearch, .webSearch, .herdr, .vsCode, .zed, .linear,
-                .taskCapture, .windowManagement, .navigation, .notes, .calendar, .emoji, .dictation,
+                .taskCapture, .windowManagement, .navigation, .notes, .calendar, .music, .emoji, .dictation,
                 .ai, .quickActions, .extensions
             ]
         case .advanced: return [.backup, .miscellaneous, .about]

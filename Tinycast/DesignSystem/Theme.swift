@@ -206,6 +206,7 @@ enum Theme {
         static let previewAspectRatio: CGFloat = 16 / 9
         /// Opening size and resize floor: the Quick Actions row's width, the sidebar's full height.
         static let settingsWindow = CGSize(width: 900, height: 700)
+        static let musicWindow = CGSize(width: 720, height: 640)
         /// Settings sidebar: a fixed column, wide enough for "Window Management".
         static let settingsSidebar: CGFloat = 215
         /// The narrowest the pane column may get before a grouped row's control starts colliding.
