@@ -28,6 +28,7 @@ enum ScopeCatalog {
     static let commands = "scope:commands"
     static let windowManagement = "scope:window-management"
     static let herdr = "scope:herdr"
+    static let rex = "scope:rex"
     static let vsCode = "scope:vscode"
     static let zed = "scope:zed"
     static let linear = "scope:linear"
@@ -63,6 +64,10 @@ enum ScopeCatalog {
             definition: ScopeDefinition(
                 keyword: "h", id: herdr, title: "herdr", symbol: "macwindow", tint: .brown),
             target: .kinds([.herdrTarget])),
+        Entry(
+            definition: ScopeDefinition(
+                keyword: "r", id: rex, title: "Rex", symbol: "apple.terminal", tint: .slate),
+            target: .kinds([.rexTarget])),
         Entry(
             definition: ScopeDefinition(
                 keyword: "p", id: vsCode, title: "VS Code",
@@ -205,6 +210,7 @@ enum ScopeCatalog {
         case commands: return settings.customCommandsEnabled
         case windowManagement: return settings.windowManagementEnabled
         case herdr: return settings.herdrEnabled
+        case rex: return settings.rexEnabled
         case vsCode: return settings.vsCodeEnabled
         case zed: return settings.zedEnabled
         case linear: return settings.linearShowInLauncher

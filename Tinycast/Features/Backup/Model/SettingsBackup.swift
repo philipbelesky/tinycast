@@ -82,6 +82,8 @@ struct SettingsBackup: Codable {
         var herdrEnabled: Bool?
         var herdrShowInLauncher: Bool?
         var herdrTerminalBundleID: String?
+        var rexEnabled: Bool?
+        var rexShowInLauncher: Bool?
         var vsCodeEnabled: Bool?
         var vsCodeShowInLauncher: Bool?
         var zedEnabled: Bool?

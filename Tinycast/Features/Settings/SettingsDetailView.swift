@@ -22,6 +22,7 @@ struct SettingsDetailView: View {
             case .fileSearch: FileSearchSettingsView()
             case .webSearch: WebSearchSettingsView()
             case .herdr: HerdrSettingsView()
+            case .rex: RexSettingsView()
             case .vsCode: VSCodeSettingsView()
             case .zed: ZedSettingsView()
             case .linear: LinearSettingsView()

@@ -57,6 +57,8 @@ struct SyncTest {
             s.herdrEnabled = true
             s.herdrShowInLauncher = true
             s.herdrTerminalBundleID = "com.apple.Terminal"
+            s.rexEnabled = true
+            s.rexShowInLauncher = true
             s.vsCodeEnabled = true
             s.vsCodeShowInLauncher = true
             s.zedEnabled = true

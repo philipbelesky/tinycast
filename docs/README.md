@@ -40,6 +40,7 @@ open with an `## Invariants` section; read it before changing anything in that a
 [quicklinks](features/quicklinks.md) ·
 [web search](features/web-search.md) ·
 [herdr](features/herdr.md) ·
+[Rex](features/rex.md) ·
 [VS Code](features/vscode.md) ·
 [Zed](features/zed.md) ·
 [Linear](features/linear.md) ·

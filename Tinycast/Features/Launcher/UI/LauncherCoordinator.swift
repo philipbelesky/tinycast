@@ -142,6 +142,11 @@ final class LauncherCoordinator {
             core.herdrCoordinator.focus(targetID: id)
             return
         }
+        if app.kind == .rexTarget {
+            guard let id = RexTarget.id(fromEntryID: app.id) else { return }
+            core.rexCoordinator.focus(targetID: id)
+            return
+        }
         // Before the palette hides: selecting a scope is exactly typing its keyword and a space.
         if app.kind == .scope {
             guard let definition = ScopeCatalog.definition(id: app.id, settings: core.settings) else {
@@ -207,7 +212,7 @@ final class LauncherCoordinator {
             guard let snippetID = StoredSnippet.id(fromEntryID: app.id) else { return }
             snippetCoordinator.expandSnippet(id: snippetID, target: previous)
         case .command, .quickAction, .customCommand, .systemAction, .windowCommand, .windowLayout,
-            .windowRoom, .quicklink, .appleShortcut, .webSearch, .herdrTarget, .vsCodeProject,
+            .windowRoom, .quicklink, .appleShortcut, .webSearch, .herdrTarget, .rexTarget, .vsCodeProject,
             .zedProject, .linearTarget, .scope, .extensionCommand, .meeting:
             break  // handled above
         }

@@ -488,7 +488,7 @@ permission-aware failures. With the palette closed it targets the frontmost app,
 Quit All act on the same window a palette launch would have.
 
 System actions occupy their own launcher section and their own Settings pane. The empty-query publication
-order is search scopes, applications, System Settings, quicklinks, VS Code, herdr, Linear, web search, snippets, system actions, window
+order is search scopes, applications, System Settings, quicklinks, VS Code, herdr, Rex, Linear, web search, snippets, system actions, window
 commands, custom commands, then built-in commands; the sectioned view filters in that same order so the
 visible rows remain identical to the flat selection index.
 Search, favorites, visibility and learned ranking work through the normal `AppEntry` path, and every
@@ -610,6 +610,12 @@ time the palette opens rather than on a timer. The slice is empty whenever herdr
 isn't running, which is the same shape as the feature being switched off — no row and no report.
 Activation is the one launcher path that also raises a *different* app afterwards. See
 [herdr.md](herdr.md).
+
+## Rex
+
+`AppEntry.Kind.rexTarget` publishes the tabs of every session on the local Rex server, re-read each
+time the palette opens. Like herdr's, the slice is empty whenever Rex isn't installed or its server
+isn't running, and activation raises the Rex app after selecting the tab. See [rex.md](rex.md).
 
 ## Search scopes
 

@@ -595,6 +595,15 @@ final class AppSettings {
         }
     }
 
+    /// Reads the local Rex server over its socket; nothing leaves the machine.
+    var rexEnabled: Bool {
+        didSet { defaults.set(rexEnabled, forKey: Key.rexEnabled.rawValue) }
+    }
+
+    var rexShowInLauncher: Bool {
+        didSet { defaults.set(rexShowInLauncher, forKey: Key.rexShowInLauncher.rawValue) }
+    }
+
     /// Not a consent flag: the network switch is `LinearStore.isEnabled`, which no import
     /// can reach. This only decides whether consented views also show in the root search.
     var linearShowInLauncher: Bool {
@@ -950,6 +959,12 @@ final class AppSettings {
             defaults.object(forKey: Key.herdrShowInLauncher.rawValue) == nil
             || defaults.bool(forKey: Key.herdrShowInLauncher.rawValue)
         herdrTerminalBundleID = defaults.string(forKey: Key.herdrTerminalBundleID.rawValue)
+        rexEnabled =
+            defaults.object(forKey: Key.rexEnabled.rawValue) == nil
+            || defaults.bool(forKey: Key.rexEnabled.rawValue)
+        rexShowInLauncher =
+            defaults.object(forKey: Key.rexShowInLauncher.rawValue) == nil
+            || defaults.bool(forKey: Key.rexShowInLauncher.rawValue)
         vsCodeEnabled =
             defaults.object(forKey: Key.vsCodeEnabled.rawValue) == nil
             || defaults.bool(forKey: Key.vsCodeEnabled.rawValue)

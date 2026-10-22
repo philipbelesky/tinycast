@@ -99,6 +99,7 @@ private struct SettingsSidebarTabRow: View {
         case .fileSearch: !settings.fileSearchEnabled
         case .webSearch: !settings.webSearchEnabled
         case .herdr: !settings.herdrEnabled
+        case .rex: !settings.rexEnabled
         case .vsCode: !settings.vsCodeEnabled
         case .zed: !settings.zedEnabled
         case .linear: !core.linear.isEnabled

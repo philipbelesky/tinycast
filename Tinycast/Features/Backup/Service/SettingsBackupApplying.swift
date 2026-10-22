@@ -63,6 +63,8 @@ extension SettingsBackup {
             herdrEnabled: s.herdrEnabled,
             herdrShowInLauncher: s.herdrShowInLauncher,
             herdrTerminalBundleID: s.herdrTerminalBundleID,
+            rexEnabled: s.rexEnabled,
+            rexShowInLauncher: s.rexShowInLauncher,
             vsCodeEnabled: s.vsCodeEnabled,
             vsCodeShowInLauncher: s.vsCodeShowInLauncher,
             zedEnabled: s.zedEnabled,
@@ -403,6 +405,14 @@ extension SettingsBackup {
         }
         if let bundleID = s.herdrTerminalBundleID {
             settings.herdrTerminalBundleID = bundleID
+            count += 1
+        }
+        if let flag = s.rexEnabled {
+            settings.rexEnabled = flag
+            count += 1
+        }
+        if let flag = s.rexShowInLauncher {
+            settings.rexShowInLauncher = flag
             count += 1
         }
         if let flag = s.vsCodeEnabled {

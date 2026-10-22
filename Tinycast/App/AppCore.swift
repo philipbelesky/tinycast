@@ -119,6 +119,11 @@ final class AppCore {
         store: herdr, settings: settings, appIndex: appIndex,
         paletteCoordinator: paletteCoordinator)
 
+    @ObservationIgnored private(set) lazy var rex = RexStore()
+    @ObservationIgnored private(set) lazy var rexCoordinator = RexCoordinator(
+        store: rex, settings: settings, appIndex: appIndex,
+        paletteCoordinator: paletteCoordinator)
+
     @ObservationIgnored private(set) lazy var vsCode = VSCodeStore()
     @ObservationIgnored private(set) lazy var vsCodeCoordinator = VSCodeCoordinator(
         store: vsCode, settings: settings, appIndex: appIndex,
@@ -344,6 +349,7 @@ final class AppCore {
             applyWebSearchPresence()
             applyScopePresence()
             herdr.onChange = { [weak self] _ in self?.herdrCoordinator.applyHerdrPresence() }
+            rex.onChange = { [weak self] _ in self?.rexCoordinator.applyRexPresence() }
             vsCode.onChange = { [weak self] _ in self?.vsCodeCoordinator.applyVSCodePresence() }
             zed.onChange = { [weak self] _ in self?.zedCoordinator.applyZedPresence() }
             linear.onChange = { [weak self] _ in
@@ -357,6 +363,7 @@ final class AppCore {
             paletteCoordinator.onShow = { [weak self] in
                 guard let self else { return }
                 await herdrCoordinator.refresh()
+                await rexCoordinator.refresh()
                 await vsCodeCoordinator.refresh()
                 await zedCoordinator.refresh()
                 await linearCoordinator.refresh()
@@ -722,6 +729,11 @@ final class AppCore {
                 _ = $0.herdrEnabled
                 _ = $0.herdrShowInLauncher
             }, reproject: { $0.herdrCoordinator.applyHerdrPresence() })
+        track(
+            {
+                _ = $0.rexEnabled
+                _ = $0.rexShowInLauncher
+            }, reproject: { $0.rexCoordinator.applyRexPresence() })
         track(
             {
                 _ = $0.vsCodeEnabled

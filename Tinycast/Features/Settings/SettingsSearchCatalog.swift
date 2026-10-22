@@ -111,7 +111,8 @@ enum SettingsSearchCatalog {
         general + applications + systemSettings + systemActions + commands + quicklinks
         + appleShortcuts + fallbacks + clipboard + snippets + fileSearch + windowManagement
         + navigation + notes + calendar + emoji + ai + quickActions + dictation + extensions + permissions
-        + backup + about + webSearch + herdr + vsCode + zed + linear + taskCapture + miscellaneous + music
+        + backup + about + webSearch + herdr + rex + vsCode + zed + linear + taskCapture + miscellaneous
+        + music
 
     private static let music: [SettingsSearchEntry] = [
         .init(pane: .music, keywords: ["playback", "Apple Music", "TVTunes", "album", "listening"]),
@@ -662,6 +663,11 @@ enum SettingsSearchCatalog {
     private static let herdr: [SettingsSearchEntry] = [
         .init(pane: .herdr, keywords: ["terminal", "multiplexer", "tabs", "workspace"]),
         .init(.herdrHerdr, "Enable herdr", keywords: ["terminal", "tabs", "socket"])
+    ]
+
+    private static let rex: [SettingsSearchEntry] = [
+        .init(pane: .rex, keywords: ["terminal", "multiplexer", "tabs", "sessions", "agents"]),
+        .init(.rexRex, "Enable Rex", keywords: ["terminal", "tabs", "socket"])
     ]
 
     private static let vsCode: [SettingsSearchEntry] = [

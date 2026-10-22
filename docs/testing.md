@@ -175,6 +175,7 @@ If a change touches anything in the right column, the harness on the left is man
 | `scope-test` | `Launcher/Model/QueryScope.swift`, `ScopeTint.swift`, `ScopeKeywords.swift` |
 | `websearch-test` | `WebSearch/Model/WebSearchEngine.swift`, `SearchSuggestions.swift` |
 | `herdr-test` | `Herdr/Model/HerdrTarget.swift`, `HerdrHost.swift` |
+| `rex-test` | `Rex/Model/RexTarget.swift`, `RexSnapshot.swift` |
 | `vscode-test` | `VSCode/Model/VSCodeProject.swift` |
 | `zed-test` | `Zed/Model/ZedProject.swift` |
 | `linear-test` | Linear destination/issue models, credentials and cancellable process runner |

@@ -765,6 +765,8 @@ run websearch-test         Tinycast/Features/WebSearch/Model/WebSearchEngine.swi
                            Tinycast/Features/Snippets/Model/Snippet.swift
 run herdr-test             Tinycast/Features/Herdr/Model/HerdrTarget.swift \
                            Tinycast/Features/Herdr/Model/HerdrHost.swift
+run rex-test               Tinycast/Features/Rex/Model/RexTarget.swift \
+                           Tinycast/Features/Rex/Model/RexSnapshot.swift
 run vscode-test            Tinycast/Features/VSCode/Model/VSCodeProject.swift
 run zed-test               Tinycast/Features/Zed/Model/ZedProject.swift
 run task-capture-test      Tinycast/Features/TaskCapture/Model/*.swift

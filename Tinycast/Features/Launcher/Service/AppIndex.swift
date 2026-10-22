@@ -16,6 +16,7 @@ struct AppEntry: Identifiable, Hashable, Sendable {
         case appleShortcut
         case webSearch
         case herdrTarget
+        case rexTarget
         case vsCodeProject
         case zedProject
         case linearTarget
@@ -95,6 +96,11 @@ struct AppEntry: Identifiable, Hashable, Sendable {
                 return KindDescriptor(
                     label: "herdr", sectionTitle: "herdr",
                     openVerb: "Focus in herdr", canHideFromSearch: false,
+                    canRevealInFinder: false, canDragOut: false, isSymbolIcon: true, rankPriority: 3)
+            case .rexTarget:
+                return KindDescriptor(
+                    label: "Rex", sectionTitle: "Rex",
+                    openVerb: "Show in Rex", canHideFromSearch: false,
                     canRevealInFinder: false, canDragOut: false, isSymbolIcon: true, rankPriority: 3)
             case .vsCodeProject:
                 return KindDescriptor(
@@ -237,7 +243,7 @@ struct AppEntry: Identifiable, Hashable, Sendable {
         case .snippet:
             return StoredSnippet.id(fromEntryID: id).map { .snippet(id: $0) }
         // A web search needs a query; a herdr id and a project path can vanish between launches.
-        case .webSearch, .herdrTarget, .vsCodeProject, .zedProject, .linearTarget, .scope,
+        case .webSearch, .herdrTarget, .rexTarget, .vsCodeProject, .zedProject, .linearTarget, .scope,
             .extensionCommand, .meeting:
             return nil
         }
@@ -293,6 +299,7 @@ struct AppEntry: Identifiable, Hashable, Sendable {
             return WebSearchEngine.engine(id: WebSearchEngine.id(fromEntryID: id) ?? "")?.symbol
                 ?? WebSearchEngine.default.symbol
         case .herdrTarget: return "macwindow"
+        case .rexTarget: return "apple.terminal"
         case .windowLayout: return WindowLayout.sfSymbol
         case .windowRoom: return Room.sfSymbol
         case .meeting: return "video.fill"
@@ -479,6 +486,7 @@ final class AppIndex {
     private var appleShortcutEntries: [AppEntry] = []
     private var webSearchEntries: [AppEntry] = []
     private var herdrEntries: [AppEntry] = []
+    private var rexEntries: [AppEntry] = []
     private var vsCodeEntries: [AppEntry] = []
     private var zedEntries: [AppEntry] = []
     private var linearEntries: [AppEntry] = []
@@ -688,6 +696,26 @@ final class AppIndex {
         publishEntries()
     }
 
+    /// Replaces the Rex slice on every palette open; empty is how "Rex isn't running" arrives.
+    func setRexTargets(_ targets: [RexTarget]) {
+        let entries = targets.map { target in
+            AppEntry(
+                id: target.entryID, name: target.displayName,
+                url: URL(string: "tinycast://rex/tab")!,
+                bundleID: nil, kind: .rexTarget,
+                // So "blocked" or "active" finds the row that is, without touching the name.
+                alternateTitles: [
+                    target.status.flatMap { $0.isNoteworthy ? $0.rawValue : nil },
+                    target.active ? "active" : nil,
+                    target.sessionLabel
+                ].compactMap { $0 },
+                symbolName: "apple.terminal")
+        }
+        guard entries != rexEntries else { return }
+        rexEntries = entries
+        publishEntries()
+    }
+
     /// Shows or hides the web-search slice; the engines themselves are static.
     func setWebSearchVisible(_ visible: Bool) {
         let entries = visible ? WebSearchEngine.builtIn.map(AppEntry.init) : []
@@ -860,7 +888,7 @@ final class AppIndex {
             Self.named(scopeEntries + meetingEntries) + discoveredEntries
             + Self.named(
                 extensionEntries + quicklinkEntries + appleShortcutEntries + vsCodeEntries + zedEntries
-                    + herdrEntries + linearEntries + webSearchEntries + snippetEntries
+                    + herdrEntries + rexEntries + linearEntries + webSearchEntries + snippetEntries
                     + Self.systemActionEntries + windowLayoutEntries + windowRoomEntries
                     + windowCommandEntries
                     + customWindowSizeEntries + customCommandEntries + quickActionEntries

@@ -1,6 +1,6 @@
 enum SettingsTab: CaseIterable, Identifiable {
     case general, applications, systemSettings, systemActions, commands, quicklinks, appleShortcuts,
-        fallbacks, clipboard, snippets, fileSearch, webSearch, herdr, vsCode, zed, linear, taskCapture,
+        fallbacks, clipboard, snippets, fileSearch, webSearch, herdr, rex, vsCode, zed, linear, taskCapture,
         windowManagement, navigation, notes, calendar, music, emoji, dictation, ai, quickActions, extensions,
         permissions, backup, miscellaneous, about
     /// The case, never an index: a selectable `List` flattens section and row IDs together.
@@ -22,6 +22,7 @@ enum SettingsTab: CaseIterable, Identifiable {
         case .fileSearch: return "File Search"
         case .webSearch: return "Web Search"
         case .herdr: return "herdr"
+        case .rex: return "Rex"
         case .vsCode: return "VS Code"
         case .zed: return "Zed"
         case .linear: return "Linear"
@@ -58,6 +59,7 @@ enum SettingsTab: CaseIterable, Identifiable {
         case .fileSearch: return "doc.text.magnifyingglass"
         case .webSearch: return "magnifyingglass"
         case .herdr: return "macwindow"
+        case .rex: return "apple.terminal"
         case .vsCode: return "chevron.left.forwardslash.chevron.right"
         case .zed: return "cursorarrow.rays"
         case .linear: return "line.3.horizontal.decrease.circle"
@@ -105,8 +107,9 @@ enum SettingsSection: CaseIterable, Identifiable {
         case .features:
             // Everyday tools first; AI and extensions are opt-in extras.
             return [
-                .clipboard, .snippets, .fileSearch, .webSearch, .herdr, .vsCode, .zed, .linear,
-                .taskCapture, .windowManagement, .navigation, .notes, .calendar, .music, .emoji, .dictation,
+                .clipboard, .snippets, .fileSearch, .webSearch, .herdr, .rex, .vsCode, .zed,
+                .linear, .taskCapture, .windowManagement, .navigation, .notes, .calendar, .music, .emoji,
+                .dictation,
                 .ai, .quickActions, .extensions
             ]
         case .advanced: return [.backup, .miscellaneous, .about]

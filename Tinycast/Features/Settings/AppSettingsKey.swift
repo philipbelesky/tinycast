@@ -63,6 +63,8 @@ enum AppSettingsKey: String, CaseIterable {
     case herdrEnabled = "herdrEnabled"
     case herdrShowInLauncher = "herdrShowInLauncher"
     case herdrTerminalBundleID = "herdrTerminalBundleID"
+    case rexEnabled = "rexEnabled"
+    case rexShowInLauncher = "rexShowInLauncher"
     case vsCodeEnabled = "vsCodeEnabled"
     case vsCodeShowInLauncher = "vsCodeShowInLauncher"
     case zedEnabled = "zedEnabled"

@@ -428,6 +428,7 @@ extension View {
             .environment(core.customWindowSizes)
             .environment(core.customWindowSizeCoordinator)
             .environment(core.herdr)
+            .environment(core.rex)
             .environment(core.vsCode)
             .environment(core.zed)
             .environment(core.linear)

@@ -129,6 +129,9 @@ extension SettingsAnchor {
     static let herdrHerdr = Self(tab: .herdr, title: "herdr")
     static let herdrTabs = Self(tab: .herdr, title: "Tabs")
 
+    static let rexRex = Self(tab: .rex, title: "Rex")
+    static let rexTabs = Self(tab: .rex, title: "Tabs")
+
     static let vsCodeVSCode = Self(tab: .vsCode, title: "VS Code")
     static let vsCodeProjects = Self(tab: .vsCode, title: "Projects")
 

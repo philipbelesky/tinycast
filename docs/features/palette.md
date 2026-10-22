@@ -390,6 +390,7 @@ pane, and the table is what a fresh install reads.
 | `c` | Commands | `.command` + `.customCommand` | yes |
 | `w` | Window Management | `.windowCommand` + `.systemAction` | yes |
 | `h` | herdr | `.herdrTarget` | yes |
+| `r` | Rex | `.rexTarget` | yes |
 | `p` | VS Code | `.vsCodeProject` | yes |
 | `z` | Zed | `.zedProject` | yes |
 | `l` | Linear | cached destinations + on-demand ticket lookup | yes |

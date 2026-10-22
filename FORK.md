@@ -52,6 +52,7 @@ themselves are in [AGENTS.md](AGENTS.md#non-negotiables). This file covers only 
 | 22 | [Zed project opener](#22--zed-project-opener) | Medium — the same `AppEntry.Kind` surface as 4 | Yes, as a feature |
 | 23 | [Feature switch placement and sidebar status](#23--feature-switch-placement-and-sidebar-status) | Low — localized settings changes | Yes, as a usability improvement |
 | 24 | [Task capture into OmniFocus and TextFlow](#24--task-capture-into-omnifocus-and-textflow) | Medium — a new lead card and row kind in the launcher list | Yes, as a feature |
+| 26 | [Rex opener](#26--rex-opener) | Medium — the same `AppEntry.Kind` surface as 4 | Unlikely — niche third-party tool |
 
 Keep each divergence as **its own commit**, never squashed together. Rebasing `philip` onto a new
 `origin/main` then replays them one at a time, and a divergence that upstream has since made redundant
@@ -782,6 +783,16 @@ This fork controls Apple Music and TVTunes through one app-owned service, with t
 
 **On merge:** retain the small AppCore, launcher, menu and Settings registration changes; the feature folder is self-contained. Keep capability grants out of settings imports and sync, and preserve the gadget's command-result semantics if either player adapter changes.
 
+## 26 — Rex opener
+
+**Touches:** a new `Features/Rex/` (two pure models with a harness, a client, a store, a coordinator, a settings pane), plus the same hook set as divergence 5 — `AppEntry.Kind.rexTarget`, an `AppIndex` slice, a `LauncherCoordinator` branch, `ScopeCatalog`'s `r`, `PaletteCoordinator.onShow`, `AppCore` wiring, `SettingsTab`, and the settings/backup registries.
+
+`r payments` lists the tabs of every session on the local [Rex](docs/features/rex.md) server; ↵ selects one in the Rex app and raises it. It is herdr's opener for a different multiplexer, and deliberately a sibling folder rather than a shared abstraction: the two read different protocols, name tabs differently and find their host differently (Rex reports the app's pid; herdr needs the `ProcessTable` walk). Like herdr, **it is the cleanest thing here to delete** — one folder plus the enum arms the compiler points at.
+
+Two things not to lose in a merge: every `rex` call passes `--autostart=false`, without which opening the palette starts a stopped Rex server; and `RexClient.snapshotScript` is the parser's input format, so `rex-test`'s fixture moves with it.
+
+**On merge:** re-apply the `Kind` case and follow the compiler through the same switches as herdr.
+
 ## Merging upstream
 
 ```sh
@@ -834,7 +845,7 @@ and the old and new boundary commits are verified tree-identical.
 Then, before calling it done — the standard gate from
 [testing.md](docs/testing.md#definition-of-done) plus the fork-specific checks:
 
-- [ ] `./Scripts/run-tests.sh` passes (`scope-test`, `websearch-test`, `herdr-test`, `vscode-test`, `zed-test` and `linear-test` are fork-local).
+- [ ] `./Scripts/run-tests.sh` passes (`scope-test`, `websearch-test`, `herdr-test`, `rex-test`, `vscode-test`, `zed-test` and `linear-test` are fork-local).
 - [ ] Debug build compiles with no new warnings.
 - [ ] `./Scripts/lint.sh` is clean.
 - [ ] `grep -rln 'import AppKit\|import SwiftUI\|import Cocoa' Tinycast/Features/*/Model/` returns nothing.
@@ -848,11 +859,11 @@ Then, before calling it done — the standard gate from
       added to its source list in `Scripts/run-tests.sh` — `palette-placement-test`, `icon-cache-test`
       and `hover-arming-test` all needed it (divergence 4).
 - [ ] **Every fork-local Settings pane is listed in `SettingsSearchCatalog`** — Web Search, herdr,
-      VS Code, Zed, Linear and Miscellaneous, each with a `SettingsAnchor` its `Form` claims, or
+      Rex, VS Code, Zed, Linear and Miscellaneous, each with a `SettingsAnchor` its `Form` claims, or
       `settings-history-test` fails on *every pane is reachable from Settings search*
       (divergences 4, 5, 6, 8).
-- [ ] **`PaletteCoordinator.onShow` still fires** — otherwise herdr, VS Code, Zed and Linear list stale
-      state (divergences 5, 6, 8, 22).
+- [ ] **`PaletteCoordinator.onShow` still fires** — otherwise herdr, Rex, VS Code, Zed and Linear list
+      stale state (divergences 5, 6, 8, 22, 26).
 - [ ] **Linear's flag is still on the store, not in `AppSettings`** (divergences 8, 15).
 - [ ] **The five default-on initialisers survived** — upstream's are `defaults.bool(forKey:)`, the
       fork's are `object(forKey:) == nil || bool(forKey:)`, and a merge that takes upstream's line
