@@ -45,6 +45,7 @@ struct MusicRemoteTest {
             let initial = try await receive(socket)
             assert(initial["source"] as? String == "TVTUNES")
             assert(initial["ack"] == nil)
+            try await ping(socket)
             try await socket.send(.string(#"{"type":"telemetry","battery_percent":73}"#))
             try await socket.send(.string("{\"type\":\"command\",\"id\":\"press-\(index)\",\"command\":\"toggle\"}"))
             var acknowledged = false
@@ -86,6 +87,13 @@ struct MusicRemoteTest {
         @unknown default: throw CancellationError()
         }
         return try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+    }
+
+    // The gadget's ESP-IDF client pings every ten seconds; a control frame must not end the session.
+    private static func ping(_ socket: URLSessionWebSocketTask) async throws {
+        try await withCheckedThrowingContinuation { (done: CheckedContinuation<Void, Error>) in
+            socket.sendPing { error in if let error { done.resume(throwing: error) } else { done.resume() } }
+        }
     }
 
     private static func expectClosed(_ socket: URLSessionWebSocketTask) async {

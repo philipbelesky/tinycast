@@ -109,6 +109,7 @@ final class MusicRemoteServer {
                 group.addTask { [weak self] in
                     while !Task.isCancelled {
                         let message = try await connection.receive()
+                        if message.metadata.opcode == .ping || message.metadata.opcode == .pong { continue }
                         guard message.metadata.opcode == .text,
                             let parsed = MusicRemoteMessage.parse(message.content)
                         else { return }
