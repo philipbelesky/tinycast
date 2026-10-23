@@ -374,6 +374,7 @@
 		6555A0AF9118C5558AF57F54 /* CustomCommandListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C85F2A621F5474766E80BFB /* CustomCommandListView.swift */; };
 		655B109018CF570E24B51C2A /* MusicAlbumHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF5C0A537DD6858365DD03EB /* MusicAlbumHistory.swift */; };
 		6564BC090026A6EBC5C24000 /* AIChatDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 433D5E44E58C6759981FE7E1 /* AIChatDetailView.swift */; };
+		658FFDBB76F7213404FBAA28 /* MusicToggleConfirmation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9E75E663FA4423DE050CDD9 /* MusicToggleConfirmation.swift */; };
 		65DB7299A5DC3D82C37175B9 /* DictationHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F20B7BDED6FBF1331C50090 /* DictationHelper.swift */; };
 		664D82881F3B90E6B1D504EB /* WindowPlacementEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E89EC889B55E3E5DD543542 /* WindowPlacementEngine.swift */; };
 		67491E7FDA7D8C3AA831BD00 /* DictationVolumeSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = D558FDBE73563E4292E388DD /* DictationVolumeSnapshot.swift */; };
@@ -1602,6 +1603,7 @@
 		B9C76E8B65CDA0E2A8778816 /* MusicView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicView.swift; sourceTree = "<group>"; };
 		B9D14B02D3FE262EADFD3404 /* MarkdownTableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownTableView.swift; sourceTree = "<group>"; };
 		B9E140AF0EE4548DDC4814D7 /* MathNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MathNode.swift; sourceTree = "<group>"; };
+		B9E75E663FA4423DE050CDD9 /* MusicToggleConfirmation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicToggleConfirmation.swift; sourceTree = "<group>"; };
 		B9F568F2F6EF857274F1A9D8 /* ExtensionIconCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionIconCache.swift; sourceTree = "<group>"; };
 		BA90C7C0B97C4745B8F94C4B /* ExtensionListKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionListKey.swift; sourceTree = "<group>"; };
 		BA9F3FA9925873D25EAF7D03 /* PalettePanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PalettePanel.swift; sourceTree = "<group>"; };
@@ -1908,6 +1910,7 @@
 				284A5269C8BB39C8BFD32794 /* MusicPlaybackService.swift */,
 				4A5CAFC76808864A18DD4217 /* MusicRemoteServer.swift */,
 				FEA4FDCC26792E515C2ABC47 /* MusicStore.swift */,
+				B9E75E663FA4423DE050CDD9 /* MusicToggleConfirmation.swift */,
 			);
 			path = Service;
 			sourceTree = "<group>";
@@ -4959,6 +4962,7 @@
 				7BF2BD5D05DD4760C22AA12A /* MusicRemoteServer.swift in Sources */,
 				AC7F53B126600FC7E307ADAD /* MusicSettingsView.swift in Sources */,
 				A96A7F56E50767B274B6E97F /* MusicStore.swift in Sources */,
+				658FFDBB76F7213404FBAA28 /* MusicToggleConfirmation.swift in Sources */,
 				59D8F1ADD4DA1DA41F61E202 /* MusicView.swift in Sources */,
 				F5FF00BF593ED5D1514F7BB9 /* NavigationSettingsView.swift in Sources */,
 				425EFB24DF9C320864624E73 /* NoteBlockDecoration.swift in Sources */,

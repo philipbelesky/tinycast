@@ -25,7 +25,21 @@ struct MusicConfirmationTest {
                 read: { await wrongQueue.read() }, pause: {})
             assertionFailure("A matching track in the wrong queue must not confirm the album")
         } catch { assert(wrongQueue.readCount == 6) }
-        print("Delayed album changes, transient fallback and wrong-queue confirmation checks passed")
+        let stale = MusicConfirmationFixture([waiting, playing])
+        let toggled = try await MusicToggleConfirmation.wait(from: .paused, reply: waiting,
+            read: { stale.read() }, pause: {})
+        assert(toggled.status == .playing && stale.readCount == 2)
+
+        let prompt = MusicConfirmationFixture([waiting])
+        let immediate = try await MusicToggleConfirmation.wait(from: .paused, reply: playing,
+            read: { prompt.read() }, pause: {})
+        assert(immediate.status == .playing && prompt.readCount == 0)
+
+        let unchanged = MusicConfirmationFixture([waiting])
+        let ignored = try await MusicToggleConfirmation.wait(from: .paused, reply: waiting,
+            read: { unchanged.read() }, pause: {})
+        assert(ignored.status == .paused && unchanged.readCount == 20, "An ignored toggle reports its real state")
+        print("Delayed album changes, transient fallback, wrong-queue and toggle confirmation checks passed")
     }
 }
 

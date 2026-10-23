@@ -146,7 +146,11 @@ final class MusicPlaybackService {
                 pendingAlbums[player] = target
                 return result
             }
-            return try await runner.transport(command, player: player)
+            let reply = try await runner.transport(command, player: player)
+            guard command == .toggle else { return reply }
+            try validateConnection(player, revision: revision)
+            return try await MusicToggleConfirmation.wait(from: current.status, reply: reply,
+                read: { try await runner.state(player) })
         }
     }
 
