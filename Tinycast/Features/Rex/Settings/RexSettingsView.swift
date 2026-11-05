@@ -11,9 +11,10 @@ struct RexSettingsView: View {
             FeatureSwitchSection(
                 anchor: .rexRex,
                 enableTitle: "Enable Rex",
-                enableSubtitle:
-                    "Lists the tabs of every session on the local Rex server, read over its socket. "
-                    + "↵ shows one in the Rex app and brings it forward.",
+                enableSubtitle: """
+                    Lists the tabs of every session on the local Rex server, read over its socket. \
+                    ↵ shows one in the Rex app and brings it forward.
+                    """,
                 isEnabled: $settings.rexEnabled,
                 showsInLauncher: $settings.rexShowInLauncher)
 

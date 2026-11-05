@@ -20,8 +20,9 @@ final class CurrencyRateStore {
     /// On unless turned off. Not in `AppSettings`, so no import can flip it either way.
     private(set) var isEnabled: Bool
 
-    /// The newest snapshot, nil when none has landed and always nil without consent.
+    /// The newest snapshot, nil when none has landed.
     private(set) var rates: CurrencyRates?
+    private(set) var isRefreshing = false
 
     private static let consentKey = "currencyRatesEnabled"
     private let defaults = UserDefaults.standard
@@ -87,6 +88,17 @@ final class CurrencyRateStore {
         return await fetchAndStore()
     }
 
+    /// The pump re-measures age from `completedAt` when it wakes, so its schedule needs no reset.
+    func refresh() {
+        guard !isRefreshing else { return }
+        isRefreshing = true
+        Task {
+            await fetchAndStore()
+            isRefreshing = false
+        }
+    }
+
+    @discardableResult
     private func fetchAndStore() async -> Bool {
         guard isEnabled else { return false }
         guard let result = await Self.fetch() else { return false }

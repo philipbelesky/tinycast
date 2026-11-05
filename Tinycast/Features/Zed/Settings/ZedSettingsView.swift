@@ -11,9 +11,10 @@ struct ZedSettingsView: View {
             FeatureSwitchSection(
                 anchor: .zedZed,
                 enableTitle: "Enable Zed Projects",
-                enableSubtitle:
-                    "Lists the workspaces Zed has opened, read from its own storage on disk. "
-                    + "↵ opens one in Zed.",
+                enableSubtitle: """
+                    Lists the workspaces Zed has opened, read from its own storage on disk. \
+                    ↵ opens one in Zed.
+                    """,
                 isEnabled: $settings.zedEnabled,
                 showsInLauncher: $settings.zedShowInLauncher)
 

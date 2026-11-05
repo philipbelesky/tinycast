@@ -36,7 +36,7 @@ struct SyncTest {
             s.showInMenuBar = true
             s.popToRootSeconds = 30
             s.compactMode = true
-            s.showFavoritesInCompactMode = true
+            s.compactBarCommands = ["command:clipboard-history"]
             s.searchScopes = ["apps"]
             s.openOnCursorScreen = true
             s.customCommandsEnabled = true
@@ -49,7 +49,7 @@ struct SyncTest {
             s.quicklinksEnabled = true
             s.quicklinksShowInLauncher = true
             s.quicklinkOpensNewWindow = true
-            s.quicklinkSelectionFallback = "clipboard"
+            s.quicklinkPassesSelectedText = true
             s.quicklinkConfirmsBeforeDelete = true
             s.webSearchEnabled = true
             s.webSearchShowInLauncher = true

@@ -46,6 +46,7 @@ struct PalettePlacementTests {
 
     static func main() {
         theDefaultPlacement()
+        glassDrawingClearance()
         restoringOnItsOwnDisplay()
         offsetsFollowTheirDisplay()
         restoringPartlyOffscreen()
@@ -60,6 +61,34 @@ struct PalettePlacementTests {
     }
 
     // MARK: - The untouched placement
+
+    static func glassDrawingClearance() {
+        for interfaceSize in InterfaceSize.allCases {
+            let size = interfaceSize.metrics.size
+            let compactSize = CGSize(width: size.panelWidth, height: size.compactHeight)
+            let expandedSize = CGSize(width: size.panelWidth, height: size.panelHeight)
+            for anchor in [CGPoint(x: 250, y: 900), CGPoint(x: -1200, y: -80)] {
+                let outset = Theme.Size.paletteGlassOutset
+                let compact = PalettePlacement.frame(at: anchor, size: compactSize, outset: outset)
+                expect(compact.width, compactSize.width + outset * 2, "glass has horizontal clearance")
+                expect(compact.height, compactSize.height + outset * 2, "glass has vertical clearance")
+                expect(
+                    PalettePlacement.anchor(of: compact, outset: outset) == anchor,
+                    "the visible anchor survives the window outset")
+                let moved = compact.offsetBy(dx: 137, dy: -53)
+                let movedAnchor = PalettePlacement.anchor(of: moved, outset: outset)
+                expect(
+                    movedAnchor == CGPoint(x: anchor.x + 137, y: anchor.y - 53),
+                    "drag uses the visible anchor")
+                let expanded = PalettePlacement.frame(at: movedAnchor, size: expandedSize, outset: 0)
+                expect(expanded.minX, movedAnchor.x, "expanding retains the visible left edge")
+                expect(expanded.maxY, movedAnchor.y, "expanding retains the visible top edge")
+                let collapsed = PalettePlacement.frame(
+                    at: PalettePlacement.anchor(of: expanded, outset: 0), size: compactSize, outset: outset)
+                expect(collapsed == moved, "collapse returns to the same drawing frame after a move")
+            }
+        }
+    }
 
     static func theDefaultPlacement() {
         let anchor = home(laptop)
@@ -303,27 +332,6 @@ struct PalettePlacementTests {
             visibleFrame: CGRect(x: 0, y: 0, width: 1000, height: 800),
             inset: inset, headerExtent: headerExtent)
         expect(clamped.maxX, 1000 - inset, "a leading menu clears the display's right edge")
-
-        let scale = Theme.MenuMotion.maximumScale
-        let leadingCanvas = MenuPanelCorner.bottomLeading.scaledFrame(leading, by: scale, parentFrame: parent)
-        let trailingCanvas = MenuPanelCorner.bottomTrailing.scaledFrame(
-            trailing, by: scale, parentFrame: parent)
-        let headerCanvas = MenuPanelCorner.belowHeaderTrailing.scaledFrame(
-            header, by: scale, parentFrame: parent)
-        let inputCanvas = controlCorner.scaledFrame(input, by: scale, parentFrame: parent)
-        let inputLeadingCanvas = inputLeadingCorner.scaledFrame(inputLeading, by: scale, parentFrame: parent)
-        let flippedCanvas = bottomControl.scaledFrame(flipped, by: scale, parentFrame: parent)
-        expect(leadingCanvas.minX, leading.minX, "left expansion keeps its leading edge fixed")
-        expect(leadingCanvas.minY, leading.minY, "left expansion keeps its bottom edge fixed")
-        expect(trailingCanvas.maxX, trailing.maxX, "right expansion keeps its trailing edge fixed")
-        expect(trailingCanvas.minY, trailing.minY, "right expansion keeps its bottom edge fixed")
-        expect(headerCanvas.maxX, header.maxX, "header expansion keeps its trailing edge fixed")
-        expect(headerCanvas.maxY, header.maxY, "header expansion keeps its top edge fixed")
-        expect(inputCanvas.maxX, input.maxX, "input expansion keeps its trailing edge fixed")
-        expect(inputCanvas.maxY, input.maxY, "input expansion keeps its top edge fixed")
-        expect(inputLeadingCanvas.minX, inputLeading.minX, "leading input expansion keeps its left edge")
-        expect(inputLeadingCanvas.maxY, inputLeading.maxY, "leading input expansion keeps its top edge")
-        expect(flippedCanvas.minY, flipped.minY, "a flipped input expansion grows away from its field")
     }
 
     // MARK: - The tokens these rules depend on

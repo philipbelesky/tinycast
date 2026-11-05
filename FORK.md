@@ -1,9 +1,9 @@
 # Fork
 
-This checkout is a **fork of [`abue-ammar/tinycast`](https://github.com/abue-ammar/tinycast)**. Note
-the remote names, which read backwards: **`origin` is the mainline** this file calls *upstream*, and
-**`My-Fork` is `philipbelesky/tinycast`**. Fork work lives on branch `philip`; compare against
-`origin/main` after `git fetch origin`.
+This checkout is a **fork of [`abue-ammar/tinycast`](https://github.com/abue-ammar/tinycast)**, which is
+the `upstream` remote and the mainline this file calls **upstream**; `origin` is the fork itself,
+`philipbelesky/tinycast`. Fork work lives on branch `philip`; compare against `upstream/main` after
+`git fetch upstream`.
 
 It is a **personal** fork, and a permanent one. It ships to the author's own Macs and nowhere else, so
 nothing here is waiting to become a pull request — the "Upstreamable?" column below is a note on how
@@ -52,10 +52,11 @@ themselves are in [AGENTS.md](AGENTS.md#non-negotiables). This file covers only 
 | 22 | [Zed project opener](#22--zed-project-opener) | Medium — the same `AppEntry.Kind` surface as 4 | Yes, as a feature |
 | 23 | [Feature switch placement and sidebar status](#23--feature-switch-placement-and-sidebar-status) | Low — localized settings changes | Yes, as a usability improvement |
 | 24 | [Task capture into OmniFocus and TextFlow](#24--task-capture-into-omnifocus-and-textflow) | Medium — a new lead card and row kind in the launcher list | Yes, as a feature |
+| 25 | [Shared music controls and gadget service](#25--shared-music-controls-and-gadget-service) | Low — a self-contained folder plus registrations | Unlikely — niche hardware client |
 | 26 | [Rex opener](#26--rex-opener) | Medium — the same `AppEntry.Kind` surface as 4 | Unlikely — niche third-party tool |
 
 Keep each divergence as **its own commit**, never squashed together. Rebasing `philip` onto a new
-`origin/main` then replays them one at a time, and a divergence that upstream has since made redundant
+`upstream/main` then replays them one at a time, and a divergence that upstream has since made redundant
 can be dropped whole rather than untangled.
 
 ---
@@ -674,9 +675,9 @@ when they arrive — they are the same once-per-keystroke optimisation this dive
 
 ## 18 — Event-tap watchdogs rebuild, not retry
 
-**Touches:** `HotKeys/Service/ModifierTapMonitor.swift` (upstream's rename of `DoubleTapMonitor.swift`) and `HotKeys/Service/HyperKeyTap.swift` — one
-`reviveAttempted` flag and one branch in each `healthCheck()` — plus the lifecycle section of
-`docs/features/hotkeys.md`.
+**Touches:** `HotKeys/Service/ModifierTapMonitor.swift` (upstream's rename of `DoubleTapMonitor.swift`) — one
+`reviveAttempted` flag and one branch in its `healthCheck()` — plus a paragraph in the lifecycle section
+of `docs/features/hotkeys.md`. It once touched the Hyper tap too; see the merge note below.
 
 Upstream's one-second watchdog treats a disabled tap as always recoverable: it calls
 `CGEvent.tapEnable(tap:enable:true)` and expects the tap back. That holds for the ordinary case the
@@ -698,9 +699,16 @@ whenever the tap is observed healthy, so an ordinary timeout still costs one che
 rebuild — the escalation only fires when the enable was ignored. Two seconds is the worst-case
 recovery, against the previous never.
 
-**On merge:** low risk. The branch sits inside a body upstream rarely touches, and if upstream ever
-rewrites either watchdog, take its version and re-apply the escalation — the flag is four lines and
-carries no state anyone else reads.
+**The Hyper half is retired (2026-11-05).** Upstream's #1709/#1718 moved the Hyper tap onto its own
+thread and stopped polling while a key is live: the tap re-enables itself on a disable event, and the
+`com.apple.coregraphics.eventTapRemoved` Darwin notification tears it down and rebuilds it. That is
+this divergence's rebuild, reached by notification rather than by a second watchdog tick, so the fork
+took upstream's `HyperKeyManager` and `HyperKeyTap` whole and `reviveDisabledTap()` went with them.
+
+**On merge:** low risk. `ModifierTapMonitor` still polls and still carries the escalation. If upstream
+rewrites that watchdog, take its version and re-apply the escalation — the flag is four lines and
+carries no state anyone else reads — unless upstream gives it the Hyper tap's notification-driven
+rebuild, in which case drop this divergence whole.
 
 ---
 
@@ -796,8 +804,8 @@ Two things not to lose in a merge: every `rex` call passes `--autostart=false`, 
 ## Merging upstream
 
 ```sh
-git fetch origin --tags
-git checkout philip && git rebase origin/main           # replay the divergences
+git fetch upstream --tags
+git checkout philip && git rebase upstream/main         # replay the divergences
 ```
 
 Rebase rather than merge, so the fork stays a readable stack of the divergences above rather than a
@@ -830,6 +838,10 @@ time once the fork's `ScopeChip` sat on top of upstream's growth; its key handli
 **The 2026-09-15 absorption of upstream `1855c81..979d09e` (75 commits) was a merge, and the first since 2026-08-26 to retire a divergence.** Upstream's #597 shipped an Interface Size setting — `InterfaceMetrics` behind `@Environment(\.metrics)`, a `PaletteWindowController` that re-places the panel on change — which is divergence 3 built properly, so `Theme.swift`, `IconCache`, `QuicklinkArgumentsRow`, `QuicklinkListView`, `ClipboardView`, `SnippetsListView` and `ColorCard` were taken whole from upstream and every other fork-tokenised literal was put back the way upstream spells it; only the `Theme.Colors.tile` map (divergence 4) went back onto `Theme.swift`. Twenty-eight conflicts otherwise. `EdgeDissolve` (divergence 9) now reads its bands through `metrics`. Upstream's #577 replaced each pane's shortcut rows with `FeatureCommandsSection`, so the clipboard's second chord (divergence 16) is a section of its own beneath it. #678 moved the launcher's ⇧⌘F/⌃⇧Q/⌘R chords into `LauncherScreen`, which took the fork's `launcherChord(_:)` with it; `toggleFavorite` there keeps the Linear-issue guard. `VisibilityStore.allowsHotKey` binds `.command`/`.commandAlternate` in one arm over upstream's new `id.owner` check, and the new `.quickAction` case joins the fork's three chords. `AppEntry.KindDescriptor` gained `canHideFromSearch`, false for every fork kind. The website's five stale forced-light pages (divergence 2, missed at its retirement) were taken from upstream. Upstream's #620/#635/#641 entitlements — JIT, Apple events, camera, calendars — were mirrored into `TinycastFork.entitlements`, and the Release-only hardened runtime came with them.
 
 **The 2026-10-11 absorption of upstream `979d09e..126c998` (242 commits) was a merge over a rewritten history, and the largest yet — forty-five conflicts.** Upstream force-rewrote again: its `979d09e` became `92da832`, whose tree differs from the absorbed one by a single `docs/ui.md` sentence (Raycast's name dropped from the restyle rule). That extends the 2026-08-20 rule beyond tree-identical boundaries: the merge used a temporary `git replace --graft` re-parenting the fork's previous merge `f24e30a` onto `92da832` (a plain `replace` of `979d09e` leaves the merge base at its parent), the one differing line was resolved to upstream's wording, and the replace ref was deleted after the commit. Upstream rebuilt root search (#1057): `LauncherMatch` replaces the launcher's use of `FuzzyMatch`, `AppIndex.orderedResults` returns `Results` with favourite, meeting, suggestion and match counts in place of `showSections`, and `AppEntry`'s `matchAliases` became `alternateTitles` and `keywords`. The fork's scope, kind filter and transient Linear issues (divergences 4, 8) were re-applied onto that shape — `orderedResults` takes `scope:kinds:additionalEntries:` again and keys its memo on them — and the fork kinds gained `canDragOut: false` and a `rankPriority`. Word-order matching (divergence 17) survives only outside the launcher; see its status note. Settings moved its environment into `settingsEnvironment(core:navigation:editorPresenter:)`, which now injects herdr, VS Code, Zed, Linear and task capture; the sidebar's Off label (divergence 23) wears upstream's `SettingsTabIcon`. Upstream inlined backup gather/apply into `SettingsBackup.swift`; the fork keeps them in `SettingsBackupApplying.swift`, now carrying rooms, custom window sizes, pinned emoji and the other new fields. `DoubleTapMonitor` became `ModifierTapMonitor`, and the watchdog escalation (divergence 18) was re-applied there. New upstream work joined the fork's lists: Dictation (hotkey, tab, microphone entitlement mirrored into `TinycastFork.entitlements`), Apple Shortcuts, the Define fallback and the AI Chat window. Previews (divergence 11) followed upstream's new required parameters, and `PreviewChrome` now draws `frosted(in:)` rather than the removed `VisualEffectView`; upstream deleted `SnippetArgumentsPrompt.swift` and its preview went with it. `ScopeTint.swift` was added to four more harnesses that compile `Theme.swift`, and `sync-test` gained `ModifierKey`, `Snippet` and the settings-file models. `file-search-test` and `form-input-test` fail identically on pristine upstream and were left alone. `AppIndex.ownBundlePrefix` names `com.belesky.tinycast`, the fork's ids, so Suggestions never offer Tinycast itself; upstream spells it `com.tinycast.`.
+
+**The 2026-10-21 absorption of upstream `126c998d..b97f172` (54 commits) was a merge.** The review branch fast-forwarded to published `origin/philip` (`1ccbcd56`) first: that tip was 978 commits ahead of the August checkout the worktree was created from, and it already contained `126c998d`. Rebasing onto `upstream/main` (`b97f172`) would have replayed 697 fork commits and 41 merges. `d3423b2` is not an ancestor of the force-updated `upstream/main`, but the published fork's merge base with it is `126c998d`, so no graft was used. Twenty-one conflicts. Signing, bundle ids and `TinycastFork.entitlements` stayed (divergences 1 and 10). `sync-lsp.sh` was deleted again and the `--index` compile database stayed out, while the `index` keyword remained (14). `Theme.Colors.tile` stayed on upstream's `InterfaceMetrics` (3 remains retired, 4). Currency kept the default-on initialiser and gained upstream's `refresh()` (15). Alternate-chord names took upstream's `String(localized:)` and kept the second and third cases (16). `SearchRelevance` kept its reorderings (17). Upstream removed `HyperKeyTap.healthCheck`, so the escalation now lives in `HyperKeyManager.healthCheck` through `reviveDisabledTap` (18). Gather and apply stayed in `SettingsBackupApplying` and picked up language, Hyper secure-input compatibility, file-search scope edits and `quicklinkPassesSelectedText` (10). `AppIndex.rank` searches `searchEntries`, so duplicate installations stay findable, and still injects additional entries (4, 8). The launcher's new Files section is omitted while a scope owns the query. Fork settings subtitles are single `LocalizedStringResource` literals. Undocumented drift dropped: the fork's `quicklinkSelectionFallback` enum, replaced by upstream's `quicklinkPassesSelectedText` (#1507). `file-search-test` (a `.jsx` preview kind the test still expects to be undeclared) and `form-input-test` (placeholder alignment) fail on sources that match upstream aside from `Theme.Colors.tile`, the same pair the 2026-10-11 note left failing. Clean Debug and Release builds warned nothing. `nm` finds no `PreviewData` in the Release binary and does in the Debug dylib. The palette, a dialog and both HUDs were not opened.
+
+**The 2026-11-05 absorption of upstream `b97f172..dc265b2` (51 commits) was a merge, layered on the 2026-10-21 one.** That merge (`a290f159`, branch `mainline-sync`) had never reached `philip`, which had meanwhile gained Music and Rex (divergences 25, 26), so it was merged first — three conflicts, all the new tabs and menu item — and upstream on top of it: nineteen conflicts. Upstream's Hyper Key rewrite retires divergence 18's Hyper half (see there). File and folder favorites (#1720) took the favorites prefix off `AppIndex.Results` and onto `LauncherList.favorites`; the launcher now splits favorites off before inserting Linear issues and the typed-address row, so neither can displace one, and `toggleFavorite` keeps its Linear-issue guard on upstream's row-based shape. Deeplinks (#1753) brought `SettingsTab.slug`, `DeepLinkConsentPolicy` and `HotKeyAction.entryID`, all exhaustive: the fork's tabs got slugs, the extra chords (16) ask no consent beyond their primary's and name no row, and Show Music needs none. `AppIndex`'s hotkey lookup took upstream's `HotKeyAction(entryID:)`. Compact Shortcuts replaced `showFavoritesInCompactMode`, and it, Show animations, the Notes menu-bar item and the display-wrap options joined `SettingsBackupApplying` (10). Upstream's URL scheme went into `project.yml` beside the fork's bundle ids; signing stayed (1). Upstream now signs CI releases with its own Developer ID and notarizes them; the fork's in-app updater still reads upstream's feed and still refuses those builds on the bundle-id check. The suite lock and exclusive queue came into `run-tests.sh` without the `--index` compile database (14); `app-installation-test` gained `RexTarget.swift` and `sync-test` `LocalizedResource.swift`. **Fork-only UI text is not in `Localizable.xcstrings`.** Upstream's localization rule (eight languages, `sync-strings.sh`) arrived across these two merges; the fork's strings compile as English literals and `check-localizations.js` passes, but no fork pane is translated, and running `sync-strings.sh` would add them all untranslated. `run-tests.sh` (130 harnesses), `lint.sh`, clean Debug and Release builds with no warnings and the `nm` preview check all passed. The palette, a dialog and both HUDs were not opened.
 
 **The 2026-09-10 absorption of upstream `a9c1708..1855c81` (20 commits) was a merge, and the cheapest one yet — ten conflicts, no re-litigated divergence.** Upstream's #493 moved a quicklink's arguments off their own screen into a header accessory, deleting `QuicklinkArgumentSession` and the two views around it; the fork took the deletion whole, losing that view's two previews (divergence 11) and the fixture only they used, and `PreviewChrome` swapped the retired session for `CustomCommandArgumentSession`. The replace-on-import button (divergence 7) now sits on top of upstream's extracted `addImportedQuicklinks`. Upstream also split `RootPaletteView.body` again, into `stateObservers(_:)` and `keyHandlers(_:selection:)` — which supersedes the fork's own `keyChords(_:selection:)` split from the previous drop, so the file was taken whole from upstream and the fork's scope chip, suggestion and Linear observers, `launcherChord(_:)` and scale tokens re-applied onto it. The new inline argument strip arrived full of magic numbers (divergence 3): `QuicklinkArgumentsRow`'s field box and width envelope and `QuicklinkPreview`'s glyph now multiply by `Theme.scale`, and its chevron takes `Theme.Typography.disclosure`. `palette-navigation-test` is the latest upstream harness to compile `PaletteState.swift` and so to need `$L/QueryScope.swift` and `$L/ScopeTint.swift` in its source list. Upstream's `--index` mode came back in a new shape — a `run index <name>` keyword registering benchmarks that stay out of the suite — so divergence 14 now keeps the keyword and drops only the compile-database emission.
 

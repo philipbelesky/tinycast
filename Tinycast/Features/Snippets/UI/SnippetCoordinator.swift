@@ -1,6 +1,5 @@
 import AppKit
 
-/// Owns the snippet flow: listener, browser, editor handoff, delivery, presence.
 @MainActor
 @Observable
 final class SnippetCoordinator {
@@ -55,7 +54,7 @@ final class SnippetCoordinator {
     func chooseSnippetsFolder() {
         guard
             let url = FolderPicker.choose(
-                message: "Choose the folder your snippets are kept in.",
+                message: String(localized: "Choose the folder your snippets are kept in."),
                 startingAt: store.snippetsDirectory)
         else { return }
         settings.snippetsFolder = AppPaths.contentFolderSetting(for: url, named: "Snippets")
@@ -77,10 +76,13 @@ final class SnippetCoordinator {
         Task {
             guard
                 await core.confirm(
-                    title: "Enable snippets?",
-                    message:
-                        "Keyword expansion requires the Accessibility permission. Keystrokes stay on this Mac.",
-                    symbol: "curlybraces", confirmTitle: "Continue", tone: .neutral,
+                    title: String(localized: "Enable snippets?"),
+                    message: String(
+                        localized: """
+                            Keyword expansion requires the Accessibility permission. Keystrokes stay on \
+                            this Mac.
+                            """),
+                    symbol: "curlybraces", confirmTitle: String(localized: "Continue"), tone: .neutral,
                     confirmRole: .standard)
             else { return }
 
@@ -120,14 +122,58 @@ final class SnippetCoordinator {
     // MARK: - Browsing and editing
 
     /// The switch gates the browser, the way Search Files re-checks its own before opening.
-    func showSnippets() {
+    func showSnippets(query: String = "") {
         guard settings.snippetsEnabled else { return }
-        paletteCoordinator.togglePalette(mode: .snippets)
+        paletteCoordinator.togglePalette(mode: .snippets, seeding: query.isEmpty ? nil : query)
     }
 
     func editSnippet(_ record: StoredSnippet?) {
         guard settings.snippetsEnabled else { return }
         editor = SnippetEditorSession(record: record)
+        paletteCoordinator.showPalette(mode: .snippetEditor)
+    }
+
+    /// Starts from the text selected in the app in front, read through Accessibility, never ⌘C.
+    func createSnippetFromSelection() {
+        guard settings.snippetsEnabled else { return }
+        let selection = paletteCoordinator.targetApp.flatMap(AccessibilityText.selection(in:))
+        createSnippet(name: "", text: selection ?? "", keyword: "")
+    }
+
+    /// A link's batch, written only once the reader agrees; copies already here are skipped.
+    func importSnippets(offered incoming: [Snippet]) async {
+        guard settings.snippetsEnabled, !incoming.isEmpty else { return }
+        guard
+            await core.confirm(
+                title: String(localized: "Add \(incoming.count) snippets from a link?"),
+                message: ListFormatter.localizedString(byJoining: incoming.map(\.name)),
+                symbol: "curlybraces", confirmTitle: String(localized: "Add"), tone: .neutral,
+                confirmRole: .standard)
+        else { return }
+        // Matched as a backup import matches, so the same link twice leaves no second copy.
+        let existing = Set(store.snippets.map { [$0.snippet.name, $0.snippet.text] })
+        let fresh = incoming.filter { !existing.contains([$0.name, $0.text]) }
+        guard !fresh.isEmpty else {
+            return core.showMessage(String(localized: "Nothing to Import"), tone: .neutral)
+        }
+        do {
+            let created = try await store.importSnippets(fresh)
+            core.showMessage(String(localized: "Imported \(created.count) snippets."))
+        } catch {
+            await core.showNotice(
+                title: String(localized: "Import Failed"), message: error.localizedDescription,
+                symbol: "curlybraces", tone: .danger)
+        }
+    }
+
+    /// A new snippet already filled in, from a link; nothing is written until it is saved.
+    func createSnippet(name: String, text: String, keyword: String) {
+        guard settings.snippetsEnabled else { return }
+        let editor = SnippetEditorSession(record: nil)
+        editor.name = name
+        editor.text = text
+        editor.keyword = keyword
+        self.editor = editor
         paletteCoordinator.showPalette(mode: .snippetEditor)
     }
 
@@ -177,16 +223,17 @@ final class SnippetCoordinator {
         guard settings.snippetsEnabled, let record = store.record(id: id) else { return }
         guard
             await core.confirm(
-                title: "Delete “\(record.snippet.name)”?",
-                message: "This removes \(record.fileURL.lastPathComponent) from your snippets folder.",
-                symbol: "doc.text", confirmTitle: "Delete")
+                title: String(localized: "Delete “\(record.snippet.name)”?"),
+                message: String(
+                    localized: "This removes \(record.fileURL.lastPathComponent) from your snippets folder."),
+                symbol: "doc.text", confirmTitle: String(localized: "Delete"))
         else { return }
         do {
             try await store.delete(id: id)
         } catch {
             await core.showNotice(
-                title: "Couldn’t Delete “\(record.snippet.name)”", message: error.localizedDescription,
-                symbol: "doc.text", tone: .danger)
+                title: String(localized: "Couldn’t Delete “\(record.snippet.name)”"),
+                message: error.localizedDescription, symbol: "doc.text", tone: .danger)
         }
     }
 
@@ -244,7 +291,7 @@ final class SnippetCoordinator {
         }
         // A window of ours that isn't an editor, such as Settings, has no caret to type at.
         guard let target = InjectionTarget.current() else {
-            showMessage("Click into a text field first", .neutral)
+            showMessage(String(localized: "Click into a text field first"), .neutral)
             return
         }
         expandSnippet(id: id, target: target)
@@ -268,7 +315,6 @@ final class SnippetCoordinator {
         if automaticGeneration == nil {
             guard injector.prepareInteractiveExpansion(target: target) else { return }
         }
-        let confirmation = record.snippet.showsConfirmation ? "Inserted \(record.snippet.name)" : nil
         let context = injector.captureExpansionContext(
             target: target,
             clipboardHistory: clipboardHistoryForExpansion())
@@ -276,6 +322,50 @@ final class SnippetCoordinator {
             record,
             snippets: records,
             context: context)
+        // A typed keyword leaves nothing selected, so only an insertion asked for borrows a ⌘C.
+        guard automaticGeneration == nil, result.readsSelection, context.selection.isEmpty,
+            let app = target?.externalApp
+        else {
+            finishExpansion(
+                record,
+                records: records,
+                context: context,
+                result: result,
+                target: target,
+                expectedKeyword: expectedKeyword,
+                keywordLength: keywordLength,
+                automaticGeneration: automaticGeneration)
+            return
+        }
+        Task {
+            var context = context
+            context.selection = await injector.copySelection(from: app) ?? ""
+            let records = store.snippets
+            guard let record = records.first(where: { $0.id == id }) else { return }
+            finishExpansion(
+                record,
+                records: records,
+                context: context,
+                result: SnippetTemplateEngine.expand(record, snippets: records, context: context),
+                target: target,
+                expectedKeyword: nil,
+                keywordLength: 0,
+                automaticGeneration: nil)
+        }
+    }
+
+    private func finishExpansion(
+        _ record: StoredSnippet,
+        records: [StoredSnippet],
+        context: SnippetTemplateEngine.ExpansionContext,
+        result: SnippetTemplateEngine.ExpansionResult,
+        target: InjectionTarget?,
+        expectedKeyword: String?,
+        keywordLength: Int,
+        automaticGeneration: UInt?
+    ) {
+        let confirmation =
+            record.snippet.showsConfirmation ? String(localized: "Inserted \(record.snippet.name)") : nil
         if !result.missingArguments.isEmpty {
             promptSnippetArguments(
                 record: record,

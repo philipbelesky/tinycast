@@ -38,7 +38,8 @@ renamed channel ([FORK.md](../FORK.md) divergence 10).
 
 ## Signing & Gatekeeper
 
-CI releases sign with the stable `Tinycast Self-Signed` identity. Locally every build signs with
+Upstream's CI releases are signed with its own team's Developer ID and notarized; this fork does
+not use them. Locally every build signs with
 `Apple Development`, and `build-dmg.sh` then **archives and exports with Developer ID** (see
 [FORK.md](../FORK.md) divergence 1) — automatic signing cannot select a distribution identity during
 a plain build, only during an export. The exported app embeds a `Mac Team Direct Provisioning Profile`,
@@ -77,9 +78,7 @@ Removing that line would reintroduce exactly those three problems. See
 
 ## Pull request review
 
-There is no CI workflow. CodeRabbit reviews every PR against `.coderabbit.yaml`: it runs SwiftLint
-with `.swiftlint.yml`, annotates the diff and applies the pre-merge checks. It is a reviewer, not a
-gate — it neither runs the harnesses nor builds the app, so the whole bar in
+There is no CI workflow and no automated reviewer, so the whole bar in
 [testing.md](testing.md#definition-of-done) is run locally before a PR is opened.
 
 ## Releasing
@@ -93,9 +92,13 @@ needed. Run it from the **Actions** tab (`Release` → **Run workflow**) and pic
   version as-is.
 - **version** — base semver, e.g. `0.2.0`.
 
-It builds on a `macos-26` runner with Xcode 26 and publishes a GitHub Release tagged
-`v<full-version>` with a versioned DMG and zip asset, marked prerelease for beta. On success it also
-bumps the matching cask in the tap and announces the release on Discord. A stable run also
+Its first step is `Scripts/check-migrations.sh`: a migration that a stable release already shipped
+stops the run until it is deleted ([migrations.md](migrations.md)). The check reads tags and history,
+so the checkout fetches every commit without blobs.
+
+It builds on an `xcode-27` runner with the newest released Xcode 27 and publishes a GitHub Release
+tagged `v<full-version>` with a versioned DMG and zip asset, marked prerelease for beta. On success
+it also bumps the matching cask in the tap and announces the release on Discord. A stable run also
 dispatches the Website workflow, because the site reads the latest version and the
 [changelog](https://tinycast.dev/changelog/) from GitHub at build time.
 
@@ -103,10 +106,17 @@ A stable run then fans out to a second job, `universal`, which rebuilds the same
 `ARCHS="arm64 x86_64"` and attaches `Tinycast-Universal-<version>.dmg` / `.zip` to the release the
 first job created, then bumps `tinycast-universal`. macOS 26 is the last release that boots on Intel,
 and those Macs need both slices. Both jobs pin `ARCHS` explicitly and assert the slices on *every*
-shipping binary — the app, `ClipboardTextHelper` and `Tinycast Dictation`: trusting `ARCHS_STANDARD` is what
-shipped a thin arm64 build to Intel users once already, and it also keeps the Apple silicon download
-from silently gaining a slice it never needs. A thin helper inside a universal app is the quiet form
-of the same bug: the app boots on Intel and only clipboard OCR or dictation stops working.
+shipping binary — the app, `ClipboardTextHelper`, `FileIndexHelper` and `Tinycast Dictation`:
+trusting `ARCHS_STANDARD` is what shipped a thin arm64 build to Intel users once already, and it
+also keeps the Apple silicon download from silently gaining a slice it never needs. A thin helper
+inside a universal app is the quiet form of the same bug: the app boots on Intel and only clipboard
+OCR or dictation stops working.
+
+Both jobs run in the `release` environment, which holds the signing and notary secrets and deploys
+from `main` only ([signing.md](signing.md#2-the-release-secrets)). After `verify-signature.sh`,
+`Scripts/package-release.sh` packs and signs the DMG, submits it once with `notarytool --wait`, and
+staples the ticket to the DMG and to the app before zipping it, so the updater's zip is stapled too.
+Any status but `Accepted` prints Apple's log and stops the run before anything is published.
 
 Channel builds override `TINYCAST_BUNDLE_IDENTIFIER`, not the target-wide `PRODUCT_BUNDLE_IDENTIFIER`.
 The Dictation helper derives its own identifier with a `.dictation` suffix; signature verification
@@ -132,7 +142,7 @@ Two details the script exists for:
   commit can carry both — so "the previous release" is only ever right within one channel. A stable
   release therefore spans every beta since the last stable.
 - **The body is split by `<!-- tinycast:install -->`.** Everything above it is the changelog;
-  everything below is the Homebrew and quarantine text, which only a download page needs. The update
+  everything below is the install text, which only a download page needs. The update
   window cuts at that marker — see [features/updates.md](features/updates.md). Full PR URLs are
   shortened to `#304`, which still autolinks on the web and fits a 460pt window.
 

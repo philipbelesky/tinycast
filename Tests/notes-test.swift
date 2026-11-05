@@ -14,6 +14,7 @@ struct NotesTests {
         testMarkdownFormatting()
         testRevealPolicy()
         try testUnnamedNotesTitleThemselves()
+        try testCreatedNoteHoldsItsSource()
         testSwitcherInteraction()
         testWindowPlacement()
         try await testStoreCollectionAndAutosave()
@@ -141,6 +142,13 @@ struct NotesTests {
 
     private static func testDerivedTitles() {
         check(
+            "an unnamed display title keeps its numeric suffix",
+            NoteTitle.displayName("Untitled 12") == String(localized: "Untitled") + " 12")
+        check(
+            "display localization leaves user titles untouched",
+            NoteTitle.displayName("Untitled notes") == "Untitled notes"
+                && NoteTitle.displayName("Plan") == "Plan")
+        check(
             "the names Create claims are unnamed",
             NoteTitle.isUnnamed("Untitled") && NoteTitle.isUnnamed("Untitled 12"))
         check(
@@ -179,6 +187,17 @@ struct NotesTests {
         check(
             "rules and fences carry no title",
             NoteTitle.firstLine(of: "---\n```swift\nlet x = 1\n```") == "let x = 1")
+    }
+
+    private static func testCreatedNoteHoldsItsSource() throws {
+        let root = temporaryRoot("created-source")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let repository = try repository(in: root)
+
+        let created = try repository.create(source: "Call Sam ☎️\n")
+        check(
+            "a note created with text starts out holding it",
+            try repository.load(created.id).source == "Call Sam ☎️\n")
     }
 
     private static func testUnnamedNotesTitleThemselves() throws {
@@ -1227,7 +1246,6 @@ struct NotesTests {
         NoteMarkdownParser.parse(source).lines.map(\.level)
     }
 
-    /// The first line's spans, each as its kind and the text of its content.
     private static func spans(_ source: String) -> [Span] {
         let markdown = NoteMarkdownParser.parse(source)
         let inlines = markdown.lines.first.map(markdown.inlines(of:)) ?? []

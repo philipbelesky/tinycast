@@ -20,8 +20,10 @@ struct PasteboardTests {
         rejectedFilesDoNotCountTowardTheCap()
         theBoundedReaderStopsAtItsLimit()
         aModernFileURLSuppressesTheLegacyFallback()
+        richTextWithoutPlainTextReadsAsText()
         fileEntriesWriteBackAsFiles()
         aVanishedFileWritesNothing()
+        imageEntriesWriteBackWithTheirFile()
 
         print("\(passes)/\(passes + failures) passed")
         if failures > 0 { exit(1) }
@@ -272,6 +274,30 @@ struct PasteboardTests {
         return pb
     }
 
+    static func richTextWithoutPlainTextReadsAsText() {
+        let html = board()
+        html.declareTypes([.html], owner: nil)
+        html.setString("<style>p{}</style><p>brew update</p><div>ls &amp;&amp; pwd</div>", forType: .html)
+        expect(
+            ClipboardManager.plainText(fromRichTextOn: html) == "brew update\nls && pwd\n",
+            "HTML reads as its text, without its style")
+
+        let source = NSAttributedString(string: "from rtf")
+        let rtf = board()
+        rtf.declareTypes([.rtf], owner: nil)
+        rtf.setData(
+            source.rtf(from: NSRange(location: 0, length: source.length), documentAttributes: [:]),
+            forType: .rtf)
+        expect(ClipboardManager.plainText(fromRichTextOn: rtf) == "from rtf", "RTF reads as its text")
+
+        let huge = board()
+        huge.declareTypes([.html], owner: nil)
+        huge.setString(String(repeating: "<p>x</p>", count: 40_000), forType: .html)
+        expect(ClipboardManager.plainText(fromRichTextOn: huge) == nil, "oversized HTML is skipped")
+
+        expect(ClipboardManager.plainText(fromRichTextOn: board()) == nil, "an empty board is nil")
+    }
+
     // MARK: - Writing
 
     /// The round trip: what Finder handed us goes back out as a file, plus the path as text.
@@ -303,6 +329,29 @@ struct PasteboardTests {
 
             expect(!Paster.write(store.items[0], store: store, to: pb), "a vanished file refuses")
             expect(pb.string(forType: .string) == "untouched", "and leaves the pasteboard alone")
+        }
+    }
+
+    /// A text-only receiver ignores image data, so the stored file goes out beside it.
+    static func imageEntriesWriteBackWithTheirFile() {
+        withScratch { dir in
+            let image = dir.appendingPathComponent("shot.png")
+            let bytes = Data("png".utf8)
+            try? bytes.write(to: image)
+            let store = ClipboardStore(directory: dir.appendingPathComponent("store"))
+            store.importEntries([ClipboardItem(imagePath: image.path, sourceBundleID: nil)])
+            let pb = board()
+
+            expect(Paster.write(store.items[0], store: store, to: pb), "a present image writes")
+            expect(pb.data(forType: .png) == bytes, "as its image data")
+            let read = pb.readObjects(forClasses: [NSURL.self]) as? [URL]
+            expect(read?.first?.path == image.path, "and as its stored file")
+            expect(
+                pb.string(forType: .string) == nil,
+                "but not as text, which a rich text field would take over the image")
+            expect(
+                pb.types?.contains(ClipboardManager.internalType) == true,
+                "marked, so the poller skips our own write")
         }
     }
 

@@ -36,10 +36,32 @@ struct IconCacheTests {
     static func bitmap(_ image: NSImage) -> Data? { image.tiffRepresentation }
 
     static func semanticSymbolNames() {
-        expect(
-            SystemSymbolName.resolve("face.smiling") == "face.smiling.inverse",
-            "the swapped smiley pair is compensated in both appearances")
-        expect(SystemSymbolName.resolve("star") == "star", "other symbols stay unchanged")
+        for (isDark, appearance) in [(false, NSAppearance.Name.aqua), (true, .darkAqua)] {
+            let smile = SystemSymbolName.resolve("face.smiling", isDark: isDark)
+            let other = smile == "face.smiling" ? "face.smiling.inverse" : "face.smiling"
+            NSAppearance(named: appearance)?.performAsCurrentDrawingAppearance {
+                expect(ink(smile) < ink(other), "the smiley resolves to its outline, dark: \(isDark)")
+            }
+        }
+        expect(SystemSymbolName.resolve("star", isDark: true) == "star", "other symbols stay unchanged")
+    }
+
+    static func ink(_ name: String) -> Int {
+        let side = 32
+        guard
+            let symbol = NSImage(systemSymbolName: name, accessibilityDescription: nil),
+            let rep = NSBitmapImageRep(
+                bitmapDataPlanes: nil, pixelsWide: side, pixelsHigh: side, bitsPerSample: 8,
+                samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
+                bytesPerRow: side * 4, bitsPerPixel: 32),
+            let context = NSGraphicsContext(bitmapImageRep: rep),
+            let bytes = rep.bitmapData
+        else { return .max }
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = context
+        symbol.draw(in: NSRect(x: 0, y: 0, width: side, height: side))
+        NSGraphicsContext.restoreGraphicsState()
+        return stride(from: 3, to: side * side * 4, by: 4).reduce(0) { $0 + Int(bytes[$1]) }
     }
 
     /// A restyle has to both drop what is cached and move the generation views key their fetch on.
@@ -54,6 +76,12 @@ struct IconCacheTests {
         expect(IconRequest("star").generation == IconCache.style.generation, "a request carries it")
         expect(IconRequest("star") != IconRequest("moon"), "the view's own key still separates them")
 
+        // `.initial` and every repeat notification must not invalidate; only a real move may.
+        let settled = IconCache.style.generation
+        IconCache.setDarkSurface(true)
+        expect(IconCache.style.generation == settled, "re-asserting the same surface is free")
+        IconCache.setDarkSurface(false)
+        expect(IconCache.style.generation == settled + 1, "a changed surface invalidates once")
     }
 
     /// A probe that rendered nothing would strand every restyle until the settle deadline expired.

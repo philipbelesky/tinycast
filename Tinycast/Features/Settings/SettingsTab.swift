@@ -6,40 +6,83 @@ enum SettingsTab: CaseIterable, Identifiable {
     /// The case, never an index: a selectable `List` flattens section and row IDs together.
     var id: Self { self }
 
+    init?(slug: String) {
+        guard let tab = Self.allCases.first(where: { $0.slug == slug }) else { return nil }
+        self = tab
+    }
+
+    /// `tinycast://settings/<slug>`; spelled out, so renaming a case never breaks a saved link.
+    var slug: String {
+        switch self {
+        case .general: "general"
+        case .applications: "applications"
+        case .systemSettings: "system-settings"
+        case .systemActions: "system-actions"
+        case .commands: "commands"
+        case .quicklinks: "quicklinks"
+        case .appleShortcuts: "apple-shortcuts"
+        case .fallbacks: "fallbacks"
+        case .clipboard: "clipboard"
+        case .snippets: "snippets"
+        case .fileSearch: "file-search"
+        case .webSearch: "web-search"
+        case .herdr: "herdr"
+        case .rex: "rex"
+        case .vsCode: "vs-code"
+        case .zed: "zed"
+        case .linear: "linear"
+        case .taskCapture: "task-capture"
+        case .windowManagement: "window-management"
+        case .navigation: "navigation"
+        case .notes: "notes"
+        case .calendar: "calendar"
+        case .music: "music"
+        case .emoji: "emoji"
+        case .dictation: "dictation"
+        case .ai: "ai"
+        case .quickActions: "quick-actions"
+        case .extensions: "extensions"
+        case .permissions: "permissions"
+        case .backup: "backup"
+        case .miscellaneous: "miscellaneous"
+        case .about: "about"
+        }
+    }
+
     var title: String {
         switch self {
-        case .general: return "General"
-        case .applications: return "Applications"
-        case .systemSettings: return "System Settings"
-        case .systemActions: return "System Actions"
-        case .commands: return "Commands"
-        case .quicklinks: return "Quicklinks"
-        case .appleShortcuts: return "Apple Shortcuts"
-        case .fallbacks: return "Fallbacks"
-        case .ai: return "AI"
-        case .quickActions: return "Quick Actions"
-        case .dictation: return "Dictation"
-        case .fileSearch: return "File Search"
-        case .webSearch: return "Web Search"
-        case .herdr: return "herdr"
-        case .rex: return "Rex"
-        case .vsCode: return "VS Code"
-        case .zed: return "Zed"
-        case .linear: return "Linear"
-        case .taskCapture: return "Task Capture"
-        case .notes: return "Notes"
-        case .snippets: return "Snippets"
-        case .navigation: return "Navigation"
-        case .windowManagement: return "Window Management"
-        case .clipboard: return "Clipboard"
-        case .emoji: return "Emoji & Symbols"
-        case .calendar: return "Calendar"
-        case .music: return "Music"
-        case .extensions: return "Extensions"
-        case .permissions: return "Permissions"
-        case .backup: return "Backup"
-        case .miscellaneous: return "Miscellaneous"
-        case .about: return "About"
+        case .general: return String(localized: "General")
+        case .applications: return String(localized: "Applications")
+        case .systemSettings: return String(localized: "System Settings")
+        case .systemActions: return String(localized: "System Actions")
+        case .commands: return String(localized: "Commands")
+        case .quicklinks: return String(localized: "Quicklinks")
+        case .appleShortcuts: return String(localized: "Apple Shortcuts")
+        case .fallbacks: return String(localized: "Fallbacks")
+        case .ai: return String(localized: "AI")
+        case .quickActions: return String(localized: "Quick Actions")
+        case .dictation: return String(localized: "Dictation")
+        case .fileSearch: return String(localized: "File Search")
+        case .webSearch: return String(localized: "Web Search")
+        case .herdr: return String(localized: "herdr")
+        case .rex: return String(localized: "Rex")
+        case .vsCode: return String(localized: "VS Code")
+        case .zed: return String(localized: "Zed")
+        case .linear: return String(localized: "Linear")
+        case .taskCapture: return String(localized: "Task Capture")
+        case .notes: return String(localized: "Notes")
+        case .snippets: return String(localized: "Snippets")
+        case .navigation: return String(localized: "Navigation")
+        case .windowManagement: return String(localized: "Window Management")
+        case .clipboard: return String(localized: "Clipboard")
+        case .emoji: return String(localized: "Emoji & Symbols")
+        case .calendar: return String(localized: "Calendar")
+        case .music: return String(localized: "Music")
+        case .extensions: return String(localized: "Extensions")
+        case .permissions: return String(localized: "Permissions")
+        case .backup: return String(localized: "Backup")
+        case .miscellaneous: return String(localized: "Miscellaneous")
+        case .about: return String(localized: "About")
         }
     }
 
@@ -89,10 +132,10 @@ enum SettingsSection: CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .general: return "General"
-        case .launcher: return "Launcher"
-        case .features: return "Features"
-        case .advanced: return "Advanced"
+        case .general: return String(localized: "General")
+        case .launcher: return String(localized: "Launcher")
+        case .features: return String(localized: "Features")
+        case .advanced: return String(localized: "Advanced")
         }
     }
 

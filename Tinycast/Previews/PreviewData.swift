@@ -48,11 +48,11 @@
             kind: .windowCommand)
 
         /// The launcher's resting shape: two favorites, then a section per kind.
-        static let launcherResults: [AppEntry] = [
-            notes, music, applicationsScope, linearScope, mail, terminal, sleepAction, leftHalf
-        ]
+        static let launcherFavorites: [FavoritesStore.Item] = [.entry(notes), .entry(music)]
 
-        static let launcherFavoriteCount = 2
+        static let launcherResults: [AppEntry] = [
+            applicationsScope, linearScope, mail, terminal, sleepAction, leftHalf
+        ]
 
         // MARK: - Calculator
 

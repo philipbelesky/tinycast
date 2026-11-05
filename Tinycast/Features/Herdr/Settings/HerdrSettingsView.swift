@@ -11,9 +11,10 @@ struct HerdrSettingsView: View {
             FeatureSwitchSection(
                 anchor: .herdrHerdr,
                 enableTitle: "Enable herdr",
-                enableSubtitle:
-                    "Lists the tabs of the running herdr session, read over its local socket. "
-                    + "↵ focuses one and brings its terminal forward.",
+                enableSubtitle: """
+                    Lists the tabs of the running herdr session, read over its local socket. \
+                    ↵ focuses one and brings its terminal forward.
+                    """,
                 isEnabled: $settings.herdrEnabled,
                 showsInLauncher: $settings.herdrShowInLauncher)
 

@@ -45,6 +45,12 @@ struct AppleIntelligenceTests {
         expect(
             Set(unavailable.compactMap(\.message)).count == unavailable.count,
             "each reason reads differently")
+
+        expect(!AppleIntelligenceStatus.deviceNotEligible.isSupported, "ineligible hardware is unsupported")
+        expect(
+            AppleIntelligenceStatus.notEnabled.isSupported
+                && AppleIntelligenceStatus.modelNotReady.isSupported,
+            "a Mac that could run it after a change in System Settings is supported")
     }
 
     static func deltasFollowCumulativeSnapshots() {
@@ -130,7 +136,6 @@ struct AppleIntelligenceTests {
             "a decoding failure is the shared malformed-response case")
     }
 
-    /// The real thing, end to end, when this Mac can run it.
     static func onDeviceModelAnswers() async {
         let status = AppleIntelligenceProvider.status()
         guard status.isAvailable else {

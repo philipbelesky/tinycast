@@ -21,8 +21,12 @@ published extensions also work.
 `showHUD`, `confirmAlert`, `closeMainWindow`, `popToRoot`, `clearSearchBar`, `open`, `trash`,
 `showInFinder`, `getApplications`, `getDefaultApplication`, `getFrontmostApplication`,
 `getSelectedText`, `getSelectedFinderItems`, `launchCommand`, `updateCommandMetadata`,
-`openExtensionPreferences`, `useNavigation`, `Icon`, `Color`, `Image.Mask`,
+`openExtensionPreferences`, `OAuth`, `useNavigation`, `Icon`, `Color`, `Image.Mask`,
 `Keyboard.Shortcut.Common`, `LaunchType`.
+
+**Sign-in with OAuth.** Extensions like GitHub sign you in through your browser, and the palette
+comes back when you finish. Sign in from one of the extension's commands first: a background
+refresh or menu bar item can't start a sign-in on its own.
 
 **Node built-ins.** `path`, `fs` and `fs/promises`, `os`, `child_process`, `crypto`, `zlib`,
 `http` and `https`, `stream`, `util`, `events`, `buffer`, `url`, `querystring`, `punycode`,
@@ -30,7 +34,16 @@ published extensions also work.
 they're actually used.
 
 `http` and `https` requests use the same code as `fetch`, so libraries like axios and node-fetch
-work. Streams are fully implemented, so pipelines like `fetch` → file work from start to finish.
+work. HTTP over a Unix socket works too, which is how Docker's extension reaches its daemon. Streams
+are fully implemented, so pipelines like `fetch` → file work from start to finish.
+`child_process.spawn` streams the command's output as it runs.
+
+**WebSockets.** The `WebSocket` global and the bundled `ws` package both connect, so extensions like
+Home Assistant get live updates. Names ending in `.local`, like `homeassistant.local`, resolve
+through macOS.
+
+**Bundled packages.** Extensions that ship their own `node_modules` load those packages, and
+`createRequire`, WebAssembly and `SharedArrayBuffer` work.
 
 **Bundled Swift helpers**, like Color Picker's, run normally.
 
@@ -43,17 +56,18 @@ between runs; see [Menu bar commands](/docs/extensions#menu-bar-commands).
 **`raycast://` links** are handled inside Tinycast. Tinycast registers this link type; if Raycast is
 also installed, macOS decides which app receives those links. A link to an installed extension command
 runs that command, whether it comes from another app, the browser or an extension, with its `arguments`,
-`fallbackText` and `launchType` applied. `tinycast://` links work the same way. Any other link
-reopens the palette, since passing it on would open Raycast itself.
+`fallbackText`, `launchType` and `context` applied. `tinycast://` links work the same way. A Raycast Store
+**Install** link opens [Search extensions](/docs/extensions/installing#search-extensions) on that
+extension. Any other link reopens the palette, since passing it on would open Raycast itself.
 
 ## Not supported yet
 
 | Gap                                              | Why                                                                                       |
 | ------------------------------------------------ | ----------------------------------------------------------------------------------------- |
 | **`AI`, `BrowserExtension`, `WindowManagement`** | These are Raycast services with no local equivalent. Using one fails with a clear message |
-| **WebSocket**                                    | Not available yet                                                                         |
+| **A WebSocket to a server macOS doesn't trust**  | Certificate checks can't be turned off, so the connection fails                           |
 | **Canceling a `fetch` in progress**              | The caller gets its `AbortError`, but the request still finishes in the background        |
-| **Live `child_process.spawn` output**            | The command runs to completion, then all of its output arrives at once                    |
+| **Writing to a running `child_process.spawn`**   | Input is sent once, when the command starts. Later writes are dropped                     |
 | **Streaming HTTP**                               | Responses arrive all at once, so server-sent events and download progress don't work      |
 | **`net` and `tls`**                              | Load without errors, but fail when used                                                   |
 | **AI tools (`tools/`)**                          | Not shown                                                                                 |

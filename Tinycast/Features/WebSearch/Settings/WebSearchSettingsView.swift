@@ -13,9 +13,10 @@ struct WebSearchSettingsView: View {
             FeatureSwitchSection(
                 anchor: .webSearchWebSearch,
                 enableTitle: "Enable web search",
-                enableSubtitle:
-                    "Type an engine's keyword, a space, then your query. The search opens in your "
-                    + "default browser; Tinycast never sends it anywhere itself.",
+                enableSubtitle: """
+                    Type an engine's keyword, a space, then your query. The search opens in your \
+                    default browser; Tinycast never sends it anywhere itself.
+                    """,
                 isEnabled: $settings.webSearchEnabled,
                 showsInLauncher: $settings.webSearchShowInLauncher)
 

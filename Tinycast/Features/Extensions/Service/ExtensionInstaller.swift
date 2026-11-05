@@ -11,10 +11,11 @@ struct ExtensionInstaller: Sendable {
 
         var message: String {
             switch self {
-            case .downloading: return "Downloading…"
-            case .installingDependencies(let manager): return "Installing dependencies with \(manager)…"
-            case .building: return "Building…"
-            case .installing: return "Installing…"
+            case .downloading: return String(localized: "Downloading…")
+            case .installingDependencies(let manager):
+                return String(localized: "Installing dependencies with \(manager)…")
+            case .building: return String(localized: "Building…")
+            case .installing: return String(localized: "Installing…")
             }
         }
     }
@@ -192,7 +193,7 @@ struct ExtensionInstaller: Sendable {
         var trimmedOutput: String {
             let lines = output.split(separator: "\n").suffix(6)
             let text = lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
-            return text.isEmpty ? "no output" : text
+            return text.isEmpty ? String(localized: "no output") : text
         }
     }
 
@@ -219,6 +220,16 @@ struct ExtensionInstaller: Sendable {
         let pipe = Pipe()
         process.standardOutput = pipe
         process.standardError = pipe
+        let output = OutputTail()
+        pipe.fileHandleForReading.readabilityHandler = { handle in
+            let chunk = handle.availableData
+            if chunk.isEmpty {
+                handle.readabilityHandler = nil
+                output.finish()
+            } else {
+                output.append(chunk)
+            }
+        }
 
         // Closing the install stops the child, so a cancelled build can't outlive its workspace.
         var timeout: Task<Void, Never>?
@@ -228,16 +239,15 @@ struct ExtensionInstaller: Sendable {
                 // One resume, whichever of termination and timeout arrives first.
                 let state = ResumeGuard()
                 process.terminationHandler = { finished in
-                    let data = (try? pipe.fileHandleForReading.readToEnd()) ?? Data()
+                    let text = output.text()
                     guard state.claim() else { return }
                     continuation.resume(
-                        returning: CommandResult(
-                            status: finished.terminationStatus,
-                            output: String(decoding: data, as: UTF8.self)))
+                        returning: CommandResult(status: finished.terminationStatus, output: text))
                 }
                 do {
                     try process.run()
                 } catch {
+                    pipe.fileHandleForReading.readabilityHandler = nil
                     guard state.claim() else { return }
                     continuation.resume(throwing: error)
                     return
@@ -250,7 +260,8 @@ struct ExtensionInstaller: Sendable {
                     Self.stop(process)
                     guard state.claim() else { return }
                     continuation.resume(
-                        returning: CommandResult(status: -1, output: "timed out after 5 minutes"))
+                        returning: CommandResult(
+                            status: -1, output: String(localized: "timed out after 5 minutes")))
                 }
             }
         } onCancel: {
@@ -278,5 +289,31 @@ private final class ResumeGuard: @unchecked Sendable {
         if claimed { return false }
         claimed = true
         return true
+    }
+}
+
+/// Drained as it arrives, so a verbose child never blocks on a full pipe; only the end is kept.
+private final class OutputTail: @unchecked Sendable {
+    private static let limit = 64 * 1024
+    private let lock = NSLock()
+    private let ended = DispatchSemaphore(value: 0)
+    private var data = Data()
+
+    func append(_ chunk: Data) {
+        lock.lock()
+        defer { lock.unlock() }
+        data.append(chunk)
+        if data.count > Self.limit { data.removeSubrange(data.startIndex..<(data.endIndex - Self.limit)) }
+    }
+
+    func finish() {
+        ended.signal()
+    }
+
+    func text() -> String {
+        ended.wait()
+        lock.lock()
+        defer { lock.unlock() }
+        return String(decoding: data, as: UTF8.self)
     }
 }

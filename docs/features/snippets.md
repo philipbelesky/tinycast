@@ -159,6 +159,11 @@ Arguments are unique and requested in first-appearance order, including argument
 snippets. Inserted clipboard, selection, and argument values are literal: token-shaped text inside a
 value is not expanded again.
 
+`{selection}` is read through Accessibility. When that reads nothing, a snippet you insert yourself —
+from the launcher, Search Snippets or its shortcut — falls back to a ⌘C, as described in
+[quick-actions.md](quick-actions.md#reading-the-selection). Keyword expansion never sends one: a typed
+keyword leaves nothing selected.
+
 Snippet references are case-insensitive. Duplicate names or keywords resolve deterministically by
 file-path identity. Nested references support five levels, detect cycles by file identity, and leave
 the original reference token visible when a target is missing, cyclic, or beyond the depth limit.
@@ -245,7 +250,9 @@ screen has no rows: an empty library would otherwise open a browser with nothing
 `SnippetCoordinator` owns a `SnippetEditorSession`, presented by `SnippetEditorScreen` in
 `PaletteMode.snippetEditor`. **Create Snippet**, **Edit Snippet** (⌘E) in the browser or root search,
 and the settings library's **New Snippet** and **Edit** buttons open this same editor; Settings has no
-second editor. The fields stay inside `Features/Snippets/UI/`, not in the palette shell or the extension form.
+second editor. The **Create Snippet** command alone — from the launcher, a hotkey or a link — starts
+from the text selected in the app in front, read through `AccessibilityText.selection(in:)` and never
+by sending ⌘C; the browser's ⌘N and Settings start empty. The fields stay inside `Features/Snippets/UI/`, not in the palette shell or the extension form.
 
 The template is on the left, with its own **Insert…** placeholder menu, separate from Actions.
 It uses the palette's searchable popup, keeping its existing placeholder groups.

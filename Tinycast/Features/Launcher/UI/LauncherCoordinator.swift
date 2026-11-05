@@ -204,7 +204,7 @@ final class LauncherCoordinator {
         paletteCoordinator.hidePalette(restoreFocus: false)
         switch app.kind {
         case .application:
-            AppLauncher.launch(app.url)
+            AppLauncher.launch(app.url, allowsRunningApplicationSubstitution: false)
         case .systemSettings:
             guard let bundleID = app.bundleID else { return }
             AppLauncher.openSettingsPane(bundleID: bundleID)
@@ -251,6 +251,8 @@ final class LauncherCoordinator {
             menuSearchCoordinator.show()
         case .switchWindows:
             windowSwitchCoordinator.show()
+        case .switchWindowsBackwards:
+            windowSwitchCoordinator.show(backwards: true)
         case .openCamera:
             dismissPalette()
             Task { await core.cameraCoordinator.show() }
@@ -282,7 +284,7 @@ final class LauncherCoordinator {
         case .searchSnippets:
             snippetCoordinator.showSnippets()
         case .createSnippet:
-            snippetCoordinator.editSnippet(nil)
+            snippetCoordinator.createSnippetFromSelection()
         case .createWindowLayout:
             dismissPalette()
             windowLayoutCoordinator.editWindowLayout(nil)
@@ -348,6 +350,46 @@ final class LauncherCoordinator {
         AppLauncher.showInFinder(app.url)
     }
 
+    func argumentValues(for entry: AppEntry) -> [String: String] {
+        let palette = core.palette
+        switch entry.kind {
+        case .quicklink:
+            guard let quicklink = Quicklink.id(fromEntryID: entry.id).flatMap(core.quicklinks.quicklink)
+            else { return [:] }
+            return QuicklinkArgumentsAccessory.values(for: quicklink, vm: palette)
+        case .customCommand:
+            guard let command = core.customCommands.command(entryID: entry.id) else { return [:] }
+            return CustomCommandArgumentsAccessory.values(for: command, vm: palette)
+        default:
+            var values: [String: String] = [:]
+            for argument in extensionCoordinator.commandArguments(for: entry) ?? [] {
+                let typed = palette.commandArguments[PaletteState.argumentKey(entry.id, argument.name)]
+                if let typed, !typed.isEmpty { values[argument.name] = typed }
+            }
+            return values
+        }
+    }
+
+    func deepLink(for app: AppEntry) -> URL? {
+        let values = argumentValues(for: app)
+        guard app.kind != .extensionCommand else {
+            return extensionCoordinator.deepLink(forEntryID: app.id, arguments: values)
+        }
+        return core.deepLinkCoordinator.url(forEntryID: app.id, values: values)
+    }
+
+    func deepLink(for action: HotKeyAction) -> URL? {
+        if case .extensionCommand(let entryID) = action {
+            return extensionCoordinator.deepLink(forEntryID: entryID, arguments: [:])
+        }
+        return action.entryID.flatMap { core.deepLinkCoordinator.url(forEntryID: $0) }
+    }
+
+    func copyDeepLink(_ url: URL) {
+        paletteCoordinator.hidePalette(restoreFocus: false)
+        core.deepLinkCoordinator.copy(url)
+    }
+
     /// Focus is never handed back: the relaunch takes it, or the app that refused has it.
     func restart(_ app: AppEntry) {
         guard app.kind == .application, let bundleID = app.bundleID else { return }
@@ -359,8 +401,10 @@ final class LauncherCoordinator {
     func quit(_ app: AppEntry, force: Bool = false) {
         guard app.kind == .application, let bundleID = app.bundleID else { return }
         // Nothing here takes focus, so hand it back unless that app is on its way out.
-        let quittingPreviousApp = windowController.previousApp?.bundleIdentifier == bundleID
-        guard AppLauncher.quit(bundleID: bundleID, force: force) else { return }
+        let quittingPreviousApp =
+            windowController.previousApp?.bundleURL?.resolvingSymlinksInPath().standardizedFileURL.path
+            == app.id
+        guard AppLauncher.quit(bundleID: bundleID, url: app.url, force: force) else { return }
         paletteCoordinator.hidePalette(restoreFocus: !quittingPreviousApp)
     }
 }

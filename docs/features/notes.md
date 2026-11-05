@@ -80,6 +80,7 @@ skipped, block and inline Markdown markers are dropped whether or not rendering 
 capped to 120 characters so no row or title bar has to carry a paragraph. `NoteSummary.title` remains the filename; `displayTitle` is what every
 surface renders — switcher rows and their VoiceOver labels, the Trash confirmation, the window title,
 and the title band of `NoteSearch`, so a fuzzy query reaches a note nobody has named.
+An empty unnamed note displays a localized Untitled label, preserving its filename and numeric suffix.
 
 `list()` reads at most 4 KB of each unnamed note to derive it, and a named note costs nothing beyond
 the enumeration it already pays for. The **active** note derives from the live draft rather than the
@@ -111,6 +112,12 @@ failed flush retains the draft for retry.
 - **Show Notes** toggles the panel: it selects the last active note and shows it, or hides a visible one.
 - **Create Note** creates and selects one unique Untitled note, including from an empty channel.
 - **Search Notes** shows the same panel with the switcher open and its search field focused.
+
+Settings > Notes > **Show in Menu Bar** is `AppSettings.notesShowsInMenuBar`, off when absent and
+carried by settings backups. While it and Notes are both on, `NotesCoordinator` owns a
+`NotesMenuBarController`: a click on its status item is Show Notes, and a right-, Control- or
+Option-click opens a menu of Create Note and Search Notes. Turning either setting off removes the
+status item rather than hiding it.
 
 Command-N creates, Command-P opens or refocuses the switcher, Command-O opens the Notes folder, and
 Command-F opens AppKit's find bar in the active note. Escape closes the find bar or switcher before
