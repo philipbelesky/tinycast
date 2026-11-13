@@ -13,20 +13,21 @@ struct MusicMenuBarModel: Equatable, Sendable {
 /// Transport and stars as buttons in the menu bar itself, so one click acts without opening anything.
 @MainActor
 final class MusicMenuBarController: NSObject {
+    private enum Segment: Equatable {
+        case transport(MusicCommand)
+        case star(Int)
+    }
+
     private unowned let coordinator: MusicCoordinator
     private let status = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let menu = NSMenu()
-    private let stack = NSStackView()
-    private var transport: [MusicCommand: NSButton] = [:]
-    private var stars: [NSButton] = []
     private var displayed: MusicMenuBarModel?
+    private var hitRanges: [(range: ClosedRange<CGFloat>, segment: Segment)] = []
 
-    private static let transportOrder: [MusicCommand] = [
-        .previousAlbum, .previousTrack, .toggle, .nextTrack, .nextAlbum
-    ]
     private static let glyphPoints: CGFloat = 13
-    private static let groupGap: CGFloat = 8
-    private static let edgeInset: CGFloat = 6
+    private static let glyphGap: CGFloat = 5
+    private static let groupGap: CGFloat = 10
+    private static let disabledAlpha: CGFloat = 0.35
 
     init(coordinator: MusicCoordinator) {
         self.coordinator = coordinator
@@ -35,33 +36,11 @@ final class MusicMenuBarController: NSObject {
         menu.addItem(item(String(localized: "Music Controls…"), action: #selector(showControls)))
         menu.addItem(item(String(localized: "Music Settings…"), action: #selector(showSettings)))
         guard let button = status.button else { return }
-        for command in Self.transportOrder {
-            let control = glyphButton(action: #selector(performTransport(_:)))
-            control.tag = Self.transportOrder.firstIndex(of: command) ?? 0
-            transport[command] = control
-            stack.addArrangedSubview(control)
-        }
-        for star in 1...5 {
-            let control = glyphButton(action: #selector(rate(_:)))
-            control.tag = star
-            control.setAccessibilityLabel(String(localized: "Rate \(star) stars"))
-            stars.append(control)
-            stack.addArrangedSubview(control)
-        }
-        if let lastTransport = transport[.nextAlbum] {
-            stack.setCustomSpacing(Self.groupGap, after: lastTransport)
-        }
-        stack.orientation = .horizontal
-        stack.spacing = 2
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        button.addSubview(stack)
-        NSLayoutConstraint.activate([
-            stack.centerYAnchor.constraint(equalTo: button.centerYAnchor),
-            stack.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: Self.edgeInset)
-        ])
+        button.imagePosition = .imageOnly
+        (button.cell as? NSButtonCell)?.highlightsBy = []
         button.target = self
-        button.action = #selector(showMenu(_:))
-        button.sendAction(on: [.rightMouseUp])
+        button.action = #selector(click(_:))
+        button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         refresh()
     }
 
@@ -75,23 +54,60 @@ final class MusicMenuBarController: NSObject {
         guard model != displayed else { return }
         displayed = model
         let playing = model.status == .playing
-        configure(.previousAlbum, "backward.end.alt", String(localized: "Previous album"),
-            enabled: model.canPrevious)
-        configure(.previousTrack, "backward.end.fill", String(localized: "Previous track"), enabled: true)
-        configure(.toggle, playing ? "pause.fill" : "play.fill",
-            playing ? String(localized: "Pause") : String(localized: "Play"), enabled: true)
-        configure(.nextTrack, "forward.end.fill", String(localized: "Next track"), enabled: true)
-        configure(.nextAlbum, "forward.end.alt", String(localized: "Next album"), enabled: true)
-        for control in stars {
-            control.isHidden = model.rating == nil
-            guard let rating = model.rating else { continue }
-            control.image = glyph(Self.starSymbol(rating.fill(for: control.tag)))
+        var glyphs: [(segment: Segment, symbol: String, enabled: Bool)] = [
+            (.transport(.previousAlbum), "backward.end.alt", model.canPrevious),
+            (.transport(.previousTrack), "backward.end.fill", true),
+            (.transport(.toggle), playing ? "pause.fill" : "play.fill", true),
+            (.transport(.nextTrack), "forward.end.fill", true),
+            (.transport(.nextAlbum), "forward.end.alt", true)
+        ]
+        if let rating = model.rating {
+            glyphs += (1...5).map { (.star($0), Self.starSymbol(rating.fill(for: $0)), true) }
         }
+        draw(glyphs)
         let summary = model.detail.isEmpty ? model.track : "\(model.track) — \(model.detail)"
-        for control in stars { control.toolTip = summary }
+        status.button?.toolTip = summary
         status.button?.setAccessibilityLabel(summary)
-        stack.layoutSubtreeIfNeeded()
-        status.length = stack.fittingSize.width + Self.edgeInset * 2
+    }
+
+    /// One image, hit-tested by position: subviews in a status button are cropped by the system's host.
+    private func draw(_ glyphs: [(segment: Segment, symbol: String, enabled: Bool)]) {
+        let images = glyphs.map { glyph in
+            NSImage(systemSymbolName: glyph.symbol, accessibilityDescription: nil)?
+                .withSymbolConfiguration(.init(pointSize: Self.glyphPoints, weight: .regular))
+        }
+        var origins: [CGFloat] = []
+        var x: CGFloat = 0
+        for (index, image) in images.enumerated() {
+            if index > 0 {
+                let startsStars = glyphs[index].segment == .star(1)
+                x += startsStars ? Self.groupGap : Self.glyphGap
+            }
+            origins.append(x)
+            x += image?.size.width ?? 0
+        }
+        let height = images.compactMap { $0?.size.height }.max() ?? Self.glyphPoints
+        let composite = NSImage(size: CGSize(width: x, height: height), flipped: false) { _ in
+            for (index, image) in images.enumerated() {
+                guard let image else { continue }
+                let rect = CGRect(
+                    x: origins[index], y: (height - image.size.height) / 2,
+                    width: image.size.width, height: image.size.height)
+                image.draw(
+                    in: rect, from: .zero, operation: .sourceOver,
+                    fraction: glyphs[index].enabled ? 1 : Self.disabledAlpha)
+            }
+            return true
+        }
+        composite.isTemplate = true
+        hitRanges = glyphs.indices.map { index in
+            let width = images[index]?.size.width ?? 0
+            let leading = index == 0 ? 0 : (origins[index - 1] + (images[index - 1]?.size.width ?? 0) + origins[index]) / 2
+            let trailing = index == glyphs.count - 1
+                ? x : (origins[index] + width + origins[index + 1]) / 2
+            return (leading...trailing, glyphs[index].segment)
+        }
+        status.button?.image = composite
     }
 
     private static func starSymbol(_ fill: MusicRating.StarFill) -> String {
@@ -102,51 +118,33 @@ final class MusicMenuBarController: NSObject {
         }
     }
 
-    private func configure(_ command: MusicCommand, _ symbol: String, _ title: String, enabled: Bool) {
-        guard let control = transport[command] else { return }
-        control.image = glyph(symbol)
-        control.toolTip = title
-        control.setAccessibilityLabel(title)
-        control.isEnabled = enabled
-    }
-
-    private func glyph(_ symbol: String) -> NSImage? {
-        let image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)?
-            .withSymbolConfiguration(.init(pointSize: Self.glyphPoints, weight: .regular))
-        image?.isTemplate = true
-        return image
-    }
-
-    private func glyphButton(action: Selector) -> NSButton {
-        let control = NSButton(title: "", target: self, action: action)
-        control.isBordered = false
-        control.imagePosition = .imageOnly
-        control.setButtonType(.momentaryChange)
-        return control
-    }
-
     private func item(_ title: String, action: Selector) -> NSMenuItem {
         let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
         item.target = self
         return item
     }
 
-    @objc private func performTransport(_ sender: NSButton) {
-        guard let model = displayed, Self.transportOrder.indices.contains(sender.tag) else { return }
-        coordinator.perform(Self.transportOrder[sender.tag], player: model.player)
+    @objc private func click(_ sender: NSStatusBarButton) {
+        guard let event = NSApp.currentEvent else { return }
+        if event.type == .rightMouseUp || event.modifierFlags.contains(.control) {
+            // Attached only for this click, so a plain click stays free to press a glyph.
+            status.menu = menu
+            sender.performClick(nil)
+            status.menu = nil
+            return
+        }
+        guard let model = displayed, let image = sender.image else { return }
+        let point = sender.convert(event.locationInWindow, from: nil)
+        let offset = point.x - (sender.bounds.width - image.size.width) / 2
+        guard let segment = hitRanges.first(where: { $0.range.contains(offset) })?.segment else { return }
+        switch segment {
+        case .transport(let command):
+            guard command != .previousAlbum || model.canPrevious else { return }
+            coordinator.perform(command, player: model.player)
+        case .star(let stars):
+            coordinator.rate(stars)
+        }
         refresh()
-    }
-
-    @objc private func rate(_ sender: NSButton) {
-        coordinator.rate(sender.tag)
-        refresh()
-    }
-
-    @objc private func showMenu(_ sender: NSStatusBarButton) {
-        // Attached only for this click, so the buttons keep their own left clicks.
-        status.menu = menu
-        sender.performClick(nil)
-        status.menu = nil
     }
 
     @objc private func showControls() { coordinator.show() }
