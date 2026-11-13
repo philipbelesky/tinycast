@@ -92,7 +92,7 @@ final class MusicPlaybackService {
         _ = await enqueue(player) { [self] in
             try await runner.authorize(player)
             try validateConnection(player, revision: revision)
-            return try await runner.state(player)
+            return try await readState(player)
         }
     }
 
@@ -110,7 +110,7 @@ final class MusicPlaybackService {
 
     @discardableResult
     func refresh(_ player: MusicPlayer) async -> MusicPlayback {
-        await enqueue(player) { [runner] in try await runner.state(player) }
+        await enqueue(player) { [self] in try await readState(player) }
     }
 
     func refreshAlbums(_ player: MusicPlayer) async {
@@ -119,7 +119,7 @@ final class MusicPlaybackService {
             let catalog = try await runner.albums(player)
             try validateConnection(player, revision: revision)
             albums[player] = catalog
-            return try await runner.state(player)
+            return try await readState(player)
         }
     }
 
@@ -127,7 +127,7 @@ final class MusicPlaybackService {
     func perform(_ command: MusicCommand, player: MusicPlayer) async -> MusicPlayback {
         let revision = revisions[player, default: 0]
         return await enqueue(player) { [self] in
-            let current = try await runner.state(player)
+            let current = try await readState(player)
             try validateConnection(player, revision: revision)
             if command == .previousAlbum || command == .nextAlbum || (command == .toggle && current.status == .stopped) {
                 if command == .previousAlbum && !canPrevious(player) { return current }
@@ -149,8 +149,10 @@ final class MusicPlaybackService {
             let reply = try await runner.transport(command, player: player)
             guard command == .toggle else { return reply }
             try validateConnection(player, revision: revision)
-            return try await MusicToggleConfirmation.wait(from: current.status, reply: reply,
-                read: { try await runner.state(player) })
+            let budget = MusicOperationBudget(seconds: MusicOperationBudget.toggleConfirmation, now: now())
+            return try await MusicToggleConfirmation.wait(
+                from: current.status, reply: reply, deadline: budget.deadline, now: now,
+                read: { try await runner.state(player, budget: budget) })
         }
     }
 
@@ -216,6 +218,10 @@ final class MusicPlaybackService {
             store.setRemoteEnabled(false)
             pairingError = "The gadget pairing token could not be read from Keychain."
         }
+    }
+
+    private func readState(_ player: MusicPlayer) async throws -> MusicPlayback {
+        try await runner.state(player, budget: MusicOperationBudget(seconds: MusicOperationBudget.state, now: now()))
     }
 
     private func validateConnection(_ player: MusicPlayer, revision: Int) throws {

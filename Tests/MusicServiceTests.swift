@@ -108,6 +108,17 @@ struct MusicServiceTests {
         damagedStore.clearHistory()
         let cleared = try JSONDecoder().decode(MusicListeningHistory.self, from: Data(contentsOf: damagedURL))
         assert(cleared.entries.isEmpty && damagedStore.persistenceError == nil)
+        fake.playback = MusicPlayback(status: .playing, track: "Held", trackID: "held")
+        fake.holdStatus = true
+        fake.onRead = { now.addTimeInterval(5) }
+        let readsBeforeSlowToggle = fake.readCounts[.tvTunes, default: 0]
+        let transportsBeforeSlowToggle = fake.transportCount
+        _ = await service.perform(.toggle, player: .tvTunes)
+        let slowReads = fake.readCounts[.tvTunes, default: 0] - readsBeforeSlowToggle
+        assert(slowReads == 2, "a slow reader must stop at the toggle deadline, read \(slowReads)")
+        assert(fake.transportCount == transportsBeforeSlowToggle + 1, "the toggle itself still runs once")
+        fake.holdStatus = false
+        fake.onRead = nil
         service.stop()
         print("Music service sequencing, deduplication, history persistence and disconnect checks passed")
     }
@@ -124,10 +135,13 @@ private final class MusicFakePlayer: MusicPlayerControlling {
     var authorizationCount = 0
     var readContinuation: CheckedContinuation<Void, Never>?
     var playback = MusicPlayback()
+    var holdStatus = false
+    var onRead: (() -> Void)?
 
     func authorize(_ player: MusicPlayer) async throws { authorizationCount += 1 }
 
-    func state(_ player: MusicPlayer) async throws -> MusicPlayback {
+    func state(_ player: MusicPlayer, budget: MusicOperationBudget) async throws -> MusicPlayback {
+        onRead?()
         readCounts[player, default: 0] += 1
         if readFailures[player]?.isEmpty == false { throw readFailures[player]!.removeFirst() }
         if blockRead {
@@ -145,7 +159,7 @@ private final class MusicFakePlayer: MusicPlayerControlling {
     func transport(_ command: MusicCommand, player: MusicPlayer) async throws -> MusicPlayback {
         transportCount += 1
         if failTransport { throw MusicAutomationFailure("Playback result unknown.") }
-        playback.status = playback.status == .playing ? .paused : .playing
+        if !holdStatus { playback.status = playback.status == .playing ? .paused : .playing }
         return playback
     }
 

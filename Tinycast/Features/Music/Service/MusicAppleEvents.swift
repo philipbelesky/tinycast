@@ -1,6 +1,12 @@
 import AppKit
 import Carbon
 
+/// One operation's remaining time, so a later event cannot restart the eight-second timeout.
+struct MusicEventClock: Sendable {
+    var budget: MusicOperationBudget
+    var now: @Sendable () -> Date
+}
+
 /// TVTunes uses its scripting event codes, independent of whichever dictionary Launch Services finds.
 enum MusicAppleEvents {
     @concurrent static func authorize(_ player: MusicPlayer, processID: Int32) async throws {
@@ -9,16 +15,22 @@ enum MusicAppleEvents {
             code(player == .tvTunes ? "TVtn" : "core"), typeWildCard, true)
         guard status == noErr else { throw failure(number: Int(status)) }
     }
-    @concurrent static func state(_ player: MusicPlayer, processID: Int32) async throws -> MusicPlayback {
+    @concurrent static func state(
+        _ player: MusicPlayer, processID: Int32, budget: MusicOperationBudget,
+        now: @escaping @Sendable () -> Date
+    ) async throws -> MusicPlayback {
         try Task.checkCancellation()
-        if player == .tvTunes { return try tvState(tvEvent("pbst", processID: processID)) }
-        return try nativeAppleState(processID: processID)
+        let clock = MusicEventClock(budget: budget, now: now)
+        if player == .tvTunes { return try tvState(tvEvent("pbst", processID: processID, clock: clock)) }
+        return try nativeAppleState(processID: processID, clock: clock)
     }
 
     @concurrent static func transport(
-        _ command: MusicCommand, player: MusicPlayer, processID: Int32
+        _ command: MusicCommand, player: MusicPlayer, processID: Int32, budget: MusicOperationBudget,
+        now: @escaping @Sendable () -> Date
     ) async throws -> MusicPlayback {
         try Task.checkCancellation()
+        let clock = MusicEventClock(budget: budget, now: now)
         if player == .tvTunes {
             let verb: String
             switch command {
@@ -28,7 +40,7 @@ enum MusicAppleEvents {
             case .previousTrack: verb = "prev"
             case .nextAlbum, .previousAlbum: throw MusicAutomationFailure("Select an album first.")
             }
-            return try tvState(tvEvent(verb, processID: processID))
+            return try tvState(tvEvent(verb, processID: processID, clock: clock))
         }
         let verb: String
         switch command {
@@ -38,14 +50,15 @@ enum MusicAppleEvents {
         case .previousTrack: verb = "Prev"
         case .nextAlbum, .previousAlbum: throw MusicAutomationFailure("Select an album first.")
         }
-        _ = try send(eventClass: "hook", eventID: verb, processID: processID)
-        return try nativeAppleState(processID: processID)
+        _ = try send(eventClass: "hook", eventID: verb, processID: processID, clock: clock)
+        return try nativeAppleState(processID: processID, clock: clock)
     }
 
     @concurrent static func albums(_ player: MusicPlayer, processID: Int32) async throws -> [MusicAlbum] {
         try Task.checkCancellation()
         if player == .tvTunes {
-            let reply = try tvEvent("albs", processID: processID)
+            let reply = try tvEvent("albs", processID: processID, clock: MusicEventClock(
+                budget: MusicOperationBudget(seconds: MusicOperationBudget.state, now: Date()), now: Date.init))
             if reply.forKeyword(code("Stat")) != nil {
                 throw MusicAutomationFailure(try tvState(reply).error)
             }
@@ -97,7 +110,8 @@ enum MusicAppleEvents {
     ) async throws -> MusicPlayback {
         try Task.checkCancellation()
         if player == .tvTunes {
-            return try tvState(tvEvent("play", processID: processID, albumID: album.id))
+            return try tvState(tvEvent("play", processID: processID, albumID: album.id, clock: MusicEventClock(
+                budget: MusicOperationBudget(seconds: MusicOperationBudget.transport, now: Date()), now: Date.init)))
         }
         guard !album.tracks.isEmpty else { throw MusicAutomationFailure("That album has no library tracks.") }
         let tracks = album.tracks.map(quoted).joined(separator: ", ")
@@ -116,8 +130,13 @@ enum MusicAppleEvents {
             """
         let queueID = try appleCommand(script + "\nreturn persistent ID of newQueue", processID: processID).stringValue ?? ""
         guard !queueID.isEmpty else { throw MusicAutomationFailure("Music returned no album queue identity.") }
-        let result = try await MusicAlbumConfirmation.wait(for: album, queueID: queueID) {
-            try nativeAppleState(processID: processID)
+        let started = Date()
+        let budget = MusicOperationBudget(seconds: MusicOperationBudget.albumConfirmation, now: started)
+        let clock = MusicEventClock(budget: budget, now: Date.init)
+        let result = try await MusicAlbumConfirmation.wait(
+            for: album, queueID: queueID, deadline: budget.deadline, now: Date.init
+        ) {
+            try nativeAppleState(processID: processID, clock: clock)
         }
         if !previousQueue.isEmpty, previousQueue != result.queueID {
             _ = try appleCommand("""
@@ -152,15 +171,16 @@ enum MusicAppleEvents {
     }
 
     private static func tvEvent(
-        _ verb: String, processID: Int32, albumID: String? = nil
+        _ verb: String, processID: Int32, albumID: String? = nil, clock: MusicEventClock
     ) throws -> NSAppleEventDescriptor {
         try Task.checkCancellation()
         let event = NSAppleEventDescriptor(eventClass: code("TVtn"), eventID: code(verb),
             targetDescriptor: NSAppleEventDescriptor(processIdentifier: processID),
             returnID: -1, transactionID: 0)
         if let albumID { event.setParam(NSAppleEventDescriptor(string: albumID), forKeyword: code("----")) }
+        guard let timeout = clock.budget.eventTimeout(at: clock.now()) else { throw failure(number: -1712) }
         do {
-            let reply = try event.sendEvent(options: [.waitForReply, .canInteract], timeout: 8)
+            let reply = try event.sendEvent(options: [.waitForReply, .canInteract], timeout: timeout)
             let errorNumber = reply.paramDescriptor(forKeyword: code("errn"))?.int32Value ?? 0
             guard errorNumber == 0 else { throw failure(number: Int(errorNumber)) }
             guard let result = reply.paramDescriptor(forKeyword: code("----")) else {
@@ -172,19 +192,19 @@ enum MusicAppleEvents {
         }
     }
 
-    private static func nativeAppleState(processID: Int32) throws -> MusicPlayback {
-        let playerState = try get(property("pPlS"), processID: processID).enumCodeValue
+    private static func nativeAppleState(processID: Int32, clock: MusicEventClock) throws -> MusicPlayback {
+        let playerState = try get(property("pPlS"), processID: processID, clock: clock).enumCodeValue
         if playerState == code("kPSS") { return MusicPlayback() }
-        let track = try get(property("pTrk"), processID: processID)
+        let track = try get(property("pTrk"), processID: processID, clock: clock)
         func field(_ name: String) throws -> String {
-            try get(property(name, of: track), processID: processID).stringValue ?? ""
+            try get(property(name, of: track), processID: processID, clock: clock).stringValue ?? ""
         }
         let album = try field("pAlb")
         let albumArtist = try field("pAlA")
-        let compilation = try get(property("pAnt", of: track), processID: processID).booleanValue
+        let compilation = try get(property("pAnt", of: track), processID: processID, clock: clock).booleanValue
         let artist = try albumArtist.isEmpty ? (compilation ? "Various Artists" : field("pArt")) : albumArtist
-        let playlist = try get(property("pPla"), processID: processID)
-        let queueID = try get(property("pPIS", of: playlist), processID: processID).stringValue ?? ""
+        let playlist = try get(property("pPla"), processID: processID, clock: clock)
+        let queueID = try get(property("pPIS", of: playlist), processID: processID, clock: clock).stringValue ?? ""
         return MusicPlayback(status: playerState == code("kPSP") ? .playing : .paused,
             album: album, artist: artist, track: try field("pnam"),
             albumID: albumIdentity(title: album, artist: artist), trackID: try field("pPIS"), queueID: queueID)
@@ -205,19 +225,24 @@ enum MusicAppleEvents {
         return record.coerce(toDescriptorType: code("obj "))!
     }
 
-    private static func get(_ object: NSAppleEventDescriptor, processID: Int32) throws -> NSAppleEventDescriptor {
-        try send(eventClass: "core", eventID: "getd", processID: processID, parameters: ["----": object])
+    private static func get(
+        _ object: NSAppleEventDescriptor, processID: Int32, clock: MusicEventClock
+    ) throws -> NSAppleEventDescriptor {
+        try send(eventClass: "core", eventID: "getd", processID: processID, clock: clock, parameters: ["----": object])
     }
 
     private static func send(
-        eventClass: String, eventID: String, processID: Int32, parameters: [String: NSAppleEventDescriptor] = [:]
+        eventClass: String, eventID: String, processID: Int32, clock: MusicEventClock,
+        parameters: [String: NSAppleEventDescriptor] = [:]
     ) throws -> NSAppleEventDescriptor {
         try Task.checkCancellation()
+        // A fresh 8s timeout on every event lets one slow snapshot hold the queue for a minute.
+        guard let timeout = clock.budget.eventTimeout(at: clock.now()) else { throw failure(number: -1712) }
         let event = NSAppleEventDescriptor(eventClass: code(eventClass), eventID: code(eventID),
             targetDescriptor: NSAppleEventDescriptor(processIdentifier: processID), returnID: -1, transactionID: 0)
         for (name, value) in parameters { event.setParam(value, forKeyword: code(name)) }
         do {
-            let reply = try event.sendEvent(options: [.waitForReply, .canInteract], timeout: 8)
+            let reply = try event.sendEvent(options: [.waitForReply, .canInteract], timeout: timeout)
             let number = reply.paramDescriptor(forKeyword: code("errn"))?.int32Value ?? 0
             if number != 0 { throw failure(number: Int(number)) }
             return reply.paramDescriptor(forKeyword: code("----")) ?? NSAppleEventDescriptor.null()

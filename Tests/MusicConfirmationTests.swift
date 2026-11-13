@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 @main
 @MainActor
@@ -39,6 +40,42 @@ struct MusicConfirmationTests {
         let ignored = try await MusicToggleConfirmation.wait(from: .paused, reply: waiting,
             read: { unchanged.read() }, pause: {})
         assert(ignored.status == .paused && unchanged.readCount == 20, "An ignored toggle reports its real state")
+
+        let started = Date(timeIntervalSince1970: 0)
+        let budget = MusicOperationBudget(seconds: 8, now: started)
+        assert(budget.eventTimeout(at: started) == 8)
+        assert(budget.eventTimeout(at: started.addingTimeInterval(6)) == 2)
+        assert(budget.eventTimeout(at: started.addingTimeInterval(8)) == nil)
+        assert(MusicOperationBudget(seconds: 1, now: started).eventTimeout(at: started) == 1)
+
+        let albumClock = Mutex(Date(timeIntervalSince1970: 10_000))
+        let slowAlbum = MusicConfirmationFixture([waiting])
+        do {
+            _ = try await MusicAlbumConfirmation.wait(
+                for: album, queueID: "new-queue",
+                now: { albumClock.withLock { $0 } },
+                read: {
+                    albumClock.withLock { $0.addTimeInterval(2) }
+                    return await slowAlbum.read()
+                },
+                pause: {})
+            assertionFailure("A slow album read must stop at the deadline")
+        } catch {
+            let reads = await slowAlbum.readCount
+            assert(reads == 2, "album confirmation started \(reads) reads after the deadline")
+        }
+
+        var toggleClock = Date(timeIntervalSince1970: 20_000)
+        let slowToggle = MusicConfirmationFixture([waiting])
+        let stalled = try await MusicToggleConfirmation.wait(
+            from: .paused, reply: waiting, now: { toggleClock },
+            read: {
+                toggleClock.addTimeInterval(2)
+                return slowToggle.read()
+            },
+            pause: {})
+        assert(stalled.status == .paused && slowToggle.readCount == 1,
+            "toggle confirmation started \(slowToggle.readCount) reads past its one-second deadline")
         print("Delayed album changes, transient fallback, wrong-queue and toggle confirmation checks passed")
     }
 }

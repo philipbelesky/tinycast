@@ -4,7 +4,7 @@ import AppKit
 @MainActor
 protocol MusicPlayerControlling {
     func authorize(_ player: MusicPlayer) async throws
-    func state(_ player: MusicPlayer) async throws -> MusicPlayback
+    func state(_ player: MusicPlayer, budget: MusicOperationBudget) async throws -> MusicPlayback
     func albums(_ player: MusicPlayer) async throws -> [MusicAlbum]
     func transport(_ command: MusicCommand, player: MusicPlayer) async throws -> MusicPlayback
     func play(_ album: MusicAlbum, player: MusicPlayer) async throws -> MusicPlayback
@@ -20,9 +20,9 @@ final class MusicAutomationRunner: MusicPlayerControlling {
         try await MusicAppleEvents.authorize(player, processID: pid)
     }
 
-    func state(_ player: MusicPlayer) async throws -> MusicPlayback {
+    func state(_ player: MusicPlayer, budget: MusicOperationBudget) async throws -> MusicPlayback {
         let pid = try processID(player)
-        return try await MusicAppleEvents.state(player, processID: pid)
+        return try await MusicAppleEvents.state(player, processID: pid, budget: budget, now: Date.init)
     }
 
     func albums(_ player: MusicPlayer) async throws -> [MusicAlbum] {
@@ -32,7 +32,9 @@ final class MusicAutomationRunner: MusicPlayerControlling {
 
     func transport(_ command: MusicCommand, player: MusicPlayer) async throws -> MusicPlayback {
         let pid = try processID(player)
-        return try await MusicAppleEvents.transport(command, player: player, processID: pid)
+        let budget = MusicOperationBudget(seconds: MusicOperationBudget.transport, now: Date())
+        return try await MusicAppleEvents.transport(
+            command, player: player, processID: pid, budget: budget, now: Date.init)
     }
 
     func play(_ album: MusicAlbum, player: MusicPlayer) async throws -> MusicPlayback {
