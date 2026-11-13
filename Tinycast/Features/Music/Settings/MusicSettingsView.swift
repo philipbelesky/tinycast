@@ -13,11 +13,19 @@ struct MusicSettingsView: View {
                         get: { coordinator.service.store.monitored.contains(player) },
                         set: { coordinator.setMonitoring(player, enabled: $0) }))
                 }
+                Toggle(isOn: Binding(
+                    get: { coordinator.service.store.showsInMenuBar },
+                    set: { coordinator.setShowsInMenuBar($0) })) {
+                    SettingsRowTitle(.musicPlayers, "Show in menu bar")
+                }
             } header: {
                 SettingsSectionHeader(.musicPlayers)
             } footer: {
-                Text("Open the player first. Connecting allows Tinycast to read playback "
-                    + "and run controls through macOS Automation.")
+                Text("""
+                Open the player first. Connecting allows Tinycast to read playback and run \
+                controls through macOS Automation. The menu bar item stays while a connected \
+                player is playing or paused.
+                """)
             }
 
             Section {

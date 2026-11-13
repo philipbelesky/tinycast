@@ -115,6 +115,7 @@ enum SettingsSearchCatalog {
     private static let music: [SettingsSearchEntry] = [
         .init(pane: .music, keywords: ["playback", "Apple Music", "TVTunes", "album", "listening"]),
         .init(group: .musicPlayers, "Players", keywords: ["automation", "connect", "controls"]),
+        .init(.musicPlayers, "Show in menu bar", keywords: ["status", "menu bar", "rating"]),
         .init(.musicHistory, "Save listening history", keywords: ["tracks", "recent", "privacy"]),
         .init(.musicGadget, "Allow gadget connections", keywords: ["remote", "pairing", "device"]),
         .init(.musicGadget, "Gadget player", keywords: ["Apple Music", "TVTunes", "source"]),

@@ -11,6 +11,9 @@ final class MusicStore {
     var selectedPlayer: MusicPlayer {
         didSet { defaults.set(selectedPlayer.rawValue, forKey: "music.selectedPlayer") }
     }
+    var showsInMenuBar: Bool {
+        didSet { defaults.set(showsInMenuBar, forKey: "music.showsInMenuBar") }
+    }
     private(set) var listeningHistory = MusicListeningHistory()
     var snapshots: [MusicPlayer: MusicPlayback] = [:]
     var isBusy = false
@@ -26,6 +29,8 @@ final class MusicStore {
         self.defaults = defaults
         self.historyURL = historyURL
         selectedPlayer = defaults.string(forKey: "music.selectedPlayer").flatMap(MusicPlayer.init) ?? .appleMusic
+        showsInMenuBar = defaults.object(forKey: "music.showsInMenuBar") == nil
+            || defaults.bool(forKey: "music.showsInMenuBar")
     }
 
     func load() {

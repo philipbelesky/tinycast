@@ -72,29 +72,16 @@ private struct MusicPlayerSection: View {
                     if !state.artist.isEmpty { LabeledContent("Artist", value: state.artist) }
                     if !state.album.isEmpty { LabeledContent("Album", value: state.album) }
                     LabeledContent("Playback", value: state.status.rawValue.capitalized)
-                    HStack(spacing: Theme.Spacing.xl) {
-                        control(.previousAlbum, "Previous album", "backward.end.alt")
-                            .disabled(!coordinator.service.canPrevious(player))
-                        control(.previousTrack, "Previous track", "backward.end.fill")
-                        control(.toggle, state.status == .playing ? "Pause" : "Play",
-                            state.status == .playing ? "pause.fill" : "play.fill")
-                        control(.nextTrack, "Next track", "forward.end.fill")
-                        control(.nextAlbum, "Next album", "forward.end.alt")
-                    }
-                    .disabled(store.isBusy)
+                    MusicTransportControls(
+                        status: state.status,
+                        canPrevious: coordinator.service.canPrevious(player),
+                        isBusy: store.isBusy,
+                        perform: { coordinator.perform($0, player: player) })
                 }
             } else {
                 Text("Open the player, then connect to enable controls and playback monitoring.")
                     .foregroundStyle(.secondary)
             }
         }
-    }
-
-    private func control(_ command: MusicCommand, _ title: String, _ symbol: String) -> some View {
-        Button { coordinator.perform(command, player: player) } label: {
-            SymbolImage(name: symbol, size: Theme.Size.rowIcon).accessibilityLabel(title)
-        }
-        .help(title)
-        .accessibilityLabel(title)
     }
 }

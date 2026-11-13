@@ -14,7 +14,7 @@ struct MusicServiceTests {
         let file = directory.appending(path: "history.json")
         let store = MusicStore(defaults: defaults, historyURL: file)
         store.load()
-        assert(store.monitored.isEmpty && !store.remoteEnabled && !store.historyEnabled)
+        assert(store.monitored.isEmpty && !store.remoteEnabled && !store.historyEnabled && store.showsInMenuBar)
         store.setMonitoring(.appleMusic, enabled: true)
         store.setMonitoring(.tvTunes, enabled: true)
         store.setHistoryEnabled(true)

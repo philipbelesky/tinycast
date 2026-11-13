@@ -340,7 +340,7 @@ final class AppCore {
 
             appIndex.start(settings: settings)
             musicService.start()
-            musicCoordinator.applyCommandVisibility()
+            musicCoordinator.start()
             clipboardCoordinator.applyEnabled()
             extensions.start(appIndex: appIndex, coordinator: extensionCoordinator)
             extensionCoordinator.applyEnabled()

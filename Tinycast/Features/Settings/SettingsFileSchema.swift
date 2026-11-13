@@ -29,6 +29,7 @@ enum SettingsFileSchema {
 
         switch key {
         case .musicPlayer: return bind(music, \.selectedPlayer)
+        case .musicShowInMenuBar: return bind(music, \.showsInMenuBar)
         case .musicCommands: return launcher.commandsBinding(for: key, owner: .music)
         case .launcherShortcut:
             return shortcuts.binding(

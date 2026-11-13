@@ -14,6 +14,7 @@ struct MusicRatingTests {
         try await writeKeepsTheTrackCapturedAtTheClick()
         try await failureRevertsAndPollingContinues()
         try await cacheRefreshesOnTrackChangeAndAge()
+        menuBarPresence()
         print("Music rating checks passed")
     }
 
@@ -72,6 +73,28 @@ struct MusicRatingTests {
         snapshots = [.appleMusic: stopped, .tvTunes: playing]
         assert(MusicCommandTarget.player(monitored: [.appleMusic], snapshots: snapshots, preferred: .tvTunes) == nil)
         assert(MusicCommandTarget.playersWithTracks(monitored: monitored, snapshots: [.appleMusic: playing, .tvTunes: paused]).count == 2)
+    }
+
+    private static func menuBarPresence() {
+        let start = Date(timeIntervalSince1970: 100)
+        let playing = MusicPlayback(status: .playing, track: "A", trackID: "a")
+        let paused = MusicPlayback(status: .paused, track: "B", trackID: "b")
+        let stopped = MusicPlayback(status: .stopped)
+        assert(MusicMenuBarPresence.isEligible(monitored: [.appleMusic], snapshots: [.appleMusic: playing]))
+        assert(MusicMenuBarPresence.isEligible(monitored: [.tvTunes], snapshots: [.tvTunes: paused]))
+        assert(!MusicMenuBarPresence.isEligible(monitored: [.appleMusic], snapshots: [.appleMusic: stopped]))
+        assert(!MusicMenuBarPresence.isEligible(monitored: [], snapshots: [.appleMusic: playing]))
+        assert(!MusicMenuBarPresence.isEligible(
+            monitored: [.appleMusic], snapshots: [.appleMusic: MusicPlayback(status: .playing)]))
+        var presence = MusicMenuBarPresence()
+        assert(!presence.shows(preference: false, eligible: true, now: start))
+        assert(presence.shows(preference: true, eligible: true, now: start))
+        assert(presence.shows(preference: true, eligible: false, now: start))
+        assert(presence.shows(preference: true, eligible: false, now: start.addingTimeInterval(4)))
+        assert(!presence.shows(preference: true, eligible: false, now: start.addingTimeInterval(5)))
+        assert(presence.shows(preference: true, eligible: true, now: start.addingTimeInterval(6)))
+        assert(presence.shows(preference: true, eligible: false, now: start.addingTimeInterval(6)))
+        assert(!presence.shows(preference: true, eligible: false, now: start.addingTimeInterval(11)))
     }
 
     private static func cachePolicy() {

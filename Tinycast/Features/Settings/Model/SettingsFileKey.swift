@@ -123,6 +123,7 @@ enum SettingsFileKey: String, CaseIterable, Sendable {
     case calendarCommands = "calendar.commands"
     case extensionsShowInLauncher = "extensions.showInLauncher"
     case musicPlayer = "music.player"
+    case musicShowInMenuBar = "music.showInMenuBar"
     case musicCommands = "music.commands"
 
     var section: String { String(rawValue.prefix { $0 != "." }) }
