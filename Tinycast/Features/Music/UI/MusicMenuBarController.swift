@@ -37,6 +37,8 @@ final class MusicMenuBarController: NSObject {
         menu.addItem(item(String(localized: "Music Settings…"), action: #selector(showSettings)))
         guard let button = status.button else { return }
         button.imagePosition = .imageOnly
+        // Stable, because menu bar managers key an item's placement on this name.
+        button.setAccessibilityLabel(String(localized: "Music"))
         (button.cell as? NSButtonCell)?.highlightsBy = []
         button.target = self
         button.action = #selector(click(_:))
@@ -67,7 +69,6 @@ final class MusicMenuBarController: NSObject {
         draw(glyphs)
         let summary = model.detail.isEmpty ? model.track : "\(model.track) — \(model.detail)"
         status.button?.toolTip = summary
-        status.button?.setAccessibilityLabel(summary)
     }
 
     /// One image, hit-tested by position: subviews in a status button are cropped by the system's host.
