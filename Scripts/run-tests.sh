@@ -87,6 +87,9 @@ run() {
 
 L=Tinycast/Features/Launcher/Model
 run MusicTests             Tinycast/Features/Music/Model/*.swift
+run MusicRatingTests       Tinycast/Features/Music/Model/*.swift \
+                           Tinycast/Features/Music/Service/*.swift \
+                           Tinycast/Platform/AppPaths.swift Tinycast/Platform/KeychainSecretStore.swift
 run MusicServiceTests      Tinycast/Features/Music/Model/*.swift \
                            Tinycast/Features/Music/Service/*.swift \
                            Tinycast/Platform/AppPaths.swift Tinycast/Platform/KeychainSecretStore.swift

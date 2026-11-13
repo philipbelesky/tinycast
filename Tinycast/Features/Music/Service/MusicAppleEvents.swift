@@ -147,6 +147,110 @@ enum MusicAppleEvents {
         return result
     }
 
+    @concurrent static func readRating(
+        trackID: String, player: MusicPlayer, processID: Int32, budget: MusicOperationBudget,
+        now: @escaping @Sendable () -> Date
+    ) async throws -> MusicRating? {
+        try Task.checkCancellation()
+        if player == .tvTunes {
+            let state = try tvState(tvEvent("pbst", processID: processID, clock: MusicEventClock(budget: budget, now: now)))
+            return state.rating
+        }
+        let seconds = try scriptSeconds(budget, now: now)
+        let reply = try executeScript("""
+            tell application id "com.apple.Music"
+                with timeout of \(seconds) seconds
+                    set matches to tracks of library playlist 1 whose persistent ID is \(quoted(trackID))
+                    if (count of matches) is 0 then return {-1, "missing"}
+                    set libraryTrack to item 1 of matches
+                    if rating kind of libraryTrack is computed then return {rating of libraryTrack, "computed"}
+                    return {rating of libraryTrack, "user"}
+                end timeout
+            end tell
+            """)
+        return rating(from: reply)
+    }
+
+    @concurrent static func rate(
+        stars: Int, trackID: String, player: MusicPlayer, processID: Int32, budget: MusicOperationBudget,
+        now: @escaping @Sendable () -> Date
+    ) async throws -> MusicRating {
+        try Task.checkCancellation()
+        if player == .tvTunes {
+            return try tvRate(stars: stars, trackID: trackID, processID: processID, budget: budget, now: now)
+        }
+        let seconds = try scriptSeconds(budget, now: now)
+        do {
+            let reply = try executeScript("""
+                tell application id "com.apple.Music"
+                    with timeout of \(seconds) seconds
+                        set matches to tracks of library playlist 1 whose persistent ID is \(quoted(trackID))
+                        if (count of matches) is 0 then error "not in library" number -54
+                        set libraryTrack to item 1 of matches
+                        set rating of libraryTrack to \(stars * 20)
+                        if rating kind of libraryTrack is computed then return {rating of libraryTrack, "computed"}
+                        return {rating of libraryTrack, "user"}
+                    end timeout
+                end tell
+                """)
+            guard let rating = rating(from: reply) else { throw notInLibrary }
+            return rating
+        } catch let error as MusicAutomationFailure where error.number == -54 {
+            throw notInLibrary
+        }
+    }
+
+    private static var notInLibrary: MusicAutomationFailure {
+        MusicAutomationFailure("This track is not in your library, so it cannot be rated.", number: -54)
+    }
+
+    private static func scriptSeconds(
+        _ budget: MusicOperationBudget, now: @Sendable () -> Date
+    ) throws -> Int {
+        guard let timeout = budget.eventTimeout(at: now()) else { throw failure(number: -1712) }
+        let seconds = Int(timeout.rounded(.down))
+        guard seconds >= 1 else { throw failure(number: -1712) }
+        return min(8, seconds)
+    }
+
+    private static func rating(from reply: NSAppleEventDescriptor) -> MusicRating? {
+        let points = Int(reply.atIndex(1)?.int32Value ?? -1)
+        let kind = reply.atIndex(2)?.stringValue ?? ""
+        guard points >= 0, kind != "missing" else { return nil }
+        return MusicRating.apple(points: points, kind: kind)
+    }
+
+    private static func tvRate(
+        stars: Int, trackID: String, processID: Int32, budget: MusicOperationBudget,
+        now: @Sendable () -> Date
+    ) throws -> MusicRating {
+        try Task.checkCancellation()
+        guard let timeout = budget.eventTimeout(at: now()) else { throw failure(number: -1712) }
+        let event = NSAppleEventDescriptor(eventClass: code("TVtn"), eventID: code("rate"),
+            targetDescriptor: NSAppleEventDescriptor(processIdentifier: processID),
+            returnID: -1, transactionID: 0)
+        event.setParam(NSAppleEventDescriptor(string: trackID), forKeyword: code("----"))
+        event.setParam(NSAppleEventDescriptor(int32: Int32(stars * 2)), forKeyword: code("Rtng"))
+        let reply: NSAppleEventDescriptor
+        do {
+            let sent = try event.sendEvent(options: [.waitForReply, .canInteract], timeout: timeout)
+            let errorNumber = sent.paramDescriptor(forKeyword: code("errn"))?.int32Value ?? 0
+            guard errorNumber == 0 else { throw failure(number: Int(errorNumber)) }
+            guard let result = sent.paramDescriptor(forKeyword: code("----")) else {
+                throw MusicAutomationFailure("TVTunes returned an empty scripting reply.")
+            }
+            reply = result
+        } catch let error as MusicAutomationFailure { throw error } catch {
+            throw failure(number: (error as NSError).code)
+        }
+        let state = try tvState(reply)
+        if state.status == .error {
+            throw MusicAutomationFailure(state.error.isEmpty ? "TVTunes could not rate that track." : state.error)
+        }
+        if state.trackID == trackID, let rating = state.rating { return rating }
+        return MusicRating.whole(stars)
+    }
+
     private static func appleCommand(_ command: String, processID: Int32) throws -> NSAppleEventDescriptor {
         try Task.checkCancellation()
         guard NSRunningApplication(processIdentifier: processID)?.bundleIdentifier == MusicPlayer.appleMusic.bundleID
@@ -257,7 +361,12 @@ enum MusicAppleEvents {
         }
         return MusicPlayback(status: status, album: text(reply, "Albm"), artist: text(reply, "Arts"),
             track: text(reply, "Trck"), albumID: text(reply, "AlId"), trackID: text(reply, "TrId"),
-            error: text(reply, "Emsg"))
+            error: text(reply, "Emsg"), rating: MusicRating.tvTunes(integer(reply, "Rtng")))
+    }
+
+    private static func integer(_ reply: NSAppleEventDescriptor, _ keyword: String) -> Int? {
+        guard let value = reply.forKeyword(code(keyword)) else { return nil }
+        return Int(value.int32Value)
     }
 
     private static func text(_ reply: NSAppleEventDescriptor, _ keyword: String) -> String {
@@ -282,13 +391,14 @@ enum MusicAppleEvents {
         switch number {
         case -1743, -1744:
             MusicAutomationFailure("Allow Tinycast in System Settings → Privacy & Security → Automation, then reconnect.",
-                requiresReconnect: true)
+                requiresReconnect: true, number: number)
         case -1712:
-            MusicAutomationFailure("The player timed out. The playback result is unknown; check the player before retrying.")
+            MusicAutomationFailure("The player timed out. The playback result is unknown; check the player before retrying.",
+                number: number)
         case -1708:
             MusicAutomationFailure("This TVTunes build has no scripting support. Open the updated build, then reconnect.",
-                requiresReconnect: true)
-        default: MusicAutomationFailure("Player automation failed (\(number)). Check the player and reconnect.")
+                requiresReconnect: true, number: number)
+        default: MusicAutomationFailure("Player automation failed (\(number)). Check the player and reconnect.", number: number)
         }
     }
 }

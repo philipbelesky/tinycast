@@ -45,6 +45,29 @@ final class MusicCoordinator {
         Task { await service.perform(command, player: player) }
     }
 
+    func rate(_ stars: Int) {
+        guard let player = MusicCommandTarget.player(
+            monitored: service.store.monitored, snapshots: service.store.snapshots,
+            preferred: service.store.selectedPlayer
+        ) else {
+            core.showMessage(String(localized: "Nothing is playing."), tone: .neutral)
+            return
+        }
+        Task {
+            switch await service.rate(stars, player: player) {
+            case .applied(let playback):
+                let glyphs = MusicRating.whole(stars).hudGlyphs
+                core.showMessage(String(localized: "\(glyphs)  \(playback.track)"))
+            case .unchanged:
+                break
+            case .refused(let message):
+                core.showMessage(message, tone: .neutral)
+            case .failed(let message):
+                core.showMessage(message, tone: .danger)
+            }
+        }
+    }
+
     func selectPlayer(_ player: MusicPlayer) { service.store.selectedPlayer = player }
     func setHistoryEnabled(_ enabled: Bool) { service.store.setHistoryEnabled(enabled) }
     func setRemoteEnabled(_ enabled: Bool) { service.setRemoteEnabled(enabled) }

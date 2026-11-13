@@ -29,6 +29,15 @@ final class MusicPlaybackService {
     private var remoteResults: [String: (MusicCommand, Task<MusicRemoteState, Never>)] = [:]
     private var remoteOrder: [String] = []
     private let pairing = MusicPairingStore()
+    private var pendingRating: PendingRating?
+    @ObservationIgnored private var ratingFailure: String?
+
+    private struct PendingRating: Equatable {
+        let id: UUID
+        let player: MusicPlayer
+        let trackID: String
+        let rating: MusicRating
+    }
 
     init(
         store: MusicStore,
@@ -168,6 +177,56 @@ final class MusicPlaybackService {
 
     func canPrevious(_ player: MusicPlayer) -> Bool { albumHistory[player]?.canPrevious ?? false }
 
+    func displayedRating(for player: MusicPlayer) -> MusicRating? {
+        let snapshot = store.snapshots[player]
+        if let pending = pendingRating, pending.player == player, pending.trackID == snapshot?.trackID {
+            return pending.rating
+        }
+        return snapshot?.rating
+    }
+
+    func rate(_ stars: Int, player: MusicPlayer) async -> MusicRateResult {
+        guard store.monitored.contains(player) else { return .refused(String(localized: "Nothing is playing.")) }
+        let snapshot = store.snapshots[player] ?? MusicPlayback()
+        guard snapshot.status == .playing || snapshot.status == .paused, !snapshot.trackID.isEmpty else {
+            return .refused(String(localized: "Nothing is playing."))
+        }
+        guard let current = displayedRating(for: player) else {
+            return .refused(String(localized: "This track cannot be rated."))
+        }
+        guard (1...5).contains(stars) else {
+            return .refused(String(localized: "Choose a rating from 1 to 5 stars."))
+        }
+        if stars == current.wholeStars && !current.hasHalfStar { return .unchanged }
+        let trackID = snapshot.trackID
+        let pending = PendingRating(id: UUID(), player: player, trackID: trackID, rating: .whole(stars))
+        pendingRating = pending
+        ratingFailure = nil
+        let playback = await enqueue(player) { [self] in
+            let budget = MusicOperationBudget(seconds: MusicOperationBudget.rate, now: now())
+            do {
+                let confirmed = try await runner.rate(
+                    stars: stars, trackID: trackID, player: player, budget: budget)
+                runner.rememberRating(confirmed, trackID: trackID, player: player, at: now())
+                return try await readState(player)
+            } catch is CancellationError {
+                ratingFailure = String(localized: "The rating result is unknown. Check the player before retrying.")
+                return await stateAfterRatingFailure(player)
+            } catch {
+                ratingFailure = error.localizedDescription
+                return await stateAfterRatingFailure(player)
+            }
+        }
+        if pendingRating?.id == pending.id { pendingRating = nil }
+        if let ratingFailure {
+            let message = ratingFailure
+            self.ratingFailure = nil
+            return .failed(message)
+        }
+        guard playback.status != .error else { return .failed(playback.error) }
+        return .applied(playback)
+    }
+
     func setRemoteEnabled(_ enabled: Bool) {
         store.setRemoteEnabled(enabled)
         if enabled { applyRemote() } else { remote.stop(); pairingToken = ""; pairingError = nil }
@@ -220,6 +279,36 @@ final class MusicPlaybackService {
         }
     }
 
+    private func stateAfterRatingFailure(_ player: MusicPlayer) async -> MusicPlayback {
+        do { return try await readState(player) } catch {
+            return store.snapshots[player] ?? MusicPlayback()
+        }
+    }
+
+    private func attachRating(to playback: MusicPlayback, player: MusicPlayer) async -> MusicPlayback {
+        guard playback.status != .error, player == .appleMusic, !playback.trackID.isEmpty else { return playback }
+        let cached = runner.ratingCache(for: player)
+        guard MusicRatingReadPolicy.needsRead(
+            cached: cached, trackID: playback.trackID, now: now(), afterOwnWrite: false
+        ) else {
+            var playback = playback
+            if cached?.trackID == playback.trackID { playback.rating = cached?.rating }
+            return playback
+        }
+        let budget = MusicOperationBudget(seconds: MusicOperationBudget.rate, now: now())
+        var playback = playback
+        do {
+            let rating = try await runner.readRating(trackID: playback.trackID, player: player, budget: budget)
+            runner.rememberRating(rating, trackID: playback.trackID, player: player, at: now())
+            playback.rating = rating
+        } catch {
+            let kept = cached?.trackID == playback.trackID ? cached?.rating : nil
+            runner.rememberRating(kept, trackID: playback.trackID, player: player, at: now())
+            playback.rating = kept
+        }
+        return playback
+    }
+
     private func readState(_ player: MusicPlayer) async throws -> MusicPlayback {
         try await runner.state(player, budget: MusicOperationBudget(seconds: MusicOperationBudget.state, now: now()))
     }
@@ -244,7 +333,7 @@ final class MusicPlaybackService {
             await previous?.value
             guard !Task.isCancelled, revisions[player, default: 0] == revision, store.monitored.contains(player)
             else { return .failure("The player connection changed before this command ran.") }
-            let result: MusicPlayback
+            var result: MusicPlayback
             var requiresReconnect = false
             do {
                 result = try await work()
@@ -265,8 +354,9 @@ final class MusicPlaybackService {
                 albumHistory[player, default: MusicAlbumHistory()].confirm(target)
                 pendingAlbums[player] = nil
             }
-            store.observe(result, player: player, at: now())
-            return result
+            let rated = await attachRating(to: result, player: player)
+            store.observe(rated, player: player, at: now())
+            return rated
         }
         operations[id] = task
         tail = Task { _ = await task.value }

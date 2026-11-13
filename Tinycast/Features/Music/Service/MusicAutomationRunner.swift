@@ -8,12 +8,17 @@ protocol MusicPlayerControlling {
     func albums(_ player: MusicPlayer) async throws -> [MusicAlbum]
     func transport(_ command: MusicCommand, player: MusicPlayer) async throws -> MusicPlayback
     func play(_ album: MusicAlbum, player: MusicPlayer) async throws -> MusicPlayback
+    func readRating(trackID: String, player: MusicPlayer, budget: MusicOperationBudget) async throws -> MusicRating?
+    func rate(stars: Int, trackID: String, player: MusicPlayer, budget: MusicOperationBudget) async throws -> MusicRating
+    func ratingCache(for player: MusicPlayer) -> MusicRatingCache?
+    func rememberRating(_ rating: MusicRating?, trackID: String, player: MusicPlayer, at: Date)
 }
 
 @MainActor
 final class MusicAutomationRunner: MusicPlayerControlling {
     private let session = String(UUID().uuidString.prefix(8))
     private var queueID = ""
+    private var ratingCaches: [MusicPlayer: MusicRatingCache] = [:]
 
     func authorize(_ player: MusicPlayer) async throws {
         let pid = try processID(player)
@@ -45,6 +50,28 @@ final class MusicAutomationRunner: MusicPlayerControlling {
         return result
     }
 
+    func readRating(
+        trackID: String, player: MusicPlayer, budget: MusicOperationBudget
+    ) async throws -> MusicRating? {
+        let pid = try processID(player)
+        return try await MusicAppleEvents.readRating(
+            trackID: trackID, player: player, processID: pid, budget: budget, now: Date.init)
+    }
+
+    func rate(
+        stars: Int, trackID: String, player: MusicPlayer, budget: MusicOperationBudget
+    ) async throws -> MusicRating {
+        let pid = try processID(player)
+        return try await MusicAppleEvents.rate(
+            stars: stars, trackID: trackID, player: player, processID: pid, budget: budget, now: Date.init)
+    }
+
+    func ratingCache(for player: MusicPlayer) -> MusicRatingCache? { ratingCaches[player] }
+
+    func rememberRating(_ rating: MusicRating?, trackID: String, player: MusicPlayer, at: Date) {
+        ratingCaches[player] = MusicRatingCache(trackID: trackID, rating: rating, readAt: at)
+    }
+
     private func processID(_ player: MusicPlayer) throws -> Int32 {
         let instances = NSRunningApplication.runningApplications(withBundleIdentifier: player.bundleID)
         guard instances.count == 1, let instance = instances.first else {
@@ -60,8 +87,11 @@ struct MusicAutomationFailure: LocalizedError, Sendable {
     let errorDescription: String?
     let requiresReconnect: Bool
 
-    init(_ message: String, requiresReconnect: Bool = false) {
+    let number: Int?
+
+    init(_ message: String, requiresReconnect: Bool = false, number: Int? = nil) {
         errorDescription = message
         self.requiresReconnect = requiresReconnect
+        self.number = number
     }
 }

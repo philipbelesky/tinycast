@@ -169,4 +169,16 @@ private final class MusicFakePlayer: MusicPlayerControlling {
             track: album.title + " track", albumID: album.id, trackID: album.id + "1")
         return playback
     }
+
+    func readRating(
+        trackID: String, player: MusicPlayer, budget: MusicOperationBudget
+    ) async throws -> MusicRating? { nil }
+
+    func rate(
+        stars: Int, trackID: String, player: MusicPlayer, budget: MusicOperationBudget
+    ) async throws -> MusicRating { .whole(stars) }
+
+    func ratingCache(for player: MusicPlayer) -> MusicRatingCache? { nil }
+
+    func rememberRating(_ rating: MusicRating?, trackID: String, player: MusicPlayer, at: Date) {}
 }
