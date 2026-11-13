@@ -88,6 +88,8 @@ struct MusicRatingTests {
         assert(!MusicMenuBarPresence.isEligible(monitored: [], snapshots: [.appleMusic: playing]))
         assert(!MusicMenuBarPresence.isEligible(
             monitored: [.appleMusic], snapshots: [.appleMusic: MusicPlayback(status: .playing)]))
+        var neverShown = MusicMenuBarPresence()
+        assert(!neverShown.shows(preference: true, eligible: false, now: start), "No grace before a first showing")
         var presence = MusicMenuBarPresence()
         assert(!presence.shows(preference: false, eligible: true, now: start))
         assert(presence.shows(preference: true, eligible: true, now: start))

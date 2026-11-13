@@ -58,7 +58,7 @@ final class MusicMenuBarController: NSObject, NSMenuDelegate {
 
     func menuWillOpen(_ menu: NSMenu) {
         refreshPanel()
-        // A Task does not run while the menu is tracking; this timer is on the main run loop.
+        // Polled in the common run-loop modes so the panel stays current while the menu tracks.
         let timer = Timer(timeInterval: 1.0 / 30, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.refreshPanel() }
         }

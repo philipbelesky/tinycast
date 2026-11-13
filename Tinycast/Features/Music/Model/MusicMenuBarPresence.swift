@@ -4,19 +4,24 @@ import Foundation
 struct MusicMenuBarPresence: Equatable, Sendable {
     static let grace: TimeInterval = 5
     private(set) var hiddenSince: Date?
+    private var wasShown = false
 
     mutating func shows(preference: Bool, eligible: Bool, now: Date) -> Bool {
         guard preference else {
             hiddenSince = nil
+            wasShown = false
             return false
         }
         if eligible {
             hiddenSince = nil
+            wasShown = true
             return true
         }
+        guard wasShown else { return false }
         let since = hiddenSince ?? now
         if hiddenSince == nil { hiddenSince = now }
-        return now.timeIntervalSince(since) < Self.grace
+        wasShown = now.timeIntervalSince(since) < Self.grace
+        return wasShown
     }
 
     static func isEligible(monitored: Set<MusicPlayer>, snapshots: [MusicPlayer: MusicPlayback]) -> Bool {
