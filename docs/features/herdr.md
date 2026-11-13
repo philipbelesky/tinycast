@@ -11,7 +11,7 @@ Rows also appear in the unscoped root search, like quicklinks.
   slice: no rows, no HUD, no dialog. `Settings → herdr` is the only surface that says herdr wasn't
   found, because that is the only place a user asked about it.
 - **`Model/HerdrTarget.swift` and `Model/HerdrHost.swift` are Foundation-only and pure**, so
-  `herdr-test` compiles the shipped parser and the shipped ancestry walk. Parsing is the whole risk
+  `HerdrTests` compiles the shipped parser and the shipped ancestry walk. Parsing is the whole risk
   surface here and it takes its two JSON payloads as parameters.
 - **A herdr id is opaque.** A tab's is `w2:tS` — it contains the separator, so it is never split on
   `:`. Only `HerdrTarget.entryIDPrefix` is added and removed.

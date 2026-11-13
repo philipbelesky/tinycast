@@ -39,10 +39,10 @@ final class CameraCoordinator {
         guard let closing = panel else { return }
         panel = nil
         closing.onAction = nil
-        // The camera goes with the panel, not before it: tearing it down mid-fade blanks the feed.
-        closing.fadeOut(duration: Theme.Duration.exit) { [weak self] in
-            // Unless a panel raised inside the fade already owns the camera.
-            guard let self, !opening else { return }
+        // The camera goes with the panel, not before it: tearing it down mid-close blanks the feed.
+        closing.orderOutAnimated { [weak self] in
+            // Unless a panel raised inside the close already owns the camera.
+            guard let self, !opening, panel == nil else { return }
             session.stop()
         }
     }
@@ -55,21 +55,22 @@ final class CameraCoordinator {
     func takePhoto() {
         guard case .live = feed else { return }
         let mirrored = mirrored
+        let shooting = panel
         Task {
             let png = await session.capturePhoto(mirrored: mirrored)
-            close()
+            if panel === shooting { close() }
             guard let png else {
-                core.showMessage("Couldn't take the photo", tone: .danger)
+                core.showMessage(String(localized: "Couldn't take the photo"), tone: .danger)
                 return
             }
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setData(png, forType: .png)
-            core.showMessage("Photo copied")
+            core.showMessage(String(localized: "Photo copied"))
         }
     }
 
     private func present() {
-        let hosting = NSHostingView(rootView: CameraView(coordinator: self))
+        let hosting = NSHostingView(rootView: CameraView(coordinator: self).motionScope())
         hosting.setFrameSize(hosting.fittingSize)
         let panel = CameraPanel(content: hosting)
         panel.onAction = { [weak self] action in
@@ -79,9 +80,7 @@ final class CameraCoordinator {
         self.panel = panel
         panel.centerOnCursorScreen()
         // Non-activating like the palette: key focus without pulling the user out of their app.
-        panel.fadeIn(duration: Theme.Duration.enter) {
-            panel.makeKeyAndOrderFront(nil)
-            panel.orderFrontRegardless()
-        }
+        panel.makeKeyAndOrderFront(nil)
+        panel.orderFrontRegardless()
     }
 }

@@ -12,11 +12,11 @@ DuckDuckGo, Bing, Kagi — each with its own scope keyword.
   and keeps the rest of the shape ([AGENTS.md](../../AGENTS.md#non-negotiables), and the section at the
   foot of this file) — flag on the store, re-checked across every `await`, ephemeral session. Turning
   web search off takes suggestions with it; the two switches are otherwise independent.
-- **`Model/WebSearchEngine.swift` is Foundation-only and pure**, so `websearch-test` compiles the
+- **`Model/WebSearchEngine.swift` is Foundation-only and pure**, so `WebSearchTests` compiles the
   shipped URL builder. It takes its `ExpansionContext` as a parameter rather than reading the clock.
 - **There is one template engine.** A template expands through `SnippetTemplateEngine` with
   `.percentEncoding` (one template engine — [snippets.md](snippets.md)), which is what stops a query containing
-  `&` or `/` from adding a parameter or escaping the path — `websearch-test` pins exactly that.
+  `&` or `/` from adding a parameter or escaping the path — `WebSearchTests` pins exactly that.
 - **`url(for:context:)` returns nil rather than a blank search.** An empty query, a template that lost
   its `{argument}`, or a result that isn't an absolute `http(s)` URL are all "nothing to open". The
   scoped row stays visible and unactionable instead, so ↵ on an empty `g` does nothing.

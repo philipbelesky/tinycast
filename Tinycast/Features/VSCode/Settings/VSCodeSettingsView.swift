@@ -12,8 +12,10 @@ struct VSCodeSettingsView: View {
                 anchor: .vsCodeVSCode,
                 enableTitle: "Enable VS Code Projects",
                 enableSubtitle:
-                    "Lists the folders and workspaces VS Code has opened, read from its own storage "
-                    + "on disk. ↵ opens one in VS Code.",
+                    """
+                    Lists the folders and workspaces VS Code has opened, read from its own storage \
+                    on disk. ↵ opens one in VS Code.
+                    """,
                 isEnabled: $settings.vsCodeEnabled,
                 showsInLauncher: $settings.vsCodeShowInLauncher)
 

@@ -1,16 +1,16 @@
 import Foundation
 
-/// The switchable, cacheless exchange-rate fetcher. See docs/features/calculator.md#rates.
+/// The switchable, cacheless exchange-rate fetcher. See docs/features/calculator.md#exchange-rates.
 @MainActor
 @Observable
 final class CurrencyRateStore {
-    static let provider = "Raycast"
-    static let providerURL = URL(string: "https://www.raycast.com")!
+    static let provider = "Tinycast"
+    static let providerURL = URL(string: "https://tinycast.dev")!
     private nonisolated static let fiatEndpoint = URL(
-        string: "https://backend.raycast.com/api/v1/currencies")!
+        string: "https://tinycast.dev/api/v1/currencies")!
     /// Asked for by the app's own crypto table, so the request and the table cannot drift apart.
     private nonisolated static let cryptoEndpoint = URL(
-        string: "https://backend.raycast.com/api/v1/currencies/crypto?symbols="
+        string: "https://tinycast.dev/api/v1/currencies/crypto?symbols="
             + CalcCurrency.cryptoCodes.joined(separator: ","))!
     /// Daily, measured from `completedAt`, so relaunching never re-fetches a snapshot still fresh.
     private static let refreshInterval: TimeInterval = 24 * 3600
@@ -20,8 +20,8 @@ final class CurrencyRateStore {
     /// On unless turned off. Not in `AppSettings`, so no import can flip it either way.
     private(set) var isEnabled: Bool
 
-    /// The newest snapshot, nil when none has landed and always nil without consent.
     private(set) var rates: CurrencyRates?
+    private(set) var isRefreshing = false
 
     private static let consentKey = "currencyRatesEnabled"
     private let defaults = UserDefaults.standard
@@ -87,6 +87,17 @@ final class CurrencyRateStore {
         return await fetchAndStore()
     }
 
+    /// The pump re-measures age from `completedAt` when it wakes, so its schedule needs no reset.
+    func refresh() {
+        guard isEnabled, !isRefreshing else { return }
+        isRefreshing = true
+        Task {
+            await fetchAndStore()
+            isRefreshing = false
+        }
+    }
+
+    @discardableResult
     private func fetchAndStore() async -> Bool {
         guard isEnabled else { return false }
         guard let result = await Self.fetch() else { return false }

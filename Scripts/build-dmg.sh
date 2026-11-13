@@ -1,6 +1,5 @@
 #!/bin/bash
-# Build a signed Tinycast.app into build/Tinycast-<version>.dmg, drop a copy where the other Macs can
-# reach it, then install it over /Applications. Usage: ./Scripts/build-dmg.sh [version]
+# Build, export, drop and install Tinycast. Usage: build-dmg.sh [version]
 set -euo pipefail
 
 cd "$(dirname "$0")/.." || exit 1

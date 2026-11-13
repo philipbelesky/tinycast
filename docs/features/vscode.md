@@ -5,7 +5,7 @@ Code. Rows also appear in the unscoped root search, like quicklinks.
 
 ## Invariants
 
-- **`Model/VSCodeProject.swift` is Foundation-only and pure**, so `vscode-test` compiles the shipped
+- **`Model/VSCodeProject.swift` is Foundation-only and pure**, so `VSCodeTests` compiles the shipped
   parser. It takes the home directory *and* an `exists` predicate as parameters: whether a folder is
   still on disk is an environment fact, and the model may not go and look.
 - **A project that has been deleted or unmounted is dropped, not shown greyed.** VS Code's record is

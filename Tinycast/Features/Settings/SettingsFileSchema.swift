@@ -31,22 +31,30 @@ enum SettingsFileSchema {
         case .musicPlayer: return bind(music, \.selectedPlayer)
         case .musicCommands: return launcher.commandsBinding(for: key, owner: .music)
         case .launcherShortcut:
-            return shortcuts.binding(for: key, action: .togglePalette, name: "App Launcher")
+            return shortcuts.binding(
+                for: key, action: .togglePalette, name: String(localized: "App Launcher"))
         case .showInMenuBar: return bind(settings, \.showInMenuBar)
         case .automaticallyCheckForUpdates: return bind(settings, \.automaticallyCheckForUpdates)
         case .popToRootTimeout: return bind(settings, \.popToRootTimeout)
         case .escapeKeyBehavior: return bind(settings, \.escapeKeyBehavior)
         case .autoSwitchInputSource: return bind(settings, \.autoSwitchInputSourceID)
         case .supportReminders: return bind(settings, \.supportRemindersEnabled)
+        case .language: return bind(settings, \.language)
         case .appearance: return bind(settings, \.appearance)
+        case .animationsEnabled: return bind(settings, \.animationsEnabled)
         case .interfaceSize: return bind(settings, \.interfaceSize)
         case .compactMode: return bind(settings, \.compactMode)
-        case .showFavoritesInCompactMode: return bind(settings, \.showFavoritesInCompactMode)
+        case .compactBarCommands:
+            return bind(settings, \.compactBarCommands) {
+                CommandID.validCompactBarCommands($0) ? $0 : nil
+            }
         case .openOnCursorScreen: return bind(settings, \.openOnCursorScreen)
         case .paletteDraggable: return bind(settings, \.paletteDraggable)
         case .hyperKey: return bind(settings, \.hyperKey)
         case .hyperKeyIncludesShift: return bind(settings, \.hyperKeyIncludesShift)
         case .hyperKeyQuickPress: return bind(settings, \.hyperKeyQuickPress)
+        case .hyperKeySecureInputCompatibility:
+            return bind(settings, \.hyperKeySecureInputCompatibility)
         case .calcNumberStyle: return bind(settings, \.calcNumberStyle)
         case .launcherShowsSuggestions: return bind(settings, \.launcherShowsSuggestions)
         case .rootSearchSensitivity: return bind(settings, \.rootSearchSensitivity)
@@ -64,12 +72,14 @@ enum SettingsFileSchema {
         case .quicklinksEnabled: return bind(settings, \.quicklinksEnabled)
         case .quicklinksShowInLauncher: return bind(settings, \.quicklinksShowInLauncher)
         case .quicklinkOpensNewWindow: return bind(settings, \.quicklinkOpensNewWindow)
-        case .quicklinkSelectionFallback: return bind(settings, \.quicklinkSelectionFallback)
+        case .quicklinkPassesSelectedText: return bind(settings, \.quicklinkPassesSelectedText)
         case .quicklinkConfirmsBeforeDelete: return bind(settings, \.quicklinkConfirmsBeforeDelete)
         case .quicklinkCommands: return launcher.commandsBinding(for: key, owner: .quicklinks)
         case .appleShortcutsEnabled: return bind(settings, \.appleShortcutsEnabled)
         case .aiEnabled: return bind(settings, \.aiEnabled)
         case .aiWebSearch: return bind(ai, \.webSearchEnabled)
+        case .aiChoices: return bind(ai, \.choicesEnabled)
+        case .aiExpandsReasoning: return bind(ai, \.expandsReasoning)
         case .aiSystemPrompt: return bind(ai, \.systemPrompt)
         case .aiSystemPromptEnabled: return bind(ai, \.systemPromptEnabled)
         case .aiRetention: return bind(ai, \.retention)
@@ -82,19 +92,25 @@ enum SettingsFileSchema {
         case .fileSearchEnabled: return bind(settings, \.fileSearchEnabled)
         case .fileSearchScopes: return bind(settings, \.fileSearchScopes)
         case .fileSearchIgnorePatterns: return bind(settings, \.fileSearchIgnorePatterns)
+        case .fileSearchRemovedDefaultPatterns:
+            return bind(settings, \.fileSearchRemovedDefaultPatterns)
+        case .fileSearchShowInLauncher: return bind(settings, \.fileSearchShowInLauncher)
         case .fileSearchCommands: return launcher.commandsBinding(for: key, owner: .fileSearch)
         case .notesEnabled: return bind(settings, \.notesEnabled)
         case .notesRendersMarkdown: return bind(settings, \.notesRendersMarkdown)
         case .notesShowsFormattingBar: return bind(settings, \.notesShowsFormattingBar)
+        case .notesShowsInMenuBar: return bind(settings, \.notesShowsInMenuBar)
         case .notesFolder: return bind(settings, \.notesFolder, accept: folder)
         case .notesCommands: return launcher.commandsBinding(for: key, owner: .notes)
         case .dictationMode: return bind(settings, \.dictationMode)
         case .dictationShortcut:
-            return shortcuts.binding(for: key, action: .dictation, name: "Dictation")
+            return shortcuts.binding(for: key, action: .dictation, name: String(localized: "Dictation"))
+        case .dictationPlaysSounds: return bind(settings, \.dictationPlaysSounds)
         case .dictationModel: return bind(settings, \.dictationModel)
         case .dictationMicrophone: return bind(settings, \.dictationMicrophone)
         case .dictationDestination: return bind(settings, \.dictationDestination)
         case .dictationAdaptsCapitalization: return bind(settings, \.dictationAdaptsCapitalization)
+        case .dictationLiveInsertion: return bind(settings, \.dictationLiveInsertion)
         case .dictationIdleRelease: return bind(settings, \.dictationIdleRelease)
         case .dictationLanguage:
             return bind(settings, \.dictationLanguage) { language in
@@ -103,6 +119,7 @@ enum SettingsFileSchema {
             }
         case .snippetsShowInLauncher: return bind(settings, \.snippetsShowInLauncher)
         case .snippetsFolder: return bind(settings, \.snippetsFolder, accept: folder)
+        case .snippetDefaultAction: return bind(settings, \.snippetDefaultAction)
         case .snippetsCommands: return launcher.commandsBinding(for: key, owner: .snippets)
         case .navigationEnabled: return bind(settings, \.navigationEnabled)
         case .menuSearchShowsAppleMenu: return bind(settings, \.menuSearchShowsAppleMenu)
@@ -116,6 +133,8 @@ enum SettingsFileSchema {
                 WindowPlacementEngine.gapRange.contains($0) ? $0 : nil
             }
         case .windowCycle: return bind(settings, \.windowCycle)
+        case .windowWrapsDisplays: return bind(settings, \.windowWrapsDisplays)
+        case .windowKeepsProportions: return bind(settings, \.windowKeepsProportions)
         case .windowLayoutsShowInLauncher: return bind(settings, \.windowLayoutsShowInLauncher)
         case .windowRoomsShowInLauncher: return bind(settings, \.windowRoomsShowInLauncher)
         case .windowShortcuts: return windowManagement.commandShortcutsBinding(for: key)
@@ -159,15 +178,17 @@ enum SettingsFileSchema {
 
 extension PopToRootTimeout: SettingsFileRawValue {}
 extension EscapeKeyBehavior: SettingsFileRawValue {}
+extension CommandID: SettingsFileRawValue {}
 extension AppAppearance: SettingsFileRawValue {}
+extension AppLanguage: SettingsFileRawValue {}
 extension InterfaceSize: SettingsFileRawValue {}
 extension HyperKeyPhysicalKey: SettingsFileRawValue {}
 extension HyperKeyQuickPress: SettingsFileRawValue {}
 extension CalcNumberStyle: SettingsFileRawValue {}
 extension SearchSensitivity: SettingsFileRawValue {}
-extension QuicklinkSelectionFallback: SettingsFileRawValue {}
 extension WindowCycle: SettingsFileRawValue {}
 extension ClipboardDefaultAction: SettingsFileRawValue {}
+extension SnippetDefaultAction: SettingsFileRawValue {}
 extension EmojiSkinTone: SettingsFileRawValue {}
 extension EmojiGridColumns: SettingsFileRawValue {}
 extension DictationModel: SettingsFileRawValue {}

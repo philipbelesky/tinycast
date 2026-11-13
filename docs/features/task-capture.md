@@ -4,7 +4,7 @@
 
 ## Invariants
 
-- **`Model/` is Foundation-only and pure**, so `task-capture-test` compiles the shipped grammar, date parser, TaskPaper formatter, TextFlow argument builder and both catalog parsers. Every one of them takes the clock and calendar as parameters; nothing in `Model/` reads a date, a file or a process.
+- **`Model/` is Foundation-only and pure**, so `TaskCaptureTests` compiles the shipped grammar, date parser, TaskPaper formatter, TextFlow argument builder and both catalog parsers. Every one of them takes the clock and calendar as parameters; nothing in `Model/` reads a date, a file or a process.
 - **One grammar, two destinations.** The query is parsed the same way whichever keyword is armed. A destination declares which fields it can keep; the preview strikes through the rest and the sinks drop them. A field is never silently rewritten into something the destination does keep.
 - **What the card shows is what is sent.** The preview and the sink are built from the same parsed task. A date phrase the parser could not read is shown as unreadable and is not sent, rather than being guessed at or passed through as text. A project that a loaded catalog does not know is flagged the same way and the task goes to the inbox instead — OmniFocus answers an unknown paste target by creating a project named after the URL path, which is what a typo must never do. With no catalog loaded the project is taken on trust.
 - **The palette hides before the add runs, and the add never activates the target app.** OmniFocus receives a URL opened without activation; TextFlow is driven by its command line, and if it has to be launched it is launched in the background. A capture is a side effect on the app the user was in, not a switch to another.

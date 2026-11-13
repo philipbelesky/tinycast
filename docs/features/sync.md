@@ -12,7 +12,7 @@ every Mac signed into the same iCloud account converges on one configuration. Th
 - **An absent or unreadable remote never clears local state.** An empty KVS answer means "seed it";
   an undecodable envelope is left in place for the next writer that can read it. Neither applies.
 - **The payload is `SettingsBackup`, unchanged.** Whatever the backup excludes — `snippetsEnabled`,
-  every store-owned network switch — sync excludes structurally, and `sync-test` pins it.
+  every store-owned network switch — sync excludes structurally, and `SyncTests` pins it.
 - **Apply bookkeeping re-gathers.** The local hash after an apply comes from live state, never from
   the remote envelope: apply skips conflicting hotkeys, so equating the two leaves two Macs
   rewriting iCloud at each other forever.
@@ -25,7 +25,7 @@ One KVS key, `settingsSyncEnvelope`: compact, key-sorted JSON of `SyncEnvelope` 
 `writtenBy` are display metadata only, never compared, so clock skew cannot decide anything.
 `SyncPlan.decide` picks a direction from four content hashes; the trigger breaks a
 both-sides-changed tie — a local edit is what the user just did *here*, so it wins on that trigger,
-while startup and a push apply the remote. `sync-test` holds the full decision table.
+while startup and a push apply the remote. `SyncTests` holds the full decision table.
 
 Local changes funnel from two triggers — a `withObservationTracking` loop whose tracked read is the
 gather itself, and `UserDefaults.didChangeNotification` for the two inputs observation cannot see

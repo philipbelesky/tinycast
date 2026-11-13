@@ -61,6 +61,9 @@ struct FormTextArea: NSViewRepresentable {
         if view.textContainerInset != inset { view.textContainerInset = inset }
         if view.isEditable != isEnabled { view.isEditable = isEnabled }
         if view.isSelectable != isEnabled { view.isSelectable = isEnabled }
+        // Otherwise it shrinks to its text, and SwiftUI's unflipped host drops it to the bottom.
+        let minSize = NSSize(width: 0, height: minimumHeight)
+        if view.minSize != minSize { view.minSize = minSize }
         view.setAccessibilityLabel(label)
         if view.string != text {
             if let storage = view.textStorage {
@@ -84,6 +87,9 @@ struct FormTextArea: NSViewRepresentable {
 
     func sizeThatFits(_ proposal: ProposedViewSize, nsView view: InputView, context: Context) -> CGSize? {
         guard let width = proposal.width, width > 0 else { return nil }
+        guard width.isFinite else {
+            return CGSize(width: width, height: max(minimumHeight, view.frame.height))
+        }
         view.setFrameSize(NSSize(width: width, height: max(view.frame.height, minimumHeight)))
         var height = view.font.map { $0.ascender - $0.descender + $0.leading } ?? 0
         if let layout = view.textLayoutManager {

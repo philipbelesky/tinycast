@@ -4,8 +4,10 @@
 //   node fixtures.mjs
 
 import { createHarness, bootConfig, describeTree } from "./test.mjs";
+import { statSync } from "node:fs";
 import { transformSync } from "esbuild";
 import { runModuleFixtures } from "./modules-fixtures.mjs";
+import { runOAuthFixtures } from "./oauth-fixtures.mjs";
 
 let passes = 0;
 let failures = 0;
@@ -168,6 +170,43 @@ export default function Command() {
 }
 `;
 
+const malformedUtf8Cases = [
+  [0x68, 0xc3, 0xa9, 0xf0, 0x9f, 0x98, 0x80],
+  [0xff],
+  [0x41, 0xc3],
+  [0xe2, 0x28, 0xa1],
+  [0xc0, 0xaf],
+  [0xed, 0xa0, 0x80],
+  [0xf4, 0x90, 0x80, 0x80],
+  [0xf8, 0x88, 0x80, 0x80, 0x80],
+  [0xf0, 0x9f, 0x98],
+  [0x30, 0x82, 0x01, 0x0a, 0x02, 0x82, 0x01, 0x01, 0x00, 0xbb, 0xfe, 0x9c],
+];
+
+const malformedUtf8Source = `
+import { Buffer } from "node:buffer";
+import { Detail } from "@raycast/api";
+
+const cases = ${JSON.stringify(malformedUtf8Cases)};
+
+export default function Command() {
+  const fatal = (bytes) => {
+    try {
+      new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(bytes));
+      return "none";
+    } catch (error) {
+      return error.code;
+    }
+  };
+  const lines = cases.flatMap((bytes) => [
+    JSON.stringify(Buffer.from(bytes).toString("utf8")),
+    JSON.stringify(new TextDecoder().decode(Uint8Array.from(bytes))),
+    fatal(bytes),
+  ]);
+  return <Detail markdown={lines.join("\\n")} />;
+}
+`;
+
 const nodeSource = `
 import path from "node:path";
 import os from "node:os";
@@ -187,6 +226,29 @@ export default function Command() {
     }
   };
   const cpu = os.cpus()[0];
+  const errorMessage = (fn) => {
+    try {
+      fn();
+      return "none";
+    } catch (error) {
+      return error.message;
+    }
+  };
+  const gcmKey = Buffer.alloc(32, 7);
+  const gcmSeal = (iv, aad) => {
+    const cipher = crypto.createCipheriv("aes-256-gcm", gcmKey, iv);
+    if (aad) cipher.setAAD(aad);
+    const ciphertext = Buffer.concat([cipher.update("hello gcm"), cipher.final()]);
+    return { ciphertext, tag: cipher.getAuthTag() };
+  };
+  const gcmOpen = (iv, sealed, aad) => {
+    const decipher = crypto.createDecipheriv("aes-256-gcm", gcmKey, iv);
+    if (aad) decipher.setAAD(aad);
+    decipher.setAuthTag(sealed.tag);
+    return Buffer.concat([decipher.update(sealed.ciphertext), decipher.final()]).toString("utf8");
+  };
+  const shortNonce = gcmSeal(Buffer.from("gcm-nonce-12"));
+  const longNonce = gcmSeal(Buffer.alloc(16, 9), Buffer.from("header"));
   const parts = [
     path.join("/a/b", "../c", "d.txt"),
     path.extname("x/y/file.tar.gz"),
@@ -197,9 +259,16 @@ export default function Command() {
     String(os.freemem() > 0),
     String(os.uptime() > 0),
     String(os.loadavg().length === 3 && os.loadavg().every(Number.isFinite)),
+    String(Object.values(os.networkInterfaces()).flat().some((entry) => entry.internal && entry.address === "127.0.0.1")),
+    String(Object.values(os.networkInterfaces()).flat().every((entry) => !Object.hasOwn(entry, "name"))),
     new URL("/next?q=1", "https://example.com/base/page").href,
     new URLSearchParams({ a: "1", b: "two words" }).toString(),
     crypto.createHash("sha256").update("abc").digest("hex").slice(0, 8),
+    shortNonce.tag.toString("hex") + ":" + shortNonce.ciphertext.toString("hex"),
+    longNonce.tag.toString("hex") + ":" + longNonce.ciphertext.toString("hex"),
+    gcmOpen(Buffer.alloc(16, 9), longNonce, Buffer.from("header")),
+    errorMessage(() => gcmOpen(Buffer.alloc(16, 9), longNonce)),
+    errorCode(() => crypto.createCipheriv("aes-256-gcm", gcmKey, Buffer.alloc(11))),
     Buffer.from("hello").toString("base64"),
     Buffer.from("aGVsbG8=", "base64").toString("utf8"),
     new TextDecoder().decode(new TextEncoder().encode("héllo")),
@@ -296,6 +365,44 @@ module.exports.default = () => {
 };
 `;
 
+// isexe v3's POSIX check, which `which` runs on every PATH candidate.
+const isexeSource = `
+const fs = require("fs");
+
+module.exports.default = () => {
+  const checkMode = (stat) => {
+    const myUid = process.getuid?.();
+    const myGroups = process.getgroups?.() ?? [];
+    const myGid = process.getgid?.() ?? myGroups[0];
+    if (myUid === undefined || myGid === undefined) throw new Error("cannot get uid or gid");
+    const groups = new Set([myGid, ...myGroups]);
+    const mod = stat.mode;
+    return !!(
+      mod & 0o001 ||
+      (mod & 0o010 && groups.has(stat.gid)) ||
+      (mod & 0o100 && stat.uid === myUid) ||
+      (mod & 0o110 && myUid === 0)
+    );
+  };
+  const isexe = (path) => {
+    try {
+      const stat = fs.statSync(path);
+      return stat.isFile() && checkMode(stat);
+    } catch (error) {
+      return error.message;
+    }
+  };
+  const stat = fs.statSync("/etc/hosts");
+  globalThis.__isexe = {
+    ids: [process.getuid(), process.getgid(), process.geteuid(), process.getegid(), process.getgroups()],
+    userInfo: [require("os").userInfo().uid, require("os").userInfo().gid],
+    owner: [stat.uid, stat.gid],
+    executable: isexe("/bin/sh"),
+    plain: isexe("/etc/hosts"),
+  };
+};
+`;
+
 // apple-passwords lazily requires `@raycast/api` through `createRequire`, so it must resolve
 // through the same registry as a top-level require.
 const createRequireSource = `
@@ -344,6 +451,38 @@ export default async function Command() {
 
 // gaxios reaches for `FormData` on every request, so it has to exist; and a form that exists but
 // serialises to nothing would be worse than one that is absent, so the body has to be real too.
+const oauthSource = `
+import { OAuth } from "@raycast/api";
+import { createHash } from "node:crypto";
+
+export default async function Command() {
+  const client = new OAuth.PKCEClient({ redirectMethod: OAuth.RedirectMethod.Web, providerName: "GitHub" });
+  const before = await client.getTokens();
+  const request = await client.authorizationRequest({ endpoint: "https://auth.example.test/authorize?prompt=consent", clientId: "id-1", scope: "repo user" });
+  const url = new URL(request.toURL());
+  const { authorizationCode } = await client.authorize(request);
+  await client.setTokens({ access_token: "token-1", refresh_token: "refresh-1", expires_in: 3600, scope: ["repo", "user"] });
+  const stored = await client.getTokens();
+  const shortLived = new OAuth.PKCEClient({ redirectMethod: OAuth.RedirectMethod.AppURI, providerName: "Other", providerId: "other" });
+  await shortLived.setTokens({ accessToken: "token-2", expiresIn: 5 });
+  const denied = await shortLived.authorize({ url: "https://auth.example.test/deny" }).then(() => "resolved", (error) => error.message);
+  await client.removeTokens();
+  globalThis.__oauth = {
+    before: before === undefined,
+    query: Object.fromEntries(url.searchParams),
+    challengeMatches: url.searchParams.get("code_challenge") === createHash("sha256").update(request.codeVerifier).digest("base64url"),
+    authorizationCode,
+    accessToken: stored.accessToken,
+    scope: stored.scope,
+    updatedAtIsDate: stored.updatedAt instanceof Date,
+    fresh: stored.isExpired(),
+    expired: (await shortLived.getTokens()).isExpired(),
+    denied,
+    removed: (await client.getTokens()) === undefined,
+  };
+}
+`;
+
 const formDataSource = `
 export default async function Command() {
   const form = new FormData();
@@ -810,7 +949,6 @@ export async function runFixtures() {
     check("hoists actions into a prop", dump.includes("actions=<ActionPanel>"));
     check("defaults filtering to true", dump.includes("filtering=true"));
 
-    // Bump the counter through the action's handler and confirm the re-render.
     const item = findNode(tree, "List.Item");
     const panel = item.props.actions;
     const bump = panel.children.find((child) => child.type === "Action");
@@ -907,6 +1045,36 @@ export async function runFixtures() {
     check("ordinary listeners retain their receiver and repeated delivery", JSON.stringify(result?.ordinary) === "[[true,1],[true,2]]");
   });
 
+  await run("which/isexe sees the user's ids and file owners", isexeSource, "no-view", async (harness) => {
+    const result = harness.call("globalThis.__isexe");
+    const hostIds = [process.getuid(), process.getgid(), process.geteuid(), process.getegid(), process.getgroups()];
+    const hosts = statSync("/etc/hosts");
+    check("process reports the booted ids", JSON.stringify(result?.ids) === JSON.stringify(hostIds), JSON.stringify(result?.ids));
+    check("os.userInfo agrees with process", JSON.stringify(result?.userInfo) === JSON.stringify(hostIds.slice(0, 2)), JSON.stringify(result?.userInfo));
+    check("stat carries the file owner", JSON.stringify(result?.owner) === JSON.stringify([hosts.uid, hosts.gid]), JSON.stringify(result?.owner));
+    check("an executable is found", result?.executable === true, String(result?.executable));
+    check("a plain file is not executable", result?.plain === false, String(result?.plain));
+  });
+
+  // A plist's binary <data> must decode without aborting the host read.
+  await run("Malformed UTF-8 decodes the way Node does", malformedUtf8Source, "view", async (harness) => {
+    const lines = findNode(harness.state.trees.at(-1), "Detail").props.markdown.split("\n");
+    const fatal = (bytes) => {
+      try {
+        new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(bytes));
+        return "none";
+      } catch (error) {
+        return error.code;
+      }
+    };
+    malformedUtf8Cases.forEach((bytes, index) => {
+      const expected = JSON.stringify(Buffer.from(bytes).toString("utf8"));
+      check(`Buffer bytes ${index}`, lines[index * 3] === expected, lines[index * 3]);
+      check(`TextDecoder bytes ${index}`, lines[index * 3 + 1] === expected, lines[index * 3 + 1]);
+      check(`fatal TextDecoder bytes ${index}`, lines[index * 3 + 2] === fatal(bytes), lines[index * 3 + 2]);
+    });
+  });
+
   await run("Node shims and web globals", nodeSource, "view", async (harness) => {
     const markdown = findNode(harness.state.trees.at(-1), "Detail").props.markdown.split("\n");
     const expected = [
@@ -919,9 +1087,16 @@ export async function runFixtures() {
       "true",
       "true",
       "true",
+      "true",
+      "true",
       "https://example.com/next?q=1",
       "a=1&b=two+words",
       "ba7816bf",
+      "875a7af65e66ba29298577f2c937c48b:589dd2d6d2696c5310",
+      "749e7f715a23139cbfa9b3259ab594e1:aaefe159005653143a",
+      "hello gcm",
+      "Unsupported state or unable to authenticate data",
+      "ERR_CRYPTO_INVALID_IV",
       "aGVsbG8=",
       "hello",
       "héllo",
@@ -1009,6 +1184,50 @@ export async function runFixtures() {
         "fetch.request": (args) => {
           sentTypes.push(args[0].headers["content-type"]);
           return { status: 200, statusText: "OK", headers: {}, url: "https://example.test/token", bodyBase64: "" };
+        },
+      },
+    },
+  );
+
+  const oauthTokens = new Map();
+  const signIns = [];
+  await run(
+    "OAuth.PKCEClient signs in and keeps a token set",
+    oauthSource,
+    "no-view",
+    async (harness) => {
+      const result = harness.call("globalThis.__oauth");
+      const query = result?.query ?? {};
+      check("starts signed out", result?.before === true);
+      check("keeps the endpoint's own query", query.prompt === "consent", JSON.stringify(query));
+      check("asks for an S256 code", query.response_type === "code" && query.code_challenge_method === "S256", JSON.stringify(query));
+      check("uses Raycast's web redirect", query.redirect_uri === "https://raycast.com/redirect?packageName=Extension", String(query.redirect_uri));
+      check("the challenge hashes the verifier", result?.challengeMatches === true);
+      check("waits for the raycast scheme on a web redirect", signIns[0]?.[1] === "raycast", JSON.stringify(signIns[0]));
+      check("waits for com.raycast on an app URI", signIns[1]?.[1] === "com.raycast", JSON.stringify(signIns[1]));
+      check("returns the redirect's code", result?.authorizationCode === "code-1", String(result?.authorizationCode));
+      check("stores a token response as a token set", result?.accessToken === "token-1", String(result?.accessToken));
+      check("joins an array scope", result?.scope === "repo user", String(result?.scope));
+      check("revives updatedAt as a Date", result?.updatedAtIsDate === true);
+      check("a fresh token is not expired", result?.fresh === false);
+      check("a token inside the margin is expired", result?.expired === true);
+      check("a provider error rejects with its description", result?.denied === "The user denied access.", String(result?.denied));
+      check("removeTokens signs out", result?.removed === true);
+      check("each provider keeps its own tokens", oauthTokens.has("other") && !oauthTokens.has("GitHub"), JSON.stringify([...oauthTokens.keys()]));
+    },
+    {
+      stubs: {
+        "oauth.authorize": ([url, scheme]) => {
+          signIns.push([url, scheme]);
+          return url.includes("deny")
+            ? "com.raycast:/oauth?error=access_denied&error_description=The%20user%20denied%20access."
+            : `raycast://oauth?code=code-1&package_name=Extension&state=${new URL(url).searchParams.get("state")}`;
+        },
+        "oauth.getTokens": ([provider]) => oauthTokens.get(provider) ?? null,
+        "oauth.setTokens": ([provider, tokens]) => {
+          if (tokens === null) oauthTokens.delete(provider);
+          else oauthTokens.set(provider, tokens);
+          return null;
         },
       },
     },
@@ -1334,6 +1553,7 @@ export async function runFixtures() {
   harness.stop("s1");
 
   await runModuleFixtures(check);
+  await runOAuthFixtures(check);
 
   console.log(failures === 0 ? "\nAll runtime fixtures passed." : `\n${failures} check(s) failed.`);
   if (import.meta.url === `file://${process.argv[1]}`) process.exit(failures === 0 ? 0 : 1);

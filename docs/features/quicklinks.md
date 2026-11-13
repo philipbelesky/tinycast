@@ -15,7 +15,7 @@ every shortcut without re-registering.
 - **Quicklinks are authored data, and their store never deletes.** A database that will not open is
   **reported, never discarded** — `ClipboardStore`'s delete-and-recreate is only sound because history is
   regenerable, and a link library is not. The database lives in **Application Support**, not Caches.
-- **`Model/` stays Foundation-only (plus SQLite3) and pure** for `quicklink-test` — the home directory is
+- **`Model/` stays Foundation-only (plus SQLite3) and pure** for `QuicklinkTests` — the home directory is
   injected, never read. `Service/QuicklinkLauncher` owns every `NSWorkspace` call.
 - **Drawing an argument field reads nothing.** The header's chips come from
   `SnippetTemplateEngine.declaredArguments(in:)`, a parse of the template alone, so moving the
@@ -38,7 +38,7 @@ its form is open makes Save report the missing item without recreating it or dis
 ## Destinations
 
 `QuicklinkDestination.detect` decides what a link is from its shape alone — no filesystem or Launch
-Services read — which is what keeps it pure and covered by `Tests/quicklink-test.swift`. In order:
+Services read — which is what keeps it pure and covered by `Tests/QuicklinkTests.swift`. In order:
 
 | Shape                                                  | Result                                                            |
 | ------------------------------------------------------ | ----------------------------------------------------------------- |
@@ -48,6 +48,10 @@ Services read — which is what keeps it pure and covered by `Tests/quicklink-te
 | any other `scheme:`                                    | `.deeplink` (`spotify://`, `slack://`, `shortcuts://`, `mailto:`) |
 | a bare host with a letter-led TLD (`github.com/a?b=c`) | `.web`, `https://` prepended                                      |
 | anything else                                          | nothing — the link is rejected                                    |
+
+A `.deeplink` in Tinycast's own scheme never leaves the process: `QuicklinkCoordinator` hands it to
+`DeepLinkCoordinator` as `source: .tinycast`, so it runs without asking and without activating
+Tinycast. See [deeplinks.md](deeplinks.md).
 
 Two false positives are excluded deliberately, because both are commoner than the schemes they would
 shadow: a one-letter "scheme" is a Windows drive letter, and a `scheme:` whose remainder is all
@@ -89,7 +93,7 @@ normally prevents that, which is why `| raw` is a deliberate authoring choice an
 
 `{selectedText}` is accepted as an alias for `{selection}`, so a link pasted from Raycast's docs
 works unchanged. `{selection}` stays the canonical spelling and is the only one the editor's
-**Insert…** menu writes. `{query}` is accepted as an alias for `{argument}` for the same reason;
+**Insert Placeholder** menu writes. `{query}` is accepted as an alias for `{argument}` for the same reason;
 a Raycast import rewrites it to `{argument}` before the row is stored.
 
 ## Arguments
@@ -101,10 +105,9 @@ to the palette and are described in
 [palette.md](palette.md#inline-row-arguments); what quicklinks own is which fields appear and what an
 answer means.
 
-`promptedArguments(for:)` is the one place that decides: the `{argument}`s the link declares, read
-straight off the template by `SnippetTemplateEngine.declaredArguments(in:)` — a pure parse, so nothing
-is expanded and no clipboard is read to draw a chip — plus the synthetic **"Selected Text"** field when
-the setting says ask. An argument with a `default=` is still offered, as an optional chip: left
+The fields are exactly the `{argument}`s the link declares, read straight off the template by
+`SnippetTemplateEngine.declaredArguments(in:)` — a pure parse, so nothing is expanded and no clipboard
+is read to draw a chip. An argument with a `default=` is still offered, as an optional chip: left
 empty, the default fills it, so a default is a starting value rather than a fixed one. It stays owed
 if any occurrence of that name lacks a `default=`, because expansion falls back per occurrence.
 `QuicklinkArgumentsAccessory` turns that list into the strip; a field declaring `options=` is chosen
@@ -115,16 +118,16 @@ given the row's identity, so that memory starts clean on the next quicklink. The
 glyph, then the chips, right after the typed text — and `.besideSearchField` on Search Quicklinks,
 where the field stays a filter with its prompt intact and the row below already carries the glyph.
 
-**"Selected Text" is asked for up front, not after a failed read.** A chip cannot capture a selection,
-so the field appears whenever the link reads `{selection}` and the setting is `.ask`.
-`QuicklinkCoordinator.selectionArgument` stays optional during ordinary navigation so ↵ can read
-the frontmost app's selection without requiring typed input first. If that read returns nothing and
-the field is empty, opening shows Search Quicklinks with the field focused and waits for input.
-A typed value supplies the missing selection. Drawing the strip never captures anything.
+**`{selection}` is never a field, and an empty one fails.** It is read when the link opens, after
+every owed argument is in, through the two tiers in
+[quick-actions.md](quick-actions.md#reading-the-selection): Accessibility, then a ⌘C. The ⌘C is sent
+at most once per open, only when the expansion reads `{selection}`, and with the palette hidden
+first, since it holds key. When neither tier yields text, nothing opens: the HUD says "Couldn’t get
+the selected text", or names the Accessibility permission when Tinycast lacks it.
 
-`openQuicklink(id:forcingDefaultApp:values:)` is the single funnel, and it captures the expansion
-context on **every** call rather than holding one across a session, so `{clipboard}`, `{selection}` and
-`{date}` are read at the moment the link opens. Reached from a global shortcut with the palette closed
+`openQuicklink(id:forcingDefaultApp:values:)` and `openQuicklinkFromHotKey(id:)` share one private
+funnel, which captures the expansion context on **every** call rather than holding one across a
+session, so `{clipboard}`, `{selection}` and `{date}` are read at the moment the link opens. Reached from a global shortcut with the palette closed
 too: the frontmost app is recorded first, the way `runSystemAction` does, so the selection comes from
 the window the user was actually in.
 
@@ -136,17 +139,21 @@ row, with its first empty chip focused — carried across by `PaletteState.pendi
 `landingSelection` reads that ID, so the show's reset stays on the row instead of returning to the
 top. One argument surface, whether the row is reached from root search, from Search Quicklinks or from
 a hotkey. A ⌘↵ "open with default app" override survives that trip on `pendingDefaultAppOverride`,
-keyed by the quicklink it applies to.
+keyed by the quicklink it applies to. Pressing the shortcut again while Search Quicklinks has that
+row selected hides the palette, as the Snippets and Clipboard History shortcuts do; any other row or
+screen still lands on it.
 
 **A launcher fallback fills the first argument.** Declaring a placeholder is exactly what puts a
 quicklink in the `Use “…” with…` section (see [launcher.md](launcher.md#fallbacks));
 `openQuicklink(id:filling:)` assigns the query to the first argument still owed — the first declared
-one when every argument has a default — and opens at once when that was the only one owed. It is
-never the "Selected Text" field: that one is not an `{argument}` and is resolved by replacing the
-context, so seeding it there would expand to nothing.
+one when every argument has a default — and opens at once when that was the only one owed.
 
-When a template reads the selection and the app in front exposes nothing readable, **Settings →
-Quicklinks** decides what happens: substitute the clipboard, or ask for it through the chip above.
+**Pass selected text as argument** (off by default) lets a quicklink's **own shortcut** fill its
+**first** argument with the trimmed selection, read through the same two tiers. It applies only when
+that argument is typed rather than chosen from `options=`, and a blank selection fills nothing, so
+the usual prompt appears. Any other argument still owed is asked for beside it. Palette activation
+and fallback rows never read the selection into an argument; only `openQuicklinkFromHotKey(id:)`
+does. A ⌘C tried there is not tried again for `{selection}` in the same open.
 
 ## Opening
 
@@ -245,7 +252,7 @@ prepared statements, an `isolated deinit`):
 - **A database that won't open is never deleted.** `ClipboardStore` discards and recreates a corrupt
   file because a history is captured rather than authored; doing that here would destroy the user's
   library. The store publishes `isAvailable == false`, every mutation refuses with
-  `QuicklinkError.storageUnavailable`, and the pane says so. `Tests/quicklink-test.swift` asserts the
+  `QuicklinkError.storageUnavailable`, and the pane says so. `Tests/QuicklinkTests.swift` asserts the
   file survives byte-for-byte.
 
 `CREATE TABLE IF NOT EXISTS` leaves an existing table alone, so a new column arrives as an unchecked
@@ -300,5 +307,5 @@ one turns the feature on — the switch grants no permission class.
 ## Standalone harness
 
 ```sh
-./Scripts/run-tests.sh quicklink-test
+./Scripts/run-tests.sh QuicklinkTests
 ```

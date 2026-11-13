@@ -28,6 +28,7 @@ struct SettingsBackup: Codable {
         var hyperKey: String?
         var hyperKeyIncludesShift: Bool?
         var hyperKeyQuickPress: String?
+        var hyperKeySecureInputCompatibility: Bool?
         var emojiSkinTone: String?
         var emojiGridColumns: Int?
         var showInMenuBar: Bool?
@@ -35,26 +36,32 @@ struct SettingsBackup: Codable {
         var popToRootSeconds: Int?
         var escapeKeyBehavior: String?
         var appearance: String?
+        var language: String?
         var calcNumberStyle: String?
         var interfaceSize: String?
         var compactMode: Bool?
-        var showFavoritesInCompactMode: Bool?
+        var compactBarCommands: [String]?
         var searchScopes: [String]?
         var launcherShowsSuggestions: Bool?
         var rootSearchSensitivity: String?
         var openOnCursorScreen: Bool?
         // Safe to carry: it grants no permission class, just repositions the window.
         var paletteDraggable: Bool?
+        var animationsEnabled: Bool?
         var fileSearchEnabled: Bool?
         var fileSearchScopes: [String]?
         var fileSearchIgnorePatterns: [String]?
+        var fileSearchRemovedDefaultPatterns: [String]?
+        var fileSearchShowInLauncher: Bool?
         var notesEnabled: Bool?
         var notesRendersMarkdown: Bool?
         var notesShowsFormattingBar: Bool?
+        var notesShowsInMenuBar: Bool?
         // `snippetsEnabled` is absent: an import must not enable keystroke listening.
         var customCommandsEnabled: Bool?
         var customCommandsShowInLauncher: Bool?
         var snippetsShowInLauncher: Bool?
+        var snippetDefaultAction: String?
         // Safe to carry: it grants no permission class paste doesn't already prompt for.
         var navigationEnabled: Bool?
         var menuSearchDisabledApps: [String]?
@@ -63,6 +70,8 @@ struct SettingsBackup: Codable {
         var windowManagementShowInLauncher: Bool?
         var windowGap: Int?
         var windowCycle: String?
+        var windowWrapsDisplays: Bool?
+        var windowKeepsProportions: Bool?
         var windowLayoutsShowInLauncher: Bool?
         var windowRoomsShowInLauncher: Bool?
         // Carried, unlike `snippetsEnabled`: opening a link grants no permission class of its own.
@@ -70,7 +79,7 @@ struct SettingsBackup: Codable {
         var quicklinksShowInLauncher: Bool?
         var extensionsShowInLauncher: Bool?
         var quicklinkOpensNewWindow: Bool?
-        var quicklinkSelectionFallback: String?
+        var quicklinkPassesSelectedText: Bool?
         var quicklinkConfirmsBeforeDelete: Bool?
         // Carried like quicklinks: running a shortcut the user built grants no permission class.
         var appleShortcutsEnabled: Bool?
@@ -114,7 +123,6 @@ struct SettingsBackup: Codable {
         var supportReminders: Bool?
     }
 
-    /// One entry per bindable action. docs/features/hotkeys.md#persistence
     struct HotkeyBackup: Codable {
         /// Named apart from `commands`: the launcher toggle is the one action with no command row.
         var togglePalette: HotKeyBinding?
@@ -134,7 +142,6 @@ struct SettingsBackup: Codable {
         var customWindowSizes: [String: HotKeyBinding]?
     }
 
-    /// A tally of what an import touched, for user-facing confirmation.
     struct ApplySummary {
         var settingsFields = 0
         var hotkeys = 0

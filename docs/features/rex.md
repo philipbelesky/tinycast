@@ -6,7 +6,7 @@
 
 - **Absence is never an error.** No binary, no running server, no local app, or a non-zero exit publishes an empty slice: no rows, no HUD, no dialog. `Settings → Rex` is the only surface that says the command line wasn't found.
 - **Tinycast never starts the Rex server.** Every call passes `--autostart=false`; without it, opening the palette would launch a server the user had stopped.
-- **`Model/RexTarget.swift` and `Model/RexSnapshot.swift` are Foundation-only and pure**, so `rex-test` compiles the shipped parser. The payload is the reply of `RexClient.snapshotScript`, so a change to the script's shape is a change to the harness fixture.
+- **`Model/RexTarget.swift` and `Model/RexSnapshot.swift` are Foundation-only and pure**, so `RexTests` compiles the shipped parser. The payload is the reply of `RexClient.snapshotScript`, so a change to the script's shape is a change to the harness fixture.
 - **A Rex id is opaque.** A tab's is `window:01a1…`; it contains the separator, so it is never split on `:`. Only `RexTarget.entryIDPrefix` is added and removed.
 - **An unrecognised status is dropped, never guessed at.** Rex itself ignores a report whose state it doesn't know, so a state Tinycast doesn't know means nothing more than "no status".
 - **This feature reads a local socket and never the network**, so nothing here is gated ([AGENTS.md](../../AGENTS.md#non-negotiables)). Both settings are carried in a backup.

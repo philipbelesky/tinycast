@@ -53,6 +53,7 @@ themselves are in [AGENTS.md](AGENTS.md#non-negotiables). This file covers only 
 | 23 | [Feature switch placement and sidebar status](#23--feature-switch-placement-and-sidebar-status) | Low — localized settings changes | Yes, as a usability improvement |
 | 24 | [Task capture into OmniFocus and TextFlow](#24--task-capture-into-omnifocus-and-textflow) | Medium — a new lead card and row kind in the launcher list | Yes, as a feature |
 | 26 | [Rex opener](#26--rex-opener) | Medium — the same `AppEntry.Kind` surface as 4 | Unlikely — niche third-party tool |
+| 27 | [English-only fork strings](#27--english-only-fork-strings) | Low — additive catalog entries | No — one English-speaking user |
 
 Keep each divergence as **its own commit**, never squashed together. Rebasing `philip` onto a new
 `origin/main` then replays them one at a time, and a divergence that upstream has since made redundant
@@ -65,7 +66,7 @@ can be dropped whole rather than untangled.
 **Touches:** `project.yml` (three lines) and the `project.pbxproj` regenerated from it. Originally
 commit `3ca4321 Signing fix/setup`, which patched the generated file directly.
 
-Upstream signs with a stable **self-signed** identity, `Tinycast Self-Signed`, created by hand per
+Upstream local builds sign with a stable **self-signed** identity, `Tinycast Self-Signed`, created by hand per
 [docs/signing.md](docs/signing.md) — `CODE_SIGN_STYLE: Manual`, an empty `DEVELOPMENT_TEAM`, no Apple
 account assumed. This fork signs with **automatic** signing against team `CNPCA4RAWZ` and the
 `Apple Development` identity instead, because that account exists here and Xcode manages the certificate
@@ -107,9 +108,7 @@ resulting certificate lives in a Xcode-managed vault keychain and is **invisible
 why `TINYCAST_SIGN_IDENTITY` is gone. A check that greps for the identity reports a missing certificate
 while the export signs with it perfectly happily.
 
-The build is **not notarised**, deliberately. Notarisation would demand Hardened Runtime, which this
-app does not enable and which needs auditing against the JavaScriptCore JIT the extension runtime
-depends on. It buys nothing on the transport that is actually used: iCloud Drive sets no
+The fork build is **not notarised**, deliberately. Release already enables Hardened Runtime with the JavaScriptCore JIT entitlement. Upstream CI now signs with Developer ID and notarises its releases, but the fork's local archive/export script does not run that packaging path. Notarisation buys nothing on the transport that is actually used: iCloud Drive sets no
 `com.apple.quarantine`, and Gatekeeper only demands notarisation of a *quarantined* Developer ID app.
 A DMG that reaches a Mac by browser or AirDrop **will** be blocked until it is notarised or the
 attribute is cleared by hand — that is the accepted cost, not an oversight.
@@ -239,7 +238,7 @@ and a scoped query silently serves the previous unscoped results); `LauncherScre
 `LauncherList.Row` each gained a `webSearch` case; and `AppEntry.Kind` gained `.webSearch`, which forces
 a `KindDescriptor`, a `symbolIconName` arm, a `hotKeyAction` arm, a slice in `publishEntries()`, an entry
 in `LauncherList`'s kind order, a `SettingsTab` case **and** a place in `SettingsSection.tabs` —
-`settings-history-test` fails if the last one is forgotten.
+`SettingsHistoryTests` fails if the last one is forgotten.
 
 **On merge:** if upstream restructures `AppEntry.Kind` or the launcher's row model, re-apply the case
 and let the compiler find the rest; every one of those sites is an exhaustive switch except the two
@@ -298,7 +297,7 @@ symbol icon" will be wrong.
 
 **Touches:** `Quicklinks/UI/QuicklinkCoordinator.swift` (one parameter, one private method),
 `Quicklinks/Settings/QuicklinksSettingsView.swift` (one button), three assertions in
-`Tests/quicklink-test.swift`, and `docs/features/quicklinks.md`.
+`Tests/QuicklinkTests.swift`, and `docs/features/quicklinks.md`.
 
 Upstream's import only ever *adds*, skipping what you already have. This fork adds a **Replace** button
 that makes the file the whole library, for the case this fork actually has: quicklinks generated from
@@ -332,7 +331,7 @@ the **second networked feature** in the app and the first the fork added, so it 
 re-checked across the await, cache deleted when it is turned off. **Divergence 15 later deleted this
 feature's consent sheet too and defaulted it on**, leaving the guards and the flag's location intact.
 
-Two things not to lose. The flag must stay out of `AppSettings` — `settings-backup-test` will
+Two things not to lose. The flag must stay out of `AppSettings` — `SettingsBackupTests` will
 not catch it moving, because a new key there is legal; only the invariant forbids it. And the desktop
 app's link handling is a genuine trap: `Linear.app` declares no URL scheme and does not claim
 `https://linear.app`, so the https URL opens it and does nothing. `linear://` works, but only because
@@ -381,7 +380,7 @@ and a split of `SettingsBackup.swift` that moved `gather`/`apply` to
 
 The backup payload mirrored through `NSUbiquitousKeyValueStore`, last writer wins — the whole design
 is at the foot of [sync.md](docs/features/sync.md), the invariants at its head. The flag follows
-the `CurrencyRateStore` shape and carries the same warning as divergence 8: `settings-backup-test`
+the `CurrencyRateStore` shape and carries the same warning as divergence 8: `SettingsBackupTests`
 cannot catch it moving into `AppSettings`; only the invariant forbids it. **Divergence 15 later
 deleted this feature's consent sheet and defaulted it on**, which is where the first-contact
 consequence is written down.
@@ -418,8 +417,7 @@ Support, TCC grants, the login item. `Scripts/migrate-channel.sh` copies the dat
 be re-granted by hand, and the old app removed. Upstream's `.github/workflows/release.yml` still
 builds under upstream's ids — its builds simply report sync unavailable.
 
-**On merge:** unlikely to be upstreamable while upstream signs self-signed. If upstream ever adopts
-real signing and its own sync, prefer its transport but keep this fork's decision table and the
+**On merge:** upstream now uses real signing for CI releases, but local builds remain self-signed and it has no settings sync. If upstream adopts its own sync, prefer its transport but keep this fork's decision table and the
 re-gather bookkeeping rule (entry 36), which are transport-independent.
 
 ## 11 — SwiftUI previews
@@ -587,7 +585,7 @@ it arrives off, and whether it joins this list is a fresh decision rather than a
 `HotKeyManager.setBinding`, `displayName`, `perform`, and `AppCore.hotKeyDisplayName` — plus
 `candidateActions`, `VisibilityStore.allowsHotKey`, `SettingsBackup.HotkeyBackup`, both halves of
 `SettingsBackupApplying`, two rows in `GeneralSettingsView` and one in `ClipboardSettingsView`, and the
-`hotkey-test` harness line in `run-tests.sh`. It used to touch `LegacyHotKeyRecords.legacyKey` too;
+`HotKeyTests` harness line in `run-tests.sh`. It used to touch `LegacyHotKeyRecords.legacyKey` too;
 upstream deleted that scheduled migration in #333 and the fork took the deletion.
 
 Upstream gives every action exactly one global shortcut. This fork adds extra recorders to two of
@@ -642,7 +640,7 @@ layer: `HotKeyCenter` already keys registrations by arbitrary string id and has 
 ## 17 — Word-order-independent matching
 
 **Touches:** `Launcher/Model/SearchRelevance.swift` and `Launcher/Model/LauncherOrder.swift` (see below) — `FuzzyMatch.Query`, `FuzzyMatch.match` and two
-new private helpers — plus a `wordOrder()` section in `Tests/fuzz-test.swift` and
+new private helpers — plus a `wordOrder()` section in `Tests/FuzzTests.swift` and
 `docs/features/launcher.md`.
 
 Upstream matches the query as one string in the order typed, so `pr terminal` finds nothing named
@@ -658,9 +656,9 @@ tier and every band still means what it meant, a reordered hit always sits below
 identifier fields — which already refuse the subsequence band — refuse reorderings for free. Three
 words is the cap because the twenty-fourth permutation is where the factorial stops being free.
 
-`Tests/file-search-test.swift` is what found the right rule. Scoring reorderings on the full ladder
+The former `Tests/file-search-test.swift` is what found the right rule. Scoring reorderings on the full ladder
 let a file named `Report Annual` outrank `Annual Reporting Notes` for `annual report`, which is the
-change nobody asked for; the harness already pinned that ordering, and it still passes untouched.
+change nobody asked for; the harness already pinned that ordering. Upstream replaced that Spotlight harness with `FileSearchTests` and `FileIndexTests` when it introduced its own file scorer, so file search no longer uses these `FuzzyMatch` reorderings.
 
 **On merge:** medium risk, and upstream is live in this file — `origin/main` has since added
 `FuzzyMatch.score(_:candidate:)`, `isExact(_:candidate:)` and a folded
@@ -698,6 +696,8 @@ whenever the tap is observed healthy, so an ordinary timeout still costs one che
 rebuild — the escalation only fires when the enable was ignored. Two seconds is the worst-case
 recovery, against the previous never.
 
+Upstream's November Hyper Key rewrite now uses event-tap removal and TCC notifications rather than polling a live tap. Its lifecycle is documented in [hotkeys.md](docs/features/hotkeys.md#lifecycle); the timed disabled-tap escalation still applies to `ModifierTapMonitor` rather than describing Hyper's new notification-driven path.
+
 **On merge:** low risk. The branch sits inside a body upstream rarely touches, and if upstream ever
 rewrites either watchdog, take its version and re-apply the escalation — the flag is four lines and
 carries no state anyone else reads.
@@ -712,7 +712,7 @@ The one-time move from Caches to Application Support was removed on its schedule
 
 ## 20 — Extension helper harness waits for completion
 
-The extension helper harness waits for a rendered result with a ten-second deadline instead of assuming the chmod, process launch and render finish within 1.2 seconds. It also surfaces asynchronous spawn errors in the result. The fixed delay passed in isolation but failed under the parallel suite's load; runtime behavior is unchanged.
+Upstream's `ExtensionTests` now waits for a rendered result through its bounded five-second `settle(until:)` helper. This absorbs the fork's completion-wait divergence; the upstream implementation is accepted unchanged. The original fixed delay passed in isolation but failed under the parallel suite's load; runtime behavior is unchanged.
 
 **On merge:** keep the bounded completion wait unless upstream supplies an equivalent fix.
 
@@ -723,7 +723,7 @@ harness. Nothing else; the fix is invisible to anyone invoking the suite.
 
 Upstream runs each harness as `"$BIN/$name" > log 2>&1`, inheriting whatever terminal the suite was
 started from. That is fine in CI, which has no controlling terminal, and fine for every harness that
-only computes. It is not fine for `custom-command-test`, which spawns a real `/bin/zsh -ilc` to prove
+only computes. It is not fine for `CustomCommandTests`, which spawns a real `/bin/zsh -ilc` to prove
 that custom commands reach the user's shell. An interactive shell in a background process group that
 touches the terminal takes `SIGTTOU` and stops; the harness then waits on a child that will never run
 again, and the suite hangs with no output at all — which reads as a slow test, not a deadlock.
@@ -789,9 +789,15 @@ This fork controls Apple Music and TVTunes through one app-owned service, with t
 
 `r payments` lists the tabs of every session on the local [Rex](docs/features/rex.md) server; ↵ selects one in the Rex app and raises it. It is herdr's opener for a different multiplexer, and deliberately a sibling folder rather than a shared abstraction: the two read different protocols, name tabs differently and find their host differently (Rex reports the app's pid; herdr needs the `ProcessTable` walk). Like herdr, **it is the cleanest thing here to delete** — one folder plus the enum arms the compiler points at.
 
-Two things not to lose in a merge: every `rex` call passes `--autostart=false`, without which opening the palette starts a stopped Rex server; and `RexClient.snapshotScript` is the parser's input format, so `rex-test`'s fixture moves with it.
+Two things not to lose in a merge: every `rex` call passes `--autostart=false`, without which opening the palette starts a stopped Rex server; and `RexClient.snapshotScript` is the parser's input format, so `RexTests`'s fixture moves with it.
 
 **On merge:** re-apply the `Kind` case and follow the compiler through the same switches as herdr.
+
+## 27 — English-only fork strings
+
+Upstream #1620 translates its UI into eight additional languages. This fork retains those translations unchanged, but its fork-only catalog entries use upstream's `shouldTranslate: false` mechanism and remain English, by the owner's explicit decision. `Scripts/sync-strings.sh` still extracts the keys; the build compiles them and `check-localizations.js` explicitly exempts non-translated entries. The November integration added 133 such entries without weakening either check.
+
+**On merge:** keep upstream translations and extraction tooling. Mark newly extracted fork-only entries non-translated rather than creating placeholder translations; do not opt upstream strings out of translation.
 
 ## Merging upstream
 
@@ -828,6 +834,8 @@ time once the fork's `ScopeChip` sat on top of upstream's growth; its key handli
 **The 2026-09-07 absorption of upstream `3d5cecf..a9c1708` (17 commits) was a merge.** The new launcher ranking keeps word reorderings as subsequence evidence, with the fork's regression tests using upstream's new alias model. Scope rows and fork destinations receive the same naming pass as upstream entries. Window layouts join the window-management scope; their settings, bindings and records, plus the clipboard enable flag, flow through the fork's extracted backup service. New palette colour and attachment surfaces follow the fork's scale tokens. Upstream also removed the expired storage relocation, absorbing divergence 19.
 
 **The 2026-09-15 absorption of upstream `1855c81..979d09e` (75 commits) was a merge, and the first since 2026-08-26 to retire a divergence.** Upstream's #597 shipped an Interface Size setting — `InterfaceMetrics` behind `@Environment(\.metrics)`, a `PaletteWindowController` that re-places the panel on change — which is divergence 3 built properly, so `Theme.swift`, `IconCache`, `QuicklinkArgumentsRow`, `QuicklinkListView`, `ClipboardView`, `SnippetsListView` and `ColorCard` were taken whole from upstream and every other fork-tokenised literal was put back the way upstream spells it; only the `Theme.Colors.tile` map (divergence 4) went back onto `Theme.swift`. Twenty-eight conflicts otherwise. `EdgeDissolve` (divergence 9) now reads its bands through `metrics`. Upstream's #577 replaced each pane's shortcut rows with `FeatureCommandsSection`, so the clipboard's second chord (divergence 16) is a section of its own beneath it. #678 moved the launcher's ⇧⌘F/⌃⇧Q/⌘R chords into `LauncherScreen`, which took the fork's `launcherChord(_:)` with it; `toggleFavorite` there keeps the Linear-issue guard. `VisibilityStore.allowsHotKey` binds `.command`/`.commandAlternate` in one arm over upstream's new `id.owner` check, and the new `.quickAction` case joins the fork's three chords. `AppEntry.KindDescriptor` gained `canHideFromSearch`, false for every fork kind. The website's five stale forced-light pages (divergence 2, missed at its retirement) were taken from upstream. Upstream's #620/#635/#641 entitlements — JIT, Apple events, camera, calendars — were mirrored into `TinycastFork.entitlements`, and the Release-only hardened runtime came with them.
+
+**The 2026-11-13 absorption of upstream `126c998..ede02bf` (139 commits) was a merge, done in a separate worktree — thirty-five conflicts, no history rewrite this time.** `126c998` was a clean merge base. Upstream renamed every harness from `foo-test.swift` to `FooTests.swift` (the fifteen fork-only harnesses followed, changing only their `@main` type name, and are registered in upstream's `run-tests.sh` with divergence 21's `setsid` worker and without divergence 14's compile-database emission), localized the app into eight languages (#1620: the 133 fork-only strings are in the catalog as `shouldTranslate: false`, new divergence 27), replaced Spotlight file search with its own disk index and a launcher Files section (#1537, #1608, #1720: fork scopes cancel the borrowed file query and hide file rows and file favourites, in `RootPaletteView.refreshLauncherFiles()` and `FileSearchCoordinator.applyLauncherFiles()`), made duplicate app installations searchable (#1617: transient Linear issues now merge into `searchEntries`, not `apps`), added deeplinks (#1753: every fork pane has a `SettingsTab` slug, and `DeepLinkConsentPolicy` and `HotKeyAction+EntryID` cover divergence 16's extra chords and Music Controls), compact shortcuts (#1701) and the update pill (#1817). Upstream's Hyper Key rework (#1510, #1709) was taken whole, which retires the Hyper half of divergence 18: recovery there is now upstream's `eventTapRemoved` notification, with no periodic watchdog, so a tap that goes dead without that notification is not recovered — re-open the divergence only if that is observed. `ModifierTapMonitor` keeps its escalation. Upstream's bounded `settle(until:)` supersedes divergence 20. `CurrencyRateStore` keeps its switch (divergence 15) over upstream's tinycast.dev endpoints (#1842) and `refresh()` (#1648). `SettingsBackupApplying.swift` gained eleven upstream fields; `compactBarCommands` and `quicklinkPassesSelectedText` replace two removed ones. Upstream's new `AppInstallationTests` and `HotKeyDispatchFixtures` stubs carry fork types. `FileSearchTests` kept the fork's undeclared-extension spelling, without which it fails on any Mac where an app declares `.jsx`; it fails that way on pristine upstream. The project was regenerated with `xcodegen` after resolving `project.yml`; no entitlement changed upstream.
 
 **The 2026-10-11 absorption of upstream `979d09e..126c998` (242 commits) was a merge over a rewritten history, and the largest yet — forty-five conflicts.** Upstream force-rewrote again: its `979d09e` became `92da832`, whose tree differs from the absorbed one by a single `docs/ui.md` sentence (Raycast's name dropped from the restyle rule). That extends the 2026-08-20 rule beyond tree-identical boundaries: the merge used a temporary `git replace --graft` re-parenting the fork's previous merge `f24e30a` onto `92da832` (a plain `replace` of `979d09e` leaves the merge base at its parent), the one differing line was resolved to upstream's wording, and the replace ref was deleted after the commit. Upstream rebuilt root search (#1057): `LauncherMatch` replaces the launcher's use of `FuzzyMatch`, `AppIndex.orderedResults` returns `Results` with favourite, meeting, suggestion and match counts in place of `showSections`, and `AppEntry`'s `matchAliases` became `alternateTitles` and `keywords`. The fork's scope, kind filter and transient Linear issues (divergences 4, 8) were re-applied onto that shape — `orderedResults` takes `scope:kinds:additionalEntries:` again and keys its memo on them — and the fork kinds gained `canDragOut: false` and a `rankPriority`. Word-order matching (divergence 17) survives only outside the launcher; see its status note. Settings moved its environment into `settingsEnvironment(core:navigation:editorPresenter:)`, which now injects herdr, VS Code, Zed, Linear and task capture; the sidebar's Off label (divergence 23) wears upstream's `SettingsTabIcon`. Upstream inlined backup gather/apply into `SettingsBackup.swift`; the fork keeps them in `SettingsBackupApplying.swift`, now carrying rooms, custom window sizes, pinned emoji and the other new fields. `DoubleTapMonitor` became `ModifierTapMonitor`, and the watchdog escalation (divergence 18) was re-applied there. New upstream work joined the fork's lists: Dictation (hotkey, tab, microphone entitlement mirrored into `TinycastFork.entitlements`), Apple Shortcuts, the Define fallback and the AI Chat window. Previews (divergence 11) followed upstream's new required parameters, and `PreviewChrome` now draws `frosted(in:)` rather than the removed `VisualEffectView`; upstream deleted `SnippetArgumentsPrompt.swift` and its preview went with it. `ScopeTint.swift` was added to four more harnesses that compile `Theme.swift`, and `sync-test` gained `ModifierKey`, `Snippet` and the settings-file models. `file-search-test` and `form-input-test` fail identically on pristine upstream and were left alone. `AppIndex.ownBundlePrefix` names `com.belesky.tinycast`, the fork's ids, so Suggestions never offer Tinycast itself; upstream spells it `com.tinycast.`.
 

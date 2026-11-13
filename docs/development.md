@@ -6,7 +6,7 @@ verifying a change is [testing.md](testing.md).
 ## Requirements
 
 - macOS 26 or later (Liquid Glass).
-- Xcode 26 — it provides the SwiftUI macro plugin and the SDK.
+- Xcode 27 — it provides the SwiftUI macro plugin and the SDK.
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen), and for linting:
   `brew install swiftlint`.
 - Node, for the generators and the local test stub servers `run-tests.sh` drives. It is the only
@@ -63,7 +63,7 @@ clipboard history, calculator history, launch ranking and frequent emoji; Notes 
 a folder is chosen),
 `~/Library/Caches/<id>/` (exchange rates, the update check, staged downloads), the opt-in
 `~/.config/tinycast-dev/settings.json` (`tinycast` on stable), the iCloud key-value store (its
-entitlement identifier embeds the bundle id), the `SMAppService` login item, and the Accessibility /
+entitlement identifier embeds the bundle id), the `tinycast-dev://` link scheme (`tinycast://` on stable), the `SMAppService` login item, and the Accessibility /
 Input Monitoring (TCC) grants — so a local build can neither read nor clobber an installed app's
 state, and both run side by side.
 
@@ -77,8 +77,9 @@ Consequences worth knowing:
   and onboarding unseen. Grant and bind once; it persists across rebuilds, because the fixed build path
   and the stable signing identity keep the TCC grant alive.
 - Don't bind the same global hotkey in both — whichever registered first wins.
-- The Hyper Key's Caps Lock remap is `hidutil` state, which is **system-wide, not per-bundle**: quitting
-  one build clears the remap for the other, which then needs a rebind or a relaunch to restore it.
+- The Hyper Key's Caps Lock remap lives on the keyboards, which are **shared, not per-bundle**:
+  enable Hyper in one build at a time so their keyboard owners do not compete. An identical mapping
+  already installed by another build is left unowned.
 
 ## Editor
 
@@ -100,6 +101,23 @@ signal the suite exists to give. Run the suite rather than trusting the editor t
 [SwiftLint](https://github.com/realm/SwiftLint) is the only code-quality tool here. `.swiftlint.yml` at
 the repo root excludes the generated files and the two off-limits files in `DesignSystem/Scrolling/`.
 The comment policy in [standards.md](standards.md#comments) is deliberately not among its rules.
+
+`lint.sh` also runs `check-localizations.js`, which fails on a string missing from any language, a
+missing plural form, a stale entry, or a translation whose format specifiers differ from the source.
+
+## Localization
+
+```sh
+./Scripts/sync-strings.sh   # build, merge new UI strings into Localizable.xcstrings, then check it
+```
+
+`xcodebuild` extracts strings but never writes them back to the catalog — only a build in Xcode's IDE
+does — so run this after changing UI text, then translate what it added (Xcode's catalog editor, or
+the JSON directly). A string whose source changed leaves its old entry stale; delete it. The rules for
+writing localizable code are in [standards.md](standards.md#localization).
+
+To see a language without changing the setting, launch the Debug build with
+`-AppleLanguages '(de)'`; add `-NSDoubleLocalizedStrings YES` to find labels that truncate.
 
 ## Formatting
 
@@ -131,8 +149,8 @@ Xcode's re-indent (⌃I), as it always has been. Two consequences worth knowing:
 - `force_try` is an error; `force_cast` only warns, because the AX and AppKit bridges have four
   legitimate ones.
 
-Errors block, warnings do not. No CI runs this script; CodeRabbit runs SwiftLint on each PR but not
-the settings-search check, so run it locally before you open one.
+Errors block, warnings do not. No CI runs this script, so run it locally before you open a
+PR.
 
 ## Generated data
 
@@ -182,4 +200,4 @@ The symptom is worth recognising, because it inverts the usual order of trust: t
 a terminal, works from a signed `.app` launched with `open`, works from a Release build — and fails
 **only** when the app is launched from Xcode, which is the one way it is usually run while being
 written. `SubprocessEnvironment.stripping` drops `DYLD_*` and `__XPC_DYLD_*` and keeps everything
-else; `linear-test` pins exactly that.
+else; `LinearTests` pins exactly that.

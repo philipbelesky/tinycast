@@ -52,8 +52,9 @@ Prefer current APIs and language features:
 - **A deprecated API is a defect**, not a warning to live with.
 - **Verify API and language-feature availability** against the SDK and compiler used by the build
   and CI. Use direct availability checks where macOS 27+ APIs require them to preserve macOS 26 support.
-- **No compatibility layers, legacy workarounds or obsolete patterns.** No migration scaffolding,
-  support below macOS 26 or speculative fallbacks. Keep the implementation direct.
+- **No compatibility layers, legacy workarounds or obsolete patterns.** No support below macOS 26 or
+  speculative fallbacks. Keep the implementation direct. Migration code lives only in
+  `Tinycast/Migrations/` and is deleted after one stable release ([migrations.md](docs/migrations.md)).
 
 Carbon is a deliberate capability-gap dependency rather than inertia: nothing modern registers a
 system-wide chord, and HIToolbox's TIS APIs remain the public input-source mechanism. Full reasoning in
@@ -70,7 +71,8 @@ system-wide chord, and HIToolbox's TIS APIs remain the public input-source mecha
 | `Tinycast/Windows/`      | the non-palette AppKit surfaces: `Dialog/`, `HUD/`, `About/`, `AppWindowController`     |
 | `Tinycast/Features/`     | one folder per feature; larger ones split `Model/` `Service/` `UI/` `Settings/`         |
 | `Tinycast/Previews/`     | `#if DEBUG` fixtures and chrome for the `#Preview` blocks; ships in no Release          |
-| `Tests/`                 | the standalone harnesses — one Swift file each, no XCTest target                        |
+| `Tinycast/Migrations/`   | one-shot repairs of state an older release left behind, each deleted after one release  |
+| `Tests/`                 | standalone `<Subject>Tests.swift` harnesses, no XCTest target                           |
 | `Scripts/`               | every executable script: test runner, data generators, packaging, linting               |
 
 | Read it before you                                          | Doc                                                          |
@@ -81,6 +83,7 @@ system-wide chord, and HIToolbox's TIS APIs remain the public input-source mecha
 | build, run or regenerate data                               | [development.md](docs/development.md)                        |
 | add or restyle any view                                     | [ui.md](docs/ui.md)                                          |
 | touch one feature's internals                               | [features/](docs/features/) — each opens with its invariants |
+| remove or rename anything persisted                         | [migrations.md](docs/migrations.md)                          |
 | package or ship a build                                     | [release.md](docs/release.md)                                |
 | merge upstream, or wonder why this differs from mainline    | [FORK.md](FORK.md)                                           |
 
@@ -108,7 +111,9 @@ feature's doc, under its own `## Invariants`.
   a dark one only when the task is to change Dark. `AppAppearance` drives `NSApp.appearance`, and
   `.system` maps to `nil` so AppKit follows macOS on its own.
 - **Tinycast presents its own dialogs — never `NSAlert` or a system popover.** A question
-  goes through `DialogController`, a report through a HUD via `HUDPresenter`.
+  goes through `DialogController`, a report through a HUD via `HUDPresenter`. The Settings window is
+  the one exception: a stock titled window, its panes ask with SwiftUI's `confirmationDialog` or
+  `alert`, which present as a sheet on it.
 - **A networked feature's switch is structural, even though they all now ship on.** Currency rates,
   iCloud sync, search suggestions and Linear default to enabled and ask nothing
   ([FORK.md](FORK.md) divergence 15); **snippets remains gated**, because
@@ -146,6 +151,10 @@ feature's doc, under its own `## Invariants`.
 
 ## Conventions worth knowing up front
 
+- **User-facing text is localized through `Localizable.xcstrings`**: SwiftUI literals as they are,
+  `String(localized:)` wherever text travels as a `String`, one literal per sentence. Run
+  `./Scripts/sync-strings.sh` after changing any, and translate all eight languages in the same change.
+  See [standards.md](docs/standards.md#localization).
 - **A new preference also gets a `SettingsFileKey`** and its binding in `SettingsFileSchema`, so the
   opt-in `settings.json` mirror carries it; the exhaustive switch fails the build until it is bound.
   See [settings-file.md](docs/features/settings-file.md).

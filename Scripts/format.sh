@@ -1,6 +1,5 @@
 #!/bin/bash
-# Format the whole project with swift-format. `--check` reports instead of writing.
-# Careful: this restructures code, it does not merely lay it out.
+# Format the project with swift-format (`--check` only reports). It restructures, not just lays out.
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 
@@ -11,9 +10,7 @@ FORMAT=$(xcrun --find swift-format 2>/dev/null)
     exit 2
 }
 
-# Generated files are never hand-edited, and formatting one is exactly that — the next
-# `node Scripts/gen-emoji.js` would revert it.
-# Built with a read loop rather than `mapfile`, which is bash 4 — macOS ships bash 3.2.
+# A read loop rather than `mapfile`, which is bash 4 — macOS ships bash 3.2.
 files=()
 while IFS= read -r f; do files+=("$f"); done < <(
     find Tinycast Tests -name '*.swift' ! -name '*.generated.swift' \

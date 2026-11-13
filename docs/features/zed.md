@@ -5,7 +5,7 @@ also appear in the unscoped root search, like quicklinks.
 
 ## Invariants
 
-- **`Model/ZedProject.swift` is Foundation-only and pure**, so `zed-test` compiles the shipped parser. It receives the home directory and `exists` predicate: the model never reads the filesystem.
+- **`Model/ZedProject.swift` is Foundation-only and pure**, so `ZedTests` compiles the shipped parser. It receives the home directory and `exists` predicate: the model never reads the filesystem.
 - **A workspace with a missing root is dropped whole.** Zed can reopen a multi-root workspace; opening only the surviving roots changes its shape, so pruning is preferable to a misleading partial row.
 - **The order is recency, and the launcher preserves it.** `setZedProjects` publishes the slice as given rather than sorting it by name.
 - **Nothing here writes to Zed's database.** The scanner opens the database read-only and only selects local workspaces; remote Zed connections are not reusable from another local launcher process.

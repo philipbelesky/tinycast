@@ -92,6 +92,16 @@ struct WindowManagementSettingsView: View {
                 Text("Between tiled windows and screen edges.")
             }
 
+            Toggle(isOn: $settings.windowWrapsDisplays) {
+                SettingsRowTitle(.windowManagementOptions, "Wrap around displays")
+                Text("Moving past the last display returns to the first.")
+            }
+
+            Toggle(isOn: $settings.windowKeepsProportions) {
+                SettingsRowTitle(.windowManagementOptions, "Keep aspect ratio")
+                Text("Off keeps a window's size when it moves to another display.")
+            }
+
             LabeledContent {
                 HStack(spacing: Theme.Spacing.sm) {
                     Picker("Shortcut preset", selection: $chosenPreset) {
@@ -135,7 +145,6 @@ struct WindowManagementSettingsView: View {
     }
 }
 
-/// One command's alias, shortcut recorder and visibility checkbox, shaped like the shortcuts row.
 private struct WindowCommandSettingsRow: View {
     let command: WindowCommand
     let showsInLauncher: Bool
