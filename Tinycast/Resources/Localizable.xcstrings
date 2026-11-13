@@ -3614,7 +3614,6 @@
       }
     },
     "%@, %@" : {
-      "shouldTranslate" : false,
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3622,7 +3621,8 @@
             "value" : "%1$@, %2$@"
           }
         }
-      }
+      },
+      "shouldTranslate" : false
     },
     "%@, %@ layout" : {
       "localizations" : {
@@ -13470,9 +13470,6 @@
         }
       }
     },
-    "%lld stars" : {
-      "shouldTranslate" : false
-    },
     "%lld symbols in %@" : {
       "localizations" : {
         "de" : {
@@ -15408,9 +15405,6 @@
           }
         }
       }
-    },
-    "%lld.5 stars" : {
-      "shouldTranslate" : false
     },
     "(No Title)" : {
       "comment" : "Fallback for a calendar event with no title",
@@ -97370,9 +97364,6 @@
         }
       }
     },
-    "Rating" : {
-      "shouldTranslate" : false
-    },
     "Ratio" : {
       "comment" : "Calculator answer badge",
       "localizations" : {
@@ -134371,9 +134362,6 @@
         }
       }
     },
-    "Unrated" : {
-      "shouldTranslate" : false
-    },
     "Unselect File" : {
       "localizations" : {
         "de" : {
@@ -138898,7 +138886,6 @@
       }
     },
     "Your %lld quicklinks will be deleted and replaced with the %lld in this file. Their shortcuts, favorite slots and learned ranking go with them." : {
-      "shouldTranslate" : false,
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -138906,7 +138893,8 @@
             "value" : "Your %1$lld quicklinks will be deleted and replaced with the %2$lld in this file. Their shortcuts, favorite slots and learned ranking go with them."
           }
         }
-      }
+      },
+      "shouldTranslate" : false
     },
     "Your Codex MCP server “%@” cannot be kept out of a Tinycast chat, because a dot or an equals sign in its name cannot be addressed. Rename it in your Codex configuration." : {
       "localizations" : {

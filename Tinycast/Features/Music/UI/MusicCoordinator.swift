@@ -61,8 +61,6 @@ final class MusicCoordinator {
         core.appIndex.setCommandsVisible(Set(CommandID.rateTrackCommands), !service.store.monitored.isEmpty)
     }
 
-    var interfaceMetrics: InterfaceMetrics { core.settings.interfaceSize.metrics }
-
     func menuBarModel() -> MusicMenuBarModel {
         let store = service.store
         let players = MusicCommandTarget.playersWithTracks(
@@ -73,24 +71,12 @@ final class MusicCoordinator {
         let state = store.snapshots[player] ?? MusicPlayback()
         let detail = [state.artist, state.album].filter { !$0.isEmpty }.joined(separator: " — ")
         return MusicMenuBarModel(
-            playerName: players.count > 1 ? player.title : nil,
             track: state.track.isEmpty ? String(localized: "Nothing playing") : state.track,
             detail: detail,
             rating: service.displayedRating(for: player),
             status: state.status,
             canPrevious: service.canPrevious(player),
-            isBusy: store.isBusy,
             player: player)
-    }
-
-    func rateFromMenu(_ stars: Int) {
-        rate(stars)
-        menuBarController?.refreshPanel()
-    }
-
-    func performFromMenu(_ command: MusicCommand, player: MusicPlayer) {
-        perform(command, player: player)
-        menuBarController?.refreshPanel()
     }
 
     func applyMenuBarItem(now: Date = Date()) {
@@ -99,7 +85,7 @@ final class MusicCoordinator {
         let show = presence.shows(
             preference: service.store.showsInMenuBar, eligible: eligible, now: now)
         if show == (menuBarController != nil) {
-            menuBarController?.refreshPanel()
+            menuBarController?.refresh()
         } else {
             menuBarController?.remove()
             menuBarController = show ? MusicMenuBarController(coordinator: self) : nil

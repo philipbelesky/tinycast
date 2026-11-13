@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The transport row shared by the Music window and the menu bar panel.
+/// The Music window's transport row.
 struct MusicTransportControls: View {
     let status: MusicPlayback.Status
     var canPrevious = true

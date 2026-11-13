@@ -101,7 +101,6 @@
 		1A4283A863BE56A7BC43D9F7 /* ColorSwatch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89DBFE62B513EC161F194D0A /* ColorSwatch.swift */; };
 		1A7F214D77D831C7A223631E /* QuickActionResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31F2C83F4B985EA6CD03BC69 /* QuickActionResultView.swift */; };
 		1A9FCDB7A1C1CA3A93E4FB91 /* QuickActionModelPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE61289308F47E3572C293D0 /* QuickActionModelPicker.swift */; };
-		1AA9F6347A5C8EA2CDF337BB /* MusicMenuBarPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4CA2ECE2B75EB4F9C3EBAC0 /* MusicMenuBarPanel.swift */; };
 		1B22A7E45ADF2FEA95957698 /* ExtensionFieldChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0C8025ED5F2833127E20C05 /* ExtensionFieldChrome.swift */; };
 		1B9BC6B00770D1F002E62E0D /* ExtensionBootConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED5AAA98FFF7A4D34D7B490D /* ExtensionBootConfig.swift */; };
 		1BC16048EE05A1FD25739CB4 /* PaletteState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 188A6D3C5B6BC67716F15F83 /* PaletteState.swift */; };
@@ -1875,7 +1874,6 @@
 		D43F1080FB443A1D0616790E /* FavoritesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesStore.swift; sourceTree = "<group>"; };
 		D4462AB0E866F02397B57EC6 /* MeetingDetails.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingDetails.swift; sourceTree = "<group>"; };
 		D48A70C77CFAD531753D5040 /* SettingsSyncStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSyncStore.swift; sourceTree = "<group>"; };
-		D4CA2ECE2B75EB4F9C3EBAC0 /* MusicMenuBarPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicMenuBarPanel.swift; sourceTree = "<group>"; };
 		D558FDBE73563E4292E388DD /* DictationVolumeSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationVolumeSnapshot.swift; sourceTree = "<group>"; };
 		D5870C37FFC77A9B53CA5764 /* TextDiffEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextDiffEngine.swift; sourceTree = "<group>"; };
 		D65D1C9A117E443C6DA2BD9E /* WindowLayoutAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowLayoutAnchor.swift; sourceTree = "<group>"; };
@@ -3897,7 +3895,6 @@
 				5C7353531D81ED971F937BB7 /* MusicCoordinator.swift */,
 				1F43C731A30B16C962D33E71 /* MusicHistoryView.swift */,
 				DCBE0C52B78DD17740BBEE2E /* MusicMenuBarController.swift */,
-				D4CA2ECE2B75EB4F9C3EBAC0 /* MusicMenuBarPanel.swift */,
 				C5CDF00A3D59093CD0591823 /* MusicTransportControls.swift */,
 				B9C76E8B65CDA0E2A8778816 /* MusicView.swift */,
 			);
@@ -5364,7 +5361,6 @@
 				8C2411FB8E31315629BDCD50 /* MusicHistoryView.swift in Sources */,
 				5C6DB6B61BB43FCB11C7CF08 /* MusicListeningHistory.swift in Sources */,
 				634E39E0B765F2A805CB653A /* MusicMenuBarController.swift in Sources */,
-				1AA9F6347A5C8EA2CDF337BB /* MusicMenuBarPanel.swift in Sources */,
 				39B20B01BFC016860B4907E1 /* MusicMenuBarPresence.swift in Sources */,
 				48E889CE7B7CDB0B87023922 /* MusicOperationBudget.swift in Sources */,
 				F737D161E512F3EB3D422044 /* MusicPairingStore.swift in Sources */,

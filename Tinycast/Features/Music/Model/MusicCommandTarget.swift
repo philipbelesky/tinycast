@@ -1,6 +1,6 @@
 import Foundation
 
-/// Which monitored player a rating command or the menu bar panel acts on.
+/// Which monitored player a rating command or the menu bar buttons act on.
 enum MusicCommandTarget {
     static func player(
         monitored: Set<MusicPlayer>, snapshots: [MusicPlayer: MusicPlayback], preferred: MusicPlayer
