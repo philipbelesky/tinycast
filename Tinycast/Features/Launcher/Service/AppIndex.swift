@@ -220,6 +220,7 @@ struct AppEntry: Identifiable, Hashable, Sendable {
         case .command, .quickAction, .customCommand, .systemAction, .windowCommand, .windowLayout,
             .windowRoom, .quicklink, .appleShortcut, .snippet:
             return HotKeyAction(entryID: id)
+        // A web search needs a query; a herdr id and a project path can vanish between launches.
         case .webSearch, .herdrTarget, .rexTarget, .vsCodeProject, .zedProject, .linearTarget, .scope,
             .extensionCommand, .meeting:
             return nil

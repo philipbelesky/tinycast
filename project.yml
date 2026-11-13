@@ -12,9 +12,12 @@ settings:
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
     SWIFT_VERSION: "6.0"
-    # Stable fork signing; Developer ID is applied at export. FORK.md divergence 1.
+    # Fork-local: upstream signs with the "Tinycast Self-Signed" identity from docs/signing.md.
+    # Either way the identity must stay *stable*, or macOS forgets the Accessibility grant.
     DEVELOPMENT_TEAM: CNPCA4RAWZ
     CODE_SIGN_STYLE: Automatic
+    # Stays development for every config: Developer ID is applied by build-dmg.sh at export, because
+    # automatic signing only ever picks a development identity during a build. FORK.md divergence 1.
     CODE_SIGN_IDENTITY: "Apple Development"
     SWIFT_STRICT_CONCURRENCY: complete
     # Fork-local ids: com.tinycast.app is another team's App ID, which iCloud provisioning needs.

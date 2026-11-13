@@ -20,6 +20,7 @@ final class CurrencyRateStore {
     /// On unless turned off. Not in `AppSettings`, so no import can flip it either way.
     private(set) var isEnabled: Bool
 
+    /// The newest snapshot, nil when none has landed.
     private(set) var rates: CurrencyRates?
     private(set) var isRefreshing = false
 

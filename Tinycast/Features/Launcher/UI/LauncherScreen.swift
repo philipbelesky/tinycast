@@ -95,6 +95,9 @@ struct LauncherScreen: PaletteScreen {
                     query: vm.query, visibility: visibility, favorites: favorites, hotKeys: core.hotKeys,
                     scope: vm.scope, kinds: kinds, additionalEntries: leadsWithIssues ? [] : issues))
         var results = ordered.entries
+        // Split off first, so the issue and address rows below can never displace a favorite.
+        let favoriteEntries = Array(results.prefix(ordered.favoriteCount))
+        results.removeFirst(ordered.favoriteCount)
         var matchCount = ordered.matchCount
         if pinned == nil, leadsWithIssues {
             let issueIDs = Set(issues.map(\.id))
@@ -116,17 +119,17 @@ struct LauncherScreen: PaletteScreen {
         // After the calculator: `#FF5733` is never arithmetic, so the two can't both answer.
         let color =
             calc == nil && pinned == nil && !ownsQuery && !isLinearScope ? ColorValue.parse(vm.query) : nil
-        let files = pinned == nil && vm.scope == nil
+        // Scoped, because either section would widen a query a scope has just narrowed.
+        let files =
+            pinned == nil && !ownsQuery && vm.scope == nil
             ? core.fileSearchCoordinator.launcherFiles(for: vm.query) : []
-        // Scoped, because the section would widen a query a scope has just narrowed.
         let fallbacks = vm.scope == nil ? core.fallbackCoordinator.entries(for: vm.query) : []
         let pinsFavorites =
             !ownsQuery && vm.scope == nil
             && vm.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         let pinnedFavorites = favorites.orderedItems(
-            entries: Array(results.prefix(ordered.favoriteCount)),
+            entries: favoriteEntries,
             files: pinsFavorites ? core.fileSearchCoordinator.favoriteFiles : [])
-        results.removeFirst(ordered.favoriteCount)
         let entries =
             pinnedFavorites.map(Row.init) + results.map(Row.entry) + files.map(Row.file)
             + fallbacks.map { Row.fallback($0.fallback, $0.entry) }
