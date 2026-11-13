@@ -201,7 +201,8 @@ enum MusicAppleEvents {
     }
 
     private static var notInLibrary: MusicAutomationFailure {
-        MusicAutomationFailure("This track is not in your library, so it cannot be rated.", number: -54)
+        MusicAutomationFailure(
+            String(localized: "This track is not in your library, so it cannot be rated."), number: -54)
     }
 
     private static func scriptSeconds(

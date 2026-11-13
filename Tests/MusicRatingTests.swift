@@ -72,7 +72,9 @@ struct MusicRatingTests {
         assert(MusicCommandTarget.player(monitored: [.appleMusic], snapshots: snapshots, preferred: .tvTunes) == .appleMusic)
         snapshots = [.appleMusic: stopped, .tvTunes: playing]
         assert(MusicCommandTarget.player(monitored: [.appleMusic], snapshots: snapshots, preferred: .tvTunes) == nil)
-        assert(MusicCommandTarget.playersWithTracks(monitored: monitored, snapshots: [.appleMusic: playing, .tvTunes: paused]).count == 2)
+        let withTracks = MusicCommandTarget.playersWithTracks(
+            monitored: monitored, snapshots: [.appleMusic: playing, .tvTunes: paused])
+        assert(withTracks.count == 2)
     }
 
     private static func menuBarPresence() {

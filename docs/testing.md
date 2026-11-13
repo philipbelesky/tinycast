@@ -20,7 +20,7 @@ end of this file is the sixth, judged by what you touched.
 
 ## The harnesses
 
-Music has four harnesses: `MusicTests` for pure history/protocol behavior, `MusicServiceTests` for the injected playback boundary and persistence, `MusicConfirmationTests` for delayed player updates, and `MusicRemoteTests` for a real loopback WebSocket listener. These do not grant Automation permissions or play personal music. Live Music-window, player and physical-gadget checks are documented in [music.md](features/music.md).
+Music has five harnesses: `MusicTests` for pure history/protocol behavior, `MusicServiceTests` for the injected playback boundary and persistence, `MusicConfirmationTests` for delayed player updates, `MusicRatingTests` for rating conversion, targeting and writes against an injected player, and `MusicRemoteTests` for a real loopback WebSocket listener. These do not grant Automation permissions or play personal music. Live Music-window, player and physical-gadget checks are documented in [music.md](features/music.md).
 
 ```sh
 ./Scripts/run-tests.sh              # all of them
@@ -213,6 +213,7 @@ If a change touches anything in the right column, the harness on the left is man
 | `LinearIndexTests` | Local issue matching, expiry and account isolation |
 | `LinearIndexStoreTests` | Disk restore, progressive workspace results and cancellation during cache removal |
 | `TaskCaptureTests` | `TaskCapture/Model/` — grammar, dates, TaskPaper, TextFlow arguments and both catalog parsers |
+| `MusicRatingTests` | `Music/Model/` rating conversion, command targeting, read policy and menu bar presence, plus the injected playback service's rating writes |
 
 `MCPStdioTests` copies `Tests/ai-fixtures/mcp-stub.js` into a scratch directory. The stub
 reads fd 0 synchronously and writes replies with `fs.writeSync`, so a reply reaches the pipe before

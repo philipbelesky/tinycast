@@ -4,6 +4,9 @@
     "" : {
 
     },
+    "%@  %@" : {
+      "shouldTranslate" : false
+    },
     "%@ (%lld items)" : {
       "localizations" : {
         "de" : {
@@ -13467,6 +13470,9 @@
         }
       }
     },
+    "%lld stars" : {
+      "shouldTranslate" : false
+    },
     "%lld symbols in %@" : {
       "localizations" : {
         "de" : {
@@ -15402,6 +15408,9 @@
           }
         }
       }
+    },
+    "%lld.5 stars" : {
+      "shouldTranslate" : false
     },
     "(No Title)" : {
       "comment" : "Fallback for a calendar event with no title",
@@ -33236,6 +33245,9 @@
           }
         }
       }
+    },
+    "Choose a rating from 1 to 5 stars." : {
+      "shouldTranslate" : false
     },
     "Choose an API connection in Settings." : {
       "localizations" : {
@@ -79433,6 +79445,9 @@
         }
       }
     },
+    "Next album" : {
+      "shouldTranslate" : false
+    },
     "Next message" : {
       "localizations" : {
         "de" : {
@@ -79536,6 +79551,9 @@
           }
         }
       }
+    },
+    "Next track" : {
+      "shouldTranslate" : false
     },
     "No" : {
       "localizations" : {
@@ -85585,6 +85603,9 @@
         }
       }
     },
+    "Nothing is playing." : {
+      "shouldTranslate" : false
+    },
     "Nothing left to paste" : {
       "localizations" : {
         "de" : {
@@ -85792,6 +85813,9 @@
           }
         }
       }
+    },
+    "Nothing playing" : {
+      "shouldTranslate" : false
     },
     "Nothing scheduled in the next 7 days" : {
       "localizations" : {
@@ -89821,6 +89845,9 @@
         }
       }
     },
+    "Open the player first. Connecting allows Tinycast to read playback and run controls through macOS Automation. The menu bar item stays while a connected player is playing or paused." : {
+      "shouldTranslate" : false
+    },
     "Open the player, then connect to enable controls and playback monitoring." : {
       "shouldTranslate" : false
     },
@@ -92428,6 +92455,9 @@
         }
       }
     },
+    "Pause" : {
+      "shouldTranslate" : false
+    },
     "Paused" : {
       "comment" : "Hyper Key status",
       "localizations" : {
@@ -93681,6 +93711,9 @@
           }
         }
       }
+    },
+    "Play" : {
+      "shouldTranslate" : false
     },
     "Play / Pause" : {
       "localizations" : {
@@ -95117,6 +95150,12 @@
           }
         }
       }
+    },
+    "Previous album" : {
+      "shouldTranslate" : false
+    },
+    "Previous track" : {
+      "shouldTranslate" : false
     },
     "Primary window" : {
       "localizations" : {
@@ -97083,6 +97122,24 @@
         }
       }
     },
+    "Rate %lld stars" : {
+      "shouldTranslate" : false
+    },
+    "Rate Track ★" : {
+      "shouldTranslate" : false
+    },
+    "Rate Track ★★" : {
+      "shouldTranslate" : false
+    },
+    "Rate Track ★★★" : {
+      "shouldTranslate" : false
+    },
+    "Rate Track ★★★★" : {
+      "shouldTranslate" : false
+    },
+    "Rate Track ★★★★★" : {
+      "shouldTranslate" : false
+    },
     "Rate limit reached — retry after %lld seconds." : {
       "localizations" : {
         "de" : {
@@ -97312,6 +97369,9 @@
           }
         }
       }
+    },
+    "Rating" : {
+      "shouldTranslate" : false
     },
     "Ratio" : {
       "comment" : "Calculator answer badge",
@@ -123057,6 +123117,9 @@
         }
       }
     },
+    "The rating result is unknown. Check the player before retrying." : {
+      "shouldTranslate" : false
+    },
     "The request headers could not be read from Keychain." : {
       "localizations" : {
         "de" : {
@@ -127474,6 +127537,12 @@
           }
         }
       }
+    },
+    "This track cannot be rated." : {
+      "shouldTranslate" : false
+    },
+    "This track is not in your library, so it cannot be rated." : {
+      "shouldTranslate" : false
     },
     "This version of Notification Center exposes no dismiss control Tinycast can use." : {
       "localizations" : {
@@ -134301,6 +134370,9 @@
           }
         }
       }
+    },
+    "Unrated" : {
+      "shouldTranslate" : false
     },
     "Unselect File" : {
       "localizations" : {

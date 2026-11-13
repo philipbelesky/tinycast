@@ -777,11 +777,11 @@ This is the largest launcher-list change since divergence 4: the capture scope o
 
 ## 25 — Shared music controls and gadget service
 
-**Touches:** additive `Features/Music/` models, native player automation, local history, a structured WebSocket listener, its coordinator/window and Settings pane; `AppCore` lifecycle, the Music Controls launcher/menu command, settings search and the `music.player`/`music.commands` file bindings. `Tinycast.xcodeproj` is regenerated from the unchanged XcodeGen source tree.
+**Touches:** additive `Features/Music/` models, native player automation, local history, a structured WebSocket listener, its coordinator/window and Settings pane, and a Music `NSStatusItem` whose panel rates the current track and offers transport; `AppCore` lifecycle, the Music Controls and Rate Track launcher/menu commands, deep-link consent for those rating commands, settings search and the `music.player`/`music.showInMenuBar`/`music.commands` file bindings. `Tinycast.xcodeproj` is regenerated from the unchanged XcodeGen source tree.
 
-This fork controls Apple Music and TVTunes through one app-owned service, with the existing Hermes Gadget protocol as another client. No external Python companion or additional daemon is needed. Per-Mac monitoring, local listening history and gadget access are opt-in capabilities; pairing stays in Keychain. The installed channel listens on 8796 and Debug on 8797. Details and acceptance boundaries live in [music.md](docs/features/music.md).
+This fork controls Apple Music and TVTunes through one app-owned service, with the existing Hermes Gadget protocol as another client. No external Python companion or additional daemon is needed. Per-Mac monitoring, local listening history and gadget access are opt-in capabilities; pairing stays in Keychain. Rating and the menu bar item are part of the same service: a write addresses the track id from the click, never `current track`, and a rating failure does not stop playback monitoring. The installed channel listens on 8796 and Debug on 8797. Details and acceptance boundaries live in [music.md](docs/features/music.md).
 
-**On merge:** retain the small AppCore, launcher, menu and Settings registration changes; the feature folder is self-contained. Keep capability grants out of settings imports and sync, and preserve the gadget's command-result semantics if either player adapter changes.
+**On merge:** retain the small AppCore, launcher, menu, consent and Settings registration changes; the feature folder is self-contained. Keep capability grants out of settings imports and sync, and preserve the gadget's command-result semantics if either player adapter changes. The menu bar item is an `NSStatusItem` owned by `MusicCoordinator`, not a new scene.
 
 ## 26 — Rex opener
 

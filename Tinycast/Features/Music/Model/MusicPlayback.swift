@@ -15,7 +15,7 @@ struct MusicPlayback: Codable, Equatable, Sendable {
     var error = ""
     var queueID = ""
     /// Nil means the track cannot be rated. Unrated but ratable is `.unrated`, not nil.
-    var rating: MusicRating? = nil
+    var rating: MusicRating?
 
     enum CodingKeys: String, CodingKey {
         case status, album, artist, track, albumID, trackID, error, queueID
