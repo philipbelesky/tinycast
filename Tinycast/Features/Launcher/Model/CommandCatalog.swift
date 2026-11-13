@@ -39,7 +39,7 @@ enum CommandCatalog {
         AppEntry(
             id: id.rawValue, name: id.name, url: url ?? placeholderURL(id), bundleID: nil,
             kind: id.entryKind, settingsOwner: id.owner, subtitle: subtitle,
-            alternateTitles: [id.englishName])
+            alternateTitles: [id.englishName], keywords: id.keywords)
     }
 
     nonisolated private static func placeholderURL(_ id: CommandID) -> URL {
@@ -58,7 +58,7 @@ extension SettingsTab {
         case .quickActions: [.fixGrammar, .rewrite, .translate, .summarize]
         case .fileSearch: [.searchFiles]
         case .notes: [.showNotes, .createNote, .searchNotes]
-        case .music: [.showMusic]
+        case .music: [.showMusic] + CommandID.rateTrackCommands
         case .snippets: [.searchSnippets, .createSnippet]
         case .navigation: [.switchWindows, .switchWindowsBackwards, .searchMenuItems]
         case .windowManagement:

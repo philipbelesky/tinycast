@@ -239,6 +239,9 @@ final class LauncherCoordinator {
         case .showMusic:
             dismissPalette()
             core.musicCoordinator.show()
+        case .rateTrack1, .rateTrack2, .rateTrack3, .rateTrack4, .rateTrack5:
+            dismissPalette()
+            core.musicCoordinator.rate(id.stars ?? 1)
         case .clipboardHistory:
             paletteCoordinator.togglePalette(mode: .clipboard)
         case .pasteSequentially:

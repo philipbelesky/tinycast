@@ -10,6 +10,11 @@ enum CommandID: String, CaseIterable, Sendable {
     case summarize = "command:summarize"
     case calculatorHistory = "command:calculator-history"
     case showMusic = "command:show-music"
+    case rateTrack1 = "command:rate-track-1"
+    case rateTrack2 = "command:rate-track-2"
+    case rateTrack3 = "command:rate-track-3"
+    case rateTrack4 = "command:rate-track-4"
+    case rateTrack5 = "command:rate-track-5"
     case clipboardHistory = "command:clipboard-history"
     case pasteSequentially = "command:paste-sequentially"
     case searchEmoji = "command:search-emoji"
@@ -86,6 +91,11 @@ enum CommandID: String, CaseIterable, Sendable {
         case .summarize: return BuiltInQuickAction.summarize.titleResource
         case .calculatorHistory: return "Calculator History"
         case .showMusic: return "Music Controls"
+        case .rateTrack1: return "Rate Track ★"
+        case .rateTrack2: return "Rate Track ★★"
+        case .rateTrack3: return "Rate Track ★★★"
+        case .rateTrack4: return "Rate Track ★★★★"
+        case .rateTrack5: return "Rate Track ★★★★★"
         case .clipboardHistory: return "Clipboard History"
         case .pasteSequentially: return "Paste Sequentially"
         case .searchEmoji: return "Search Emoji & Symbols"
@@ -138,6 +148,7 @@ enum CommandID: String, CaseIterable, Sendable {
         case .summarize: return BuiltInQuickAction.summarize.symbol
         case .calculatorHistory: return "plus.forwardslash.minus"
         case .showMusic: return "music.note"
+        case .rateTrack1, .rateTrack2, .rateTrack3, .rateTrack4, .rateTrack5: return "star.fill"
         case .clipboardHistory: return "doc.on.clipboard"
         case .pasteSequentially: return "list.bullet.clipboard"
         case .searchEmoji: return "face.smiling"
@@ -229,4 +240,25 @@ enum CommandID: String, CaseIterable, Sendable {
     var hotKeyAction: HotKeyAction? {
         isQueryDriven || self == .quit ? nil : .command(self)
     }
+
+    var stars: Int? {
+        switch self {
+        case .rateTrack1: 1
+        case .rateTrack2: 2
+        case .rateTrack3: 3
+        case .rateTrack4: 4
+        case .rateTrack5: 5
+        default: nil
+        }
+    }
+
+    /// Found by, never ranked by, so `rate 4` and `4 stars` reach the matching command.
+    var keywords: [String] {
+        guard let stars else { return [] }
+        return ["rate \(stars)", "\(stars) star", "\(stars) stars", "rate track \(stars)"]
+    }
+
+    static let rateTrackCommands: [CommandID] = [
+        .rateTrack1, .rateTrack2, .rateTrack3, .rateTrack4, .rateTrack5
+    ]
 }

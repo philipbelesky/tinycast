@@ -35,7 +35,14 @@ final class MusicCoordinator {
     func showSettings() { core.settingsCoordinator.showSettings(tab: .music) }
 
     func setMonitoring(_ player: MusicPlayer, enabled: Bool) {
-        Task { await service.setMonitoring(player, enabled: enabled) }
+        Task {
+            await service.setMonitoring(player, enabled: enabled)
+            applyCommandVisibility()
+        }
+    }
+
+    func applyCommandVisibility() {
+        core.appIndex.setCommandsVisible(Set(CommandID.rateTrackCommands), !service.store.monitored.isEmpty)
     }
 
     func reconnect(_ player: MusicPlayer) { Task { await service.connect(player) } }
