@@ -22,7 +22,7 @@ final class MusicMenuBarController: NSObject {
     private let status = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let menu = NSMenu()
     private var displayed: MusicMenuBarModel?
-    private var hitRanges: [(range: ClosedRange<CGFloat>, segment: Segment)] = []
+    private var hitRanges: [(range: Range<CGFloat>, segment: Segment)] = []
 
     private static let glyphPoints: CGFloat = 13
     private static let glyphGap: CGFloat = 5
@@ -106,7 +106,7 @@ final class MusicMenuBarController: NSObject {
             let leading = index == 0 ? 0 : (origins[index - 1] + (images[index - 1]?.size.width ?? 0) + origins[index]) / 2
             let trailing = index == glyphs.count - 1
                 ? x : (origins[index] + width + origins[index + 1]) / 2
-            return (leading...trailing, glyphs[index].segment)
+            return (leading..<trailing, glyphs[index].segment)
         }
         status.button?.image = composite
     }
@@ -134,9 +134,12 @@ final class MusicMenuBarController: NSObject {
             status.menu = nil
             return
         }
-        guard let model = displayed, let image = sender.image else { return }
-        let point = sender.convert(event.locationInWindow, from: nil)
-        let offset = point.x - (sender.bounds.width - image.size.width) / 2
+        guard let model = displayed, let image = sender.image, let window = sender.window else { return }
+        // The system forwards every click at the item's centre, so only the pointer says which glyph.
+        let pointer = NSEvent.mouseLocation
+        let pointerScreen = NSScreen.screens.first { $0.frame.contains(pointer) } ?? window.screen
+        let mirrored = (window.screen?.frame.maxX ?? 0) - (pointerScreen?.frame.maxX ?? 0)
+        let offset = pointer.x + mirrored - window.frame.minX - (window.frame.width - image.size.width) / 2
         guard let segment = hitRanges.first(where: { $0.range.contains(offset) })?.segment else { return }
         switch segment {
         case .transport(let command):
