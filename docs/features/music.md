@@ -15,7 +15,7 @@
 
 ## Surfaces
 
-Open **Music Controls** from the launcher, its configurable alias/hotkey, or Tinycast's menu. Players shows both Apple Music and TVTunes with track/album navigation and transport. Selecting the gadget player changes which app gadget commands address; it does not start or pause either app. Listening History is searchable by track, artist, album and player.
+Open **Music Controls** from the launcher, its configurable alias/hotkey, or Tinycast's menu. Players shows both Apple Music and TVTunes with track/album navigation and transport. Selecting the gadget player changes which app gadget commands address; it does not start or pause either app. When the gadget player is not playing and the other monitored player is, the next state read (every two seconds) switches the gadget player to it. If both are playing, the selection stays. Listening History is searchable by track, artist, album and player.
 
 **Rate Track ★** through **Rate Track ★★★★★** are Music commands with the same alias and hotkey treatment. They are offered in the launcher only while a player is being monitored. A command targets the monitored player that is playing, preferring the selected gadget player when both are, otherwise a paused player with a track. Typing `rate 4` or `4 stars` finds the matching command through its keywords. Success and refusal are reported with a HUD. Clicking the current whole-star rating does nothing.
 

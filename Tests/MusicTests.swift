@@ -50,6 +50,14 @@ struct MusicTests {
         assert(object?["source"] as? String == "TVTUNES")
         assert(object?["ack"] as? String == "press-1")
         assert(object?["can_previous"] as? Bool == false)
-        print("Music history and gadget protocol checks passed")
+        let playing = MusicPlayback(status: .playing)
+        let paused = MusicPlayback(status: .paused)
+        assert(MusicPlayer.gadgetTarget(selected: .appleMusic, snapshots: [.appleMusic: paused, .tvTunes: playing]) == .tvTunes)
+        assert(MusicPlayer.gadgetTarget(selected: .appleMusic, snapshots: [.tvTunes: playing]) == .tvTunes)
+        assert(MusicPlayer.gadgetTarget(selected: .appleMusic, snapshots: [.appleMusic: playing, .tvTunes: playing]) == .appleMusic,
+            "Both playing keeps the current target")
+        assert(MusicPlayer.gadgetTarget(selected: .tvTunes, snapshots: [.appleMusic: paused, .tvTunes: paused]) == .tvTunes,
+            "Nothing playing keeps the current target")
+        print("Music history, gadget protocol and gadget target checks passed")
     }
 }

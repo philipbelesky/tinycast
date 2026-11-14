@@ -115,6 +115,8 @@ final class MusicPlaybackService {
             }
             _ = await refresh(player)
         }
+        let target = MusicPlayer.gadgetTarget(selected: store.selectedPlayer, snapshots: store.snapshots)
+        if target != store.selectedPlayer { store.selectedPlayer = target }
     }
 
     @discardableResult
