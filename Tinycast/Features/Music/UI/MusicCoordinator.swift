@@ -75,7 +75,6 @@ final class MusicCoordinator {
             detail: detail,
             rating: service.displayedRating(for: player),
             status: state.status,
-            canPrevious: service.canPrevious(player),
             player: player)
     }
 

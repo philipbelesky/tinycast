@@ -6,7 +6,6 @@ struct MusicMenuBarModel: Equatable, Sendable {
     var detail: String
     var rating: MusicRating?
     var status: MusicPlayback.Status
-    var canPrevious: Bool
     var player: MusicPlayer
 }
 
@@ -25,9 +24,10 @@ final class MusicMenuBarController: NSObject {
     private var hitRanges: [(range: Range<CGFloat>, segment: Segment)] = []
 
     private static let glyphPoints: CGFloat = 13
-    private static let glyphGap: CGFloat = 5
+    private static let starPoints: CGFloat = 11
+    private static let transportGap: CGFloat = 7
+    private static let starGap: CGFloat = 3
     private static let groupGap: CGFloat = 10
-    private static let disabledAlpha: CGFloat = 0.35
 
     init(coordinator: MusicCoordinator) {
         self.coordinator = coordinator
@@ -56,15 +56,14 @@ final class MusicMenuBarController: NSObject {
         guard model != displayed else { return }
         displayed = model
         let playing = model.status == .playing
-        var glyphs: [(segment: Segment, symbol: String, enabled: Bool)] = [
-            (.transport(.previousAlbum), "backward.end.alt", model.canPrevious),
-            (.transport(.previousTrack), "backward.end.fill", true),
-            (.transport(.toggle), playing ? "pause.fill" : "play.fill", true),
-            (.transport(.nextTrack), "forward.end.fill", true),
-            (.transport(.nextAlbum), "forward.end.alt", true)
+        var glyphs: [(segment: Segment, symbol: String)] = [
+            (.transport(.previousTrack), "backward.end.fill"),
+            (.transport(.toggle), playing ? "pause.fill" : "play.fill"),
+            (.transport(.nextTrack), "forward.end.fill"),
+            (.transport(.nextAlbum), "forward.end.alt.fill")
         ]
         if let rating = model.rating {
-            glyphs += (1...5).map { (.star($0), Self.starSymbol(rating.fill(for: $0)), true) }
+            glyphs += (1...5).map { (.star($0), Self.starSymbol(rating.fill(for: $0))) }
         }
         draw(glyphs)
         let summary = model.detail.isEmpty ? model.track : "\(model.track) — \(model.detail)"
@@ -72,17 +71,16 @@ final class MusicMenuBarController: NSObject {
     }
 
     /// One image, hit-tested by position: subviews in a status button are cropped by the system's host.
-    private func draw(_ glyphs: [(segment: Segment, symbol: String, enabled: Bool)]) {
+    private func draw(_ glyphs: [(segment: Segment, symbol: String)]) {
         let images = glyphs.map { glyph in
             NSImage(systemSymbolName: glyph.symbol, accessibilityDescription: nil)?
-                .withSymbolConfiguration(.init(pointSize: Self.glyphPoints, weight: .regular))
+                .withSymbolConfiguration(.init(pointSize: Self.points(glyph.segment), weight: .regular))
         }
         var origins: [CGFloat] = []
         var x: CGFloat = 0
         for (index, image) in images.enumerated() {
             if index > 0 {
-                let startsStars = glyphs[index].segment == .star(1)
-                x += startsStars ? Self.groupGap : Self.glyphGap
+                x += Self.gap(before: glyphs[index].segment)
             }
             origins.append(x)
             x += image?.size.width ?? 0
@@ -94,9 +92,7 @@ final class MusicMenuBarController: NSObject {
                 let rect = CGRect(
                     x: origins[index], y: (height - image.size.height) / 2,
                     width: image.size.width, height: image.size.height)
-                image.draw(
-                    in: rect, from: .zero, operation: .sourceOver,
-                    fraction: glyphs[index].enabled ? 1 : Self.disabledAlpha)
+                image.draw(in: rect)
             }
             return true
         }
@@ -109,6 +105,19 @@ final class MusicMenuBarController: NSObject {
             return (leading..<trailing, glyphs[index].segment)
         }
         status.button?.image = composite
+    }
+
+    private static func points(_ segment: Segment) -> CGFloat {
+        if case .star = segment { return starPoints }
+        return glyphPoints
+    }
+
+    private static func gap(before segment: Segment) -> CGFloat {
+        switch segment {
+        case .star(1): groupGap
+        case .star: starGap
+        case .transport: transportGap
+        }
     }
 
     private static func starSymbol(_ fill: MusicRating.StarFill) -> String {
@@ -143,7 +152,6 @@ final class MusicMenuBarController: NSObject {
         guard let segment = hitRanges.first(where: { $0.range.contains(offset) })?.segment else { return }
         switch segment {
         case .transport(let command):
-            guard command != .previousAlbum || model.canPrevious else { return }
             coordinator.perform(command, player: model.player)
         case .star(let stars):
             coordinator.rate(stars)
